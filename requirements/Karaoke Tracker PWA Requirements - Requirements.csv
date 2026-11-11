@@ -1,0 +1,51 @@
+﻿ID,Area,Requirement,Priority,Status,Notes
+R1,Library,Add a song with title and artist,Must,Not started,
+R2,Library,"Edit or delete a song, with a confirmation before deleting",Must,Not started,
+R3,Library,Free-text notes per song,Must,Not started,"E.g. ""skip the bridge"", ""starts cold"""
+R4,Library,Rate each song 1-5 for how well I sing it,Could,Not started,
+R5,Library,Tag songs with my own tags,Should,Not started,"E.g. duet, crowd-pleaser, slow, 80s"
+R6,Library,Store my key change for each song,Should,Not started,"E.g. -2 or +1, as set on the karaoke machine"
+R36,Library,"Collect a genre and year (decade at least) for a song for use in sorting, and finding.",Must,Not started,
+R7,Library,"Mark each song as Go-to, Want to try or Retired",Should,Not started,
+R8,Library,"Log each time I sing a song and the venue; show times sung and last sung (venue and overall)",Must,Not started,"Date required, venue required"
+R40,Library,"Add, rename and delete venues",Must,Not started,"Needed by R8, R37 and R39"
+R37,Find,"Select a venue or 'overall', and then find.",Must,Not started,
+R41,Find,"Filter to songs never sung at the selected venue, or not sung there since a date I pick",Must,Not started,Depends on R8 and R37
+R9,Library,Warn when adding a song that is already in the library,Could,Not started,"Match on title + artist, ignoring case"
+R10,Find,Search by title or artist as I type,Must,Not started,
+R11,Find,"Filter by tag, rating and status",Must,Not started,Filters combine
+R42,Find,Filter and sort by genre and decade,Must,Not started,"Combines with the R11 filters; depends on R36"
+R12,Find,"Sort by title, artist, rating, last sung or date added",Should,Not started,
+R13,Find,"""Pick for me"": a random song from the current filter",Could,Not started,
+R39,Setlists,Setlist should be venue specific or general,Must,Not started,
+R14,Setlists,"Create, rename and delete setlists",Must,Not started,
+R15,Setlists,"Add and remove songs; a song can be in several setlists",Must,Not started,
+R16,Setlists,Reorder songs in a setlist by dragging,Should,Not started,
+R43,Setlists,Flag songs in a setlist that I have already sung at its venue,Must,Not started,"Shows the date last sung there; depends on R8 and R39"
+R44,Setlists,Show a setlist's mix by genre and decade,Should,Not started,"Counts per genre and decade, so gaps and repeats stand out; depends on R36"
+R45,Setlists,"Suggest a set: N songs not yet sung at the venue, spread across genres and decades",Could,Not started,A starting point I can edit
+R17,Setlists,"Tonight mode: check off songs as I sing them, which logs them",Could,Not started,Depends on R8
+R18,Data,"Keep all data on the device in IndexedDB; no account, no server",Must,Not started,
+R19,Data,Ask the browser for persistent storage,Must,Not started,"navigator.storage.persist(); lowers the risk of Safari clearing data"
+R20,Data,Export a full backup as one JSON file,Must,Not started,"Songs, tags, venues, setlists and sing log"
+R21,Data,Restore from a JSON backup,Must,Not started,Confirm before replacing existing data
+R22,Data,Import songs from a CSV file,Must,Not started,"Title and artist required; genre, year, key and tags optional. The fastest way to load 500+ songs"
+R23,Data,Export songs as a CSV file,Should,Not started,
+R24,Data,Print-friendly song list and setlist,Should,Not started,Print stylesheet + browser print dialog
+R25,Data,Remind me to back up when the last export is over 30 days old,Could,Not started,
+R26,PWA,Web app manifest so it installs to the home screen,Must,Not started,"Name, icons, standalone display, theme color"
+R27,PWA,Service worker caches the app so it works fully offline,Must,Not started,
+R28,PWA,Served over HTTPS from a static host,Must,Not started,"E.g. GitHub Pages, Netlify or Cloudflare Pages; required for service workers"
+R29,PWA,iPhone home-screen icon and status-bar settings,Should,Not started,apple-touch-icon and related meta tags
+R30,PWA,Detect a new version and offer to reload,Should,Not started,
+R38,UX,web search  for song (to listen to outside of venue),Should,Not started,"A button on each song opens a video search for ""title artist"" in a new tab. Nothing is saved; needs a connection"
+R31,UX,"Mobile-first layout, usable one-handed",Must,Not started,Tap targets at least 44 px
+R32,UX,"Dark theme by default, with a light option",Should,Not started,Readable in a dim bar
+R33,UX,Works at desktop widths too,Should,Not started,
+R34,UX,"Opens in under 2 seconds; search feels instant with 1,000 songs",Should,Not started,
+R35,UX,Suggest title and artist from MusicBrainz when online,Should,Not started,"Free API, no key; the only network call in the app"
+X1,Out of scope,"Friends, sharing and any social features",Won't,,
+X2,Out of scope,"Accounts, login and cloud sync between devices",Won't,,Backup file covers moving to a new phone
+X3,Out of scope,Payments or a paywall,Won't,,
+X4,Out of scope,"Lyrics, backing tracks or audio playback",Won't,,Licensing
+X5,Out of scope,App Store or Google Play listing,Won't,,
