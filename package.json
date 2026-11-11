@@ -1,0 +1,17 @@
+{
+  "name": "karaoke-tracker",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Personal, local-only karaoke tracker PWA. No build step, no runtime dependencies.",
+  "type": "module",
+  "scripts": {
+    "serve": "node tools/serve.js",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "test": "npm run test:unit && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.0",
+    "vitest": "^5.1.0"
+  }
+}

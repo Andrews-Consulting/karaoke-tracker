@@ -1,9 +1,10 @@
 // Service worker: caches the app shell so the app works offline (R27).
 //
-// IMPORTANT: bump CACHE_VERSION whenever you change any file in APP_SHELL.
-// Otherwise installed copies keep serving the old files.
+// IMPORTANT: bump CACHE_VERSION whenever you change any file in APP_SHELL, and
+// add every new app file to APP_SHELL. Otherwise installed copies keep serving
+// the old files, or fail offline when a module is missing from the cache.
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = `karaoke-tracker-${CACHE_VERSION}`;
 
 // Paths are relative so the app also works from a sub-folder (e.g. GitHub Pages).
@@ -14,6 +15,13 @@ const APP_SHELL = [
   'css/app.css',
   'js/app.js',
   'js/db.js',
+  'js/ui.js',
+  'js/lib/search.js',
+  'js/lib/song.js',
+  'js/views/songs.js',
+  'js/views/setlists.js',
+  'js/views/venues.js',
+  'js/views/settings.js',
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/apple-touch-icon.png',

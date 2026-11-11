@@ -12,10 +12,10 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 
 | ID | Requirement | Priority | Status | Notes |
 |---|---|---|---|---|
-| R1 | Add a song with title and artist | Must | Not started | |
+| R1 | Add a song with title and artist | Must | Done | e2e: "R1: adds a song with title and artist" |
 | R2 | Edit or delete a song, with a confirmation before deleting | Must | Not started | |
 | R3 | Free-text notes per song | Must | Not started | E.g. "skip the bridge", "starts cold" |
-| R36 | Collect a genre and year (decade at least) for a song, for use in sorting and finding | Must | Not started | |
+| R36 | Collect a genre and year (decade at least) for a song, for use in sorting and finding | Must | In progress | Add form collects genre and year; missing: edit them, and an e2e test |
 | R8 | Log each time I sing a song and the venue; show times sung and last sung (per venue and overall) | Must | Not started | Date required, venue required |
 | R40 | Add, rename and delete venues | Must | Not started | Needed by R8, R37 and R39 |
 | R5 | Tag songs with my own tags | Should | Not started | E.g. duet, crowd-pleaser, slow, 80s |
@@ -30,7 +30,7 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 |---|---|---|---|---|
 | R37 | Select a venue or "overall", and then find | Must | Not started | |
 | R41 | Filter to songs never sung at the selected venue, or not sung there since a date I pick | Must | Not started | Depends on R8 and R37 |
-| R10 | Search by title or artist as I type | Must | Not started | |
+| R10 | Search by title or artist as I type | Must | Done | e2e: "R10: searches by title or artist as I type"; unit: tests/unit/search.test.js |
 | R11 | Filter by tag, rating and status | Must | Not started | Filters combine |
 | R42 | Filter and sort by genre and decade | Must | Not started | Combines with the R11 filters; depends on R36 |
 | R12 | Sort by title, artist, rating, last sung or date added | Should | Not started | |
@@ -53,8 +53,8 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 
 | ID | Requirement | Priority | Status | Notes |
 |---|---|---|---|---|
-| R18 | Keep all data on the device in IndexedDB; no account, no server | Must | Not started | |
-| R19 | Ask the browser for persistent storage | Must | Not started | `navigator.storage.persist()`; lowers the risk of Safari clearing data |
+| R18 | Keep all data on the device in IndexedDB; no account, no server | Must | Done | e2e: "R18: data survives a reload" |
+| R19 | Ask the browser for persistent storage | Must | Done | `navigator.storage.persist()`; lowers the risk of Safari clearing data. e2e: "R19: asks for persistent storage at startup" |
 | R20 | Export a full backup as one JSON file | Must | Not started | Songs, tags, venues, setlists and sing log |
 | R21 | Restore from a JSON backup | Must | Not started | Confirm before replacing existing data |
 | R22 | Import songs from a CSV file | Must | Not started | Title and artist required; genre, year, key and tags optional. The fastest way to load 500+ songs |
@@ -66,8 +66,8 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 
 | ID | Requirement | Priority | Status | Notes |
 |---|---|---|---|---|
-| R26 | Web app manifest so it installs to the home screen | Must | Not started | Name, icons, standalone display, theme color |
-| R27 | Service worker caches the app so it works fully offline | Must | Not started | |
+| R26 | Web app manifest so it installs to the home screen | Must | Done | Name, icons, standalone display, theme color. e2e: "R26: has an installable web app manifest"; real install only checkable on a phone |
+| R27 | Service worker caches the app so it works fully offline | Must | Done | e2e: "R27: loads offline after the service worker is installed" |
 | R28 | Served over HTTPS from a static host | Must | Not started | E.g. GitHub Pages, Netlify or Cloudflare Pages; required for service workers |
 | R29 | iPhone home-screen icon and status-bar settings | Should | Not started | apple-touch-icon and related meta tags |
 | R30 | Detect a new version and offer to reload | Should | Not started | |
@@ -76,7 +76,7 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 
 | ID | Requirement | Priority | Status | Notes |
 |---|---|---|---|---|
-| R31 | Mobile-first layout, usable one-handed | Must | Not started | Tap targets at least 44 px |
+| R31 | Mobile-first layout, usable one-handed | Must | In progress | Tap targets at least 44 px. Bottom tabs and 44 px controls exist; final pass and e2e check after Wave 2 |
 | R38 | Web search for a song (to listen to outside the venue) | Should | Not started | A button on each song opens a video search for "title artist" in a new tab. Nothing is saved; needs a connection |
 | R32 | Dark theme by default, with a light option | Should | Not started | Readable in a dim bar |
 | R33 | Works at desktop widths too | Should | Not started | |

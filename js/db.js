@@ -1,17 +1,30 @@
 // IndexedDB wrapper (R18). All data stays on this device.
 //
-// Stores
+// Stores (every record has exactly these fields; build songs with makeSong() in js/lib/song.js)
 //   songs     { id, title, artist, genre, year, key, notes, rating, status, tags[], createdAt }
-//   venues    { id, name }
-//   sings     { id, songId, venueId, date }            one row per time a song is sung (R8)
-//   setlists  { id, name, venueId|null, songIds[] }    venueId null = general setlist (R39)
-//   meta      { key, value }                           e.g. lastBackupAt (R25)
+//               genre/key/notes: '' when empty.  year: number or null.  rating: 1-5 or null.
+//               status: 'go-to' | 'want-to-try' | 'retired'.  createdAt: ISO timestamp.
+//   venues    { id, name }                              name trimmed, non-empty
+//   sings     { id, songId, venueId, date }             one row per time a song is sung (R8)
+//               date is a local calendar day 'YYYY-MM-DD' (what the user picked, no time zone shifts)
+//   setlists  { id, name, venueId|null, songIds[] }     venueId null = general setlist (R39);
+//               songIds in setlist order, no duplicates within one setlist
+//   meta      { key, value }                            e.g. { key: 'lastBackupAt', value: ISO } (R25)
+//
+// Indexes: songs.artist, songs.genre, songs.year, sings.songId, sings.venueId,
+// setlists.venueId (general setlists have null venueId and so are not in it).
+// At this app's scale (hundreds of songs, thousands of sings) reading a whole
+// store with getAll() and working in memory is fine and keeps views simple.
+//
+// Referential integrity is the caller's job: deleting a song must also delete its
+// sings and remove it from every setlist; deleting a venue must deal with its sings
+// and setlists. Use db.transaction() so those writes land atomically.
 //
 // To change the schema: bump DB_VERSION and add a new `if (oldVersion < N)` block.
 // Never edit an existing block, or installed copies will not be migrated.
 
 const DB_NAME = 'karaoke-tracker';
-const DB_VERSION = 1;
+export const DB_VERSION = 1;
 
 export const STORES = ['songs', 'venues', 'sings', 'setlists', 'meta'];
 
@@ -52,21 +65,55 @@ function open() {
   return dbPromise;
 }
 
-// Runs one request in its own transaction and resolves with its result.
-async function run(storeName, mode, makeRequest) {
-  const db = await open();
+// Wraps one IDBRequest in a promise.
+export function request(req) {
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, mode);
-    const req = makeRequest(tx.objectStore(storeName));
-    tx.oncomplete = () => resolve(req.result);
-    tx.onerror = () => reject(tx.error);
-    tx.onabort = () => reject(tx.error);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
   });
 }
 
+// Runs `work` inside one transaction over `storeNames` (a string or an array)
+// and resolves, after the transaction commits, with whatever `work` returned.
+//
+//   await db.transaction(['songs', 'sings'], 'readwrite', async (stores) => {
+//     await request(stores.songs.delete(id));
+//     for (const sing of await request(stores.sings.index('songId').getAll(id))) {
+//       stores.sings.delete(sing.id);
+//     }
+//   });
+//
+// Only await IndexedDB requests (via request()) inside `work`. Awaiting anything
+// else (a fetch, a timer, a file read) lets the transaction auto-commit first,
+// and later requests throw TransactionInactiveError. Read files before calling.
+async function transaction(storeNames, mode, work) {
+  const names = Array.isArray(storeNames) ? storeNames : [storeNames];
+  const conn = await open();
+  return new Promise((resolve, reject) => {
+    const tx = conn.transaction(names, mode);
+    const stores = Object.fromEntries(names.map((name) => [name, tx.objectStore(name)]));
+    let result;
+    let failed = false;
+    tx.oncomplete = () => resolve(result);
+    tx.onerror = () => { failed = true; reject(tx.error); };
+    tx.onabort = () => { if (!failed) reject(tx.error || new Error('Transaction aborted')); };
+    Promise.resolve()
+      .then(() => work(stores, tx))
+      .then((value) => { result = value; })
+      .catch((err) => { failed = true; reject(err); try { tx.abort(); } catch { /* already done */ } });
+  });
+}
+
+// Runs one request in its own transaction and resolves with its result.
+function run(storeName, mode, makeRequest) {
+  return transaction(storeName, mode, (stores) => request(makeRequest(stores[storeName])));
+}
+
 export const db = {
+  transaction,
   getAll: (store) => run(store, 'readonly', (s) => s.getAll()),
   get: (store, id) => run(store, 'readonly', (s) => s.get(id)),
+  count: (store) => run(store, 'readonly', (s) => s.count()),
   getAllByIndex: (store, index, value) =>
     run(store, 'readonly', (s) => s.index(index).getAll(value)),
   // add() resolves with the new record's id.
@@ -74,4 +121,28 @@ export const db = {
   put: (store, value) => run(store, 'readwrite', (s) => s.put(value)),
   delete: (store, id) => run(store, 'readwrite', (s) => s.delete(id)),
   clear: (store) => run(store, 'readwrite', (s) => s.clear()),
+
+  // Adds many records in one transaction (CSV import, R22). Resolves with their ids.
+  addAll: (store, values) =>
+    transaction(store, 'readwrite', (stores) => Promise.all(values.map((v) => request(stores[store].add(v))))),
+
+  // Everything, for a backup (R20): { songs: [...], venues: [...], ... }.
+  exportAll: () =>
+    transaction(STORES, 'readonly', async (stores) => {
+      const out = {};
+      for (const name of STORES) out[name] = await request(stores[name].getAll());
+      return out;
+    }),
+
+  // Replaces every store's contents with `data` ({ songs: [...], ... }) in one
+  // transaction, so a restore (R21) is all-or-nothing. Records keep their ids,
+  // which is what keeps sings and setlists pointing at the right songs and venues.
+  // Stores missing from `data` are emptied.
+  replaceAll: (data) =>
+    transaction(STORES, 'readwrite', async (stores) => {
+      for (const name of STORES) {
+        await request(stores[name].clear());
+        for (const record of data[name] || []) stores[name].put(record);
+      }
+    }),
 };

@@ -22,12 +22,35 @@ Then open <http://localhost:8000>. The VS Code "Live Server" extension works too
 |---|---|
 | `index.html` | Page shell, tab bar, PWA meta tags |
 | `css/app.css` | Styles; theme colors are CSS variables at the top |
-| `js/app.js` | Views and navigation |
-| `js/db.js` | IndexedDB wrapper and schema |
+| `js/app.js` | Navigation and startup only |
+| `js/views/` | One module per section: `songs.js`, `setlists.js`, `venues.js`, `settings.js` |
+| `js/ui.js` | The `el()` DOM helper, confirmations and other shared UI |
+| `js/lib/` | Pure logic (search, song records, later CSV and backup formats): no DOM, no IndexedDB, unit-tested |
+| `js/db.js` | IndexedDB wrapper, schema and record shapes |
 | `sw.js` | Service worker: offline cache |
 | `manifest.webmanifest` | Install settings (name, icons, colors) |
 | `icons/` | App icons; regenerate with `python3 tools/make_icons.py` |
+| `tools/serve.js` | Zero-dependency static server used by Playwright and `npm run serve` |
+| `tests/unit/` | Vitest tests for `js/lib/` |
+| `tests/e2e/` | Playwright tests, named by requirement ID |
 | `docs/REQUIREMENTS.md` | Requirements and their status |
+
+## Tests
+
+Dev dependencies only; the app itself still has none.
+
+```bash
+npm install
+npx playwright install chromium webkit   # once
+npm test            # unit then e2e
+npm run test:unit   # Vitest, tests/unit/
+npm run test:e2e    # Playwright, tests/e2e/, mobile Chromium + mobile WebKit
+```
+
+- Pure logic lives in `js/lib/` so Vitest can test it without a browser.
+- Playwright starts `tools/serve.js` on `PORT` (default 8000). Run `PORT=8001 npm run test:e2e` to test a second checkout at the same time.
+- Every test gets a fresh browser context, so IndexedDB starts empty.
+- E2E test names carry the requirement ID they prove, e.g. `R10: searches by title or artist as I type`.
 
 ## What works today
 
@@ -49,7 +72,7 @@ Everything else in the requirements is still to build. The database already has 
 
 ## Two things to remember
 
-- **Bump `CACHE_VERSION` in `sw.js`** whenever you change a cached file, or installed copies keep the old version. While developing, DevTools → Application → Service Workers → "Update on reload" saves the trouble.
+- **Bump `CACHE_VERSION` in `sw.js`** whenever you change a cached file, and add every new file under `js/` to `APP_SHELL`, or installed copies keep the old version or break offline. While developing, DevTools → Application → Service Workers → "Update on reload" saves the trouble.
 - **Schema changes** go in a new `if (oldVersion < N)` block in `js/db.js` with `DB_VERSION` bumped. Do not edit an existing block.
 
 ## Deploy
