@@ -44,8 +44,8 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 | R14 | Create, rename and delete setlists | Must | Done | Names are unique, ignoring case; delete confirms and says how many songs it holds. e2e: "R14: creates, renames and deletes a setlist", "R14: keeps the setlist when the delete confirmation is dismissed", "R14: lists setlists by name and refuses empty and duplicate names" |
 | R15 | Add and remove songs; a song can be in several setlists | Must | Done | Search picker shows up to 20 matches; removing needs no confirmation. e2e: "R15: adds and removes songs, and a song can be in two setlists", "R15: a quick double tap adds a song only once" |
 | R43 | Flag songs in a setlist that I have already sung at its venue | Must | Done | Shows the date last sung there; general setlists show no flag. e2e: "R43: flags songs already sung at the setlist's venue with the last date", "R43: a general setlist shows no sung flags" |
-| R16 | Reorder songs in a setlist by dragging | Should | Not started | |
-| R44 | Show a setlist's mix by genre and decade | Should | Not started | Counts per genre and decade, so gaps and repeats stand out; depends on R36 |
+| R16 | Reorder songs in a setlist by dragging | Should | Done | Drag handle (pointer events, works with touch) plus Up and Down buttons and arrow keys on the handle. No auto-scroll while dragging; use the buttons for long moves. Real-finger drag needs a check on the phone. e2e: "R16: moves a song up and down with the buttons and the order survives a reload", "R16: drags a song to a new position" |
+| R44 | Show a setlist's mix by genre and decade | Should | Done | A collapsible "Mix" card on the setlist: counts per genre (most first) and per decade (oldest first); "No genre" and "No year" last. e2e: "R44: shows the mix by genre and decade and updates when a song is removed" |
 | R45 | Suggest a set: N songs not yet sung at the venue, spread across genres and decades | Could | Not started | A starting point I can edit |
 | R17 | Tonight mode: check off songs as I sing them, which logs them | Could | Not started | Depends on R8 |
 

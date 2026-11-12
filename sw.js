@@ -4,7 +4,7 @@
 // add every new app file to APP_SHELL. Otherwise installed copies keep serving
 // the old files, or fail offline when a module is missing from the cache.
 
-const CACHE_VERSION = 'v10';
+const CACHE_VERSION = 'v11';
 const CACHE_NAME = `karaoke-tracker-${CACHE_VERSION}`;
 
 // Paths are relative so the app also works from a sub-folder (e.g. GitHub Pages).

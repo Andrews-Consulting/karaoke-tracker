@@ -1,6 +1,7 @@
 // Setlists view: create, edit and delete setlists, each general or tied to one
 // venue (R14, R39); add and remove songs (R15); flag songs already sung at the
-// setlist's venue, with the date last sung there (R43).
+// setlist's venue, with the date last sung there (R43); reorder songs by
+// dragging or with Up and Down buttons (R16); show the mix by genre and decade (R44).
 //
 // Two screens in one tab: the setlist list and one setlist. renderSetlists()
 // always shows the list, so tapping the Setlists tab is a way back as well.
@@ -10,7 +11,7 @@ import { plural, sortVenues } from '../lib/stats.js';
 import {
   setlistNameError, sortSetlists, venueValue, venueIdFromValue, venueOptions, venueLabel, venueLine,
   makeSetlist, updateSetlist, describeSetlistDelete, addSongId, removeSongId, setlistSongs,
-  pickableSongs, sungFlags,
+  pickableSongs, sungFlags, moveSongId, moveSongIdBy, mixByGenre, mixByDecade, formatMix,
 } from '../lib/setlist.js';
 
 // Most songs the picker lists at once; more than this asks to narrow the search.
@@ -158,7 +159,15 @@ export async function renderSetlists() {
   show(el('div', { class: 'card' }, form), list, empty);
 }
 
-// ---------- One setlist: its songs (R15) and already-sung flags (R43) ----------
+// The vertical middle of a list row on screen, for working out where a drag is.
+function middleOf(node) {
+  const box = node.getBoundingClientRect();
+  return box.top + box.height / 2;
+}
+
+const sameOrder = (a, b) => a.length === b.length && a.every((id, i) => id === b[i]);
+
+// ---------- One setlist: songs (R15), sung flags (R43), order (R16), mix (R44) ----------
 
 async function renderSetlist(id) {
   const token = ++screen;
@@ -179,6 +188,19 @@ async function renderSetlist(id) {
   const list = el('ol', { class: 'list setlist-songs', 'aria-label': 'Songs in this setlist' });
   const empty = el('p', { class: 'muted empty', text: 'No songs yet. Add some below.' });
 
+  // The mix (R44): closed by default, a reading aid so gaps and repeats stand out.
+  const mixGenres = el('dd');
+  const mixDecades = el('dd');
+  const mixEmpty = el('p', { class: 'muted mix-empty', text: 'No songs yet.' });
+  const mixLines = el('dl', { class: 'mix-lines' },
+    el('div', {}, el('dt', { text: 'Genres' }), mixGenres),
+    el('div', {}, el('dt', { text: 'Decades' }), mixDecades));
+  const mix = el('details', { class: 'card mix' }, el('summary', { text: 'Mix' }), mixEmpty, mixLines);
+
+  // Each row's handle and Up and Down buttons by song id, so focus can go back
+  // to the moved song's control after the list is redrawn.
+  const controls = new Map();
+
   const search = el('input', {
     type: 'search', placeholder: 'Search title or artist', 'aria-label': 'Find a song to add', autocomplete: 'off',
     oninput: () => drawPicks(),
@@ -187,26 +209,132 @@ async function renderSetlist(id) {
   const picks = el('ul', { class: 'picks', 'aria-label': 'Songs to add' });
   const status = el('p', { class: 'status', role: 'status' });
 
-  function songRow(song, lastSung) {
-    return el('li', { class: 'setlist-song', 'data-song-id': song.id },
+  // A song row: drag handle, the song, then Up, Down and Remove. `index` is its
+  // place in the list and `total` the number of rows.
+  function songRow(song, lastSung, index, total) {
+    // True when the tapped control had focus (a keyboard, or a desktop click),
+    // so focus follows the song; phones do not focus buttons on a tap.
+    const focused = (e) => document.activeElement === e.currentTarget;
+    const handle = el('button', {
+      class: 'btn handle', type: 'button', text: '≡', 'aria-label': `Move ${song.title}`,
+      onkeydown: (e) => {
+        const delta = { ArrowUp: -1, ArrowDown: 1 }[e.key];
+        if (!delta) return;
+        e.preventDefault();
+        moveSongBy(song, delta, 'handle');
+      },
+    });
+    const up = el('button', {
+      class: 'btn move', type: 'button', text: '↑', 'aria-label': `Move ${song.title} up`,
+      onclick: (e) => moveSongBy(song, -1, focused(e) ? 'up' : null),
+    });
+    const down = el('button', {
+      class: 'btn move', type: 'button', text: '↓', 'aria-label': `Move ${song.title} down`,
+      onclick: (e) => moveSongBy(song, 1, focused(e) ? 'down' : null),
+    });
+    up.disabled = index === 0;
+    down.disabled = index === total - 1;
+    controls.set(song.id, { handle, up, down });
+
+    const li = el('li', { class: 'setlist-song', 'data-song-id': song.id },
+      handle,
       el('div', { class: 'text' },
         el('span', { class: 'title', text: song.title }),
         el('span', { class: 'sub', text: song.artist }),
         lastSung
           ? el('span', { class: 'flag' }, 'Sung here · last ', el('span', { class: 'nowrap', text: lastSung }))
           : null),
-      el('button', {
-        class: 'btn', type: 'button', text: 'Remove', 'aria-label': `Remove ${song.title} by ${song.artist}`,
-        onclick: () => removeSong(song),
-      }));
+      el('div', { class: 'moves' },
+        up,
+        down,
+        el('button', {
+          class: 'btn', type: 'button', text: 'Remove', 'aria-label': `Remove ${song.title} by ${song.artist}`,
+          onclick: () => removeSong(song),
+        })));
+    dragToReorder(li, handle, song);
+    return li;
+  }
+
+  // Drag to reorder (R16) with pointer events, which work for touch, pen and
+  // mouse alike; native HTML5 drag and drop does not work in mobile browsers.
+  // The handle captures the pointer, so moves keep arriving wherever the finger
+  // goes, and its touch-action: none (app.css) stops the page scrolling. The
+  // dragged row is never taken out of the list, since that would drop the
+  // capture; its neighbours are moved past it instead.
+  function dragToReorder(li, handle, song) {
+    let drag = null; // { pointerId, grabY, shift } while dragging
+
+    handle.addEventListener('pointerdown', (e) => {
+      if (drag || !e.isPrimary || e.button !== 0) return;
+      try {
+        handle.setPointerCapture(e.pointerId);
+      } catch {
+        return; // the pointer is already gone
+      }
+      e.preventDefault(); // no text selection while dragging
+      drag = { pointerId: e.pointerId, grabY: e.clientY - li.getBoundingClientRect().top, shift: 0 };
+      li.classList.add('dragging');
+    });
+
+    handle.addEventListener('pointermove', (e) => {
+      if (!drag || e.pointerId !== drag.pointerId) return;
+      const y = e.clientY;
+      // Past the middle of the row below (or above), that row moves to the other side.
+      for (let guard = list.children.length; guard > 0; guard -= 1) {
+        const next = li.nextElementSibling;
+        const prev = li.previousElementSibling;
+        if (next && y > middleOf(next)) list.insertBefore(next, li);
+        else if (prev && y < middleOf(prev)) list.insertBefore(prev, li.nextElementSibling);
+        else break;
+      }
+      // The lifted row follows the pointer from wherever it now sits in the list.
+      const top = li.getBoundingClientRect().top - drag.shift;
+      drag.shift = e.clientY - drag.grabY - top;
+      li.style.transform = `translateY(${drag.shift}px)`;
+    });
+
+    // Dropping saves the new order at once; a cancelled drag puts the rows back.
+    function end(e, drop) {
+      if (!drag || e.pointerId !== drag.pointerId) return;
+      drag = null;
+      li.classList.remove('dragging');
+      li.style.transform = '';
+      const index = [...list.children].indexOf(li);
+      if (drop && index !== -1) {
+        const refocus = document.activeElement === handle ? { songId: song.id, which: 'handle' } : null;
+        reorder(moveSongId(setlist, song.id, index, songsById), refocus);
+      } else drawSongs();
+    }
+    handle.addEventListener('pointerup', (e) => end(e, true));
+    handle.addEventListener('pointercancel', (e) => end(e, false));
+    handle.addEventListener('lostpointercapture', (e) => end(e, false));
   }
 
   function drawSongs() {
     const inList = setlistSongs(setlist, songsById);
     const flags = sungFlags(setlist, sings); // empty for a general setlist
     count.textContent = plural(inList.length, 'song', 'songs');
-    list.replaceChildren(...inList.map((song) => songRow(song, flags.get(song.id))));
+    controls.clear();
+    list.replaceChildren(...inList.map((song, i) => songRow(song, flags.get(song.id), i, inList.length)));
     empty.hidden = inList.length > 0;
+    drawMix(inList);
+  }
+
+  function drawMix(inList) {
+    mixGenres.textContent = formatMix(mixByGenre(inList));
+    mixDecades.textContent = formatMix(mixByDecade(inList));
+    mixEmpty.hidden = inList.length > 0;
+    mixLines.hidden = inList.length === 0;
+  }
+
+  // Focus `which` ('handle', 'up' or 'down') of a song's row; when that button
+  // is now disabled (the song reached an end), the other one or the handle.
+  function focusControl(songId, which) {
+    const row = controls.get(songId);
+    if (!row) return;
+    const order = which === 'up' ? ['up', 'down'] : which === 'down' ? ['down', 'up'] : [];
+    const name = order.find((key) => !row[key].disabled) || 'handle';
+    row[name].focus();
   }
 
   function drawPicks() {
@@ -242,6 +370,21 @@ async function renderSetlist(id) {
     status.textContent = `Added “${song.title}”.`;
   }
 
+  // Saves a new order at once (R16). `refocus` ({ songId, which }) puts focus
+  // back on that control of the moved song once the list is redrawn.
+  async function reorder(next, refocus = null) {
+    if (sameOrder(next.songIds, setlist.songIds || [])) return;
+    setlist = next;
+    status.textContent = '';
+    await save();
+    if (refocus) focusControl(refocus.songId, refocus.which);
+  }
+
+  // Up (-1) or Down (1), from the Up and Down buttons or the arrow keys on the handle.
+  function moveSongBy(song, delta, which = null) {
+    return reorder(moveSongIdBy(setlist, song.id, delta, songsById), which ? { songId: song.id, which } : null);
+  }
+
   // No confirmation: removing deletes no data and is easy to redo.
   async function removeSong(song) {
     setlist = removeSongId(setlist, song.id);
@@ -256,6 +399,7 @@ async function renderSetlist(id) {
     el('h2', { text: setlist.name }),
     el('p', { class: 'muted venue-line', text: venueLine(setlist, venues) }),
     count,
+    mix,
     list,
     empty,
     el('section', { class: 'card stack', 'aria-label': 'Add songs' },
