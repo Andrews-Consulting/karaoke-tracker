@@ -33,7 +33,7 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 | R10 | Search by title or artist as I type | Must | Done | e2e: "R10: searches by title or artist as I type"; unit: tests/unit/search.test.js |
 | R11 | Filter by tag, rating and status | Must | Done | Filters combine, with each other and with the search. Rating is a minimum (4+). e2e: "R11: tag, status and rating filters combine" |
 | R42 | Filter and sort by genre and decade | Must | Done | Sort by title, genre, decade or decade newest first; songs without a genre or year sort last. e2e: "R42: filters by genre and decade and sorts by decade" |
-| R12 | Sort by title, artist, rating, last sung or date added | Should | Not started | |
+| R12 | Sort by title, artist, rating, last sung or date added | Should | Done | In the Sort by menu with the R42 orders. Last sung uses the selected venue; "longest ago first" puts never-sung songs first. e2e: "R12: sorts by artist, rating and date added", "R12: sorts by last sung at the selected venue" |
 | R13 | "Pick for me": a random song from the current filter | Could | Not started | |
 
 ## Setlists
@@ -78,10 +78,10 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 | ID | Requirement | Priority | Status | Notes |
 |---|---|---|---|---|
 | R31 | Mobile-first layout, usable one-handed | Must | Done | Bottom tabs, actions at the bottom of detail screens, every control at least 44 px. Detail screens add a history entry so the back gesture returns to the list instead of leaving the app. e2e: "R31: every control on every screen is at least 44 px tall and wide", "R31: the back gesture returns from a song and its edit form instead of leaving the app", "R31: the back gesture returns from a venue, overall and a setlist to their lists", "R31: the in-page Back button keeps the history in step with the screens". One-hand feel needs a check on the phone |
-| R38 | Web search for a song (to listen to outside the venue) | Should | Not started | A button on each song opens a video search for "title artist" in a new tab. Nothing is saved; needs a connection |
+| R38 | Web search for a song (to listen to outside the venue) | Should | Done | "Search video" on the song screen opens a YouTube search for "title artist" in a new tab. Nothing is fetched or saved; needs a connection. e2e: "R38: a song has a video search link for its title and artist" |
 | R32 | Dark theme by default, with a light option | Should | Not started | Readable in a dim bar |
 | R33 | Works at desktop widths too | Should | Not started | |
-| R34 | Opens in under 2 seconds; search feels instant with 1,000 songs | Should | Not started | |
+| R34 | Opens in under 2 seconds; search feels instant with 1,000 songs | Should | Done | The list draws 200 rows at a time with a "Show N more" button; rows are built once and reused. Measured in emulation: open in 0.7–1.3 s, each keystroke under 170 ms in the page. Needs a check on the phone. e2e: "R34: opens with 1,000 songs in under 2 seconds and searches instantly" |
 | R35 | Suggest title and artist from MusicBrainz when online | Should | Not started | Free API, no key; the only network call in the app |
 
 ## Out of scope
