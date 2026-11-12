@@ -146,6 +146,7 @@ label > input, label > select { margin-top: 4px; color: var(--text); }
 .venues-view .btn.danger { color: #ff8a80; }
 .venues-view .title { display: block; font-weight: 600; }
 .venues-view .sub { display: block; color: var(--muted); font-size: 0.875rem; }
+.venues-view .nowrap { white-space: nowrap; }
 
 .venue-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .venue-row .open {

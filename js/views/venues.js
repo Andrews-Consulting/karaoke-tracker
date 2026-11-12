@@ -23,8 +23,19 @@ function show(...children) {
   viewEl.scrollTop = 0;
 }
 
-function summaryText(stats) {
-  return stats && stats.count ? `${plural(stats.count, 'sing', 'sings')} · last ${stats.lastSung}` : 'No sings yet';
+function summaryParts(stats) {
+  return stats && stats.count ? [plural(stats.count, 'sing', 'sings'), `last ${stats.lastSung}`] : ['No sings yet'];
+}
+
+// A muted line of "a · b · c" where each part stays on one line, so a date
+// never breaks at its hyphens on a narrow screen.
+function subLine(parts) {
+  const children = [];
+  for (const part of parts.filter(Boolean)) {
+    if (children.length) children.push(' · ');
+    children.push(el('span', { class: 'nowrap', text: part }));
+  }
+  return el('span', { class: 'sub' }, ...children);
 }
 
 function backButton() {
@@ -70,7 +81,7 @@ export async function renderVenues() {
           onclick: () => renderVenue(venue.id),
         },
         el('span', { class: 'title', text: venue.name }),
-        el('span', { class: 'sub', text: summaryText(perVenue.get(venue.id)) })),
+        subLine(summaryParts(perVenue.get(venue.id)))),
         el('div', { class: 'actions' },
           el('button', {
             class: 'btn', type: 'button', text: 'Rename', 'aria-label': `Rename ${venue.name}`, onclick: showRename,
@@ -132,7 +143,7 @@ export async function renderVenues() {
   const overallRow = el('li', { class: 'venue-row' },
     el('button', { class: 'open', type: 'button', 'aria-label': 'Open overall stats', onclick: () => renderOverall() },
       el('span', { class: 'title', text: 'Overall' }),
-      el('span', { class: 'sub', text: `All venues · ${summaryText(totals(sings))}` })));
+      subLine(['All venues', ...summaryParts(totals(sings))])));
 
   const list = el('ul', { class: 'list', 'aria-label': 'Venues' }, overallRow, ...venues.map(venueRow));
   if (!venues.length) list.append(el('li', { class: 'muted', text: 'No venues yet. Add your first one above.' }));
@@ -168,12 +179,12 @@ function makeHistory({ songs, venues, venueId, emptyText }) {
 
   function songRow(row, entries) {
     const title = row.song ? row.song.title : 'Deleted song';
-    const sub = [row.song && row.song.artist, `Sung ${plural(row.count, 'time', 'times')}`, `Last sung ${row.lastSung}`];
+    const sub = subLine([row.song && row.song.artist, `Sung ${plural(row.count, 'time', 'times')}`, `Last sung ${row.lastSung}`]);
     const details = el('details', {},
       el('summary', {},
         el('span', { class: 'text' },
           el('span', { class: 'title', text: title }),
-          el('span', { class: 'sub', text: sub.filter(Boolean).join(' · ') }))),
+          sub)),
       el('ul', { class: 'entries' }, ...entries.map((sing) => entryRow(sing, title))));
     details.open = expanded.has(row.songId);
     details.addEventListener('toggle', () => {
@@ -285,7 +296,7 @@ async function renderVenue(venueId) {
     const song = picked;
     picked = null;
     await db.add('sings', { songId: song.id, venueId: venue.id, date: date.value });
-    status.textContent = `Logged “${song.title}” on ${date.value}.`;
+    status.replaceChildren(`Logged “${song.title}” on `, el('span', { class: 'nowrap', text: date.value }), '.');
     search.value = '';
     drawPicks();
     drawPicked();
