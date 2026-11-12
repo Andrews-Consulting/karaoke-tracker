@@ -1,8 +1,9 @@
-// Settings view: persistent storage (R19), CSV import (R22), JSON backup (R20)
-// and restore (R21).
-import { db } from '../db.js';
+// Settings view: persistent storage (R19), CSV import (R22, with sings R46),
+// JSON backup (R20) and restore (R21).
+import { db, request } from '../db.js';
 import { el, viewEl, confirmAction } from '../ui.js';
 import { parseCsv, planImport, importSummary } from '../lib/csv.js';
+import { songKey } from '../lib/song.js';
 import {
   buildBackup, backupFileName, validateBackup, countRecords, formatCounts, restoreMessage,
 } from '../lib/backup.js';
@@ -59,15 +60,33 @@ export async function renderSettings() {
     },
   });
 
-  // ---- R22: import songs from CSV ----
+  // ---- R22, R46: import songs, and sings, from CSV ----
   const importMsg = messageArea();
+
+  // Writes a plan in one transaction: songs, then venues, then the sings that
+  // point at them, so a failure part-way leaves nothing half-imported.
+  function applyImport(plan, songs, venues) {
+    const stores = ['songs', 'venues', 'sings'];
+    return db.transaction(stores, 'readwrite', async (s) => {
+      const songIds = new Map(songs.map((song) => [songKey(song), song.id]));
+      for (const song of plan.toAdd) songIds.set(songKey(song), await request(s.songs.add(song)));
+      const venueIds = new Map(venues.map((v) => [v.name.trim().toLowerCase(), v.id]));
+      for (const venue of plan.venuesToAdd) {
+        venueIds.set(venue.name.toLowerCase(), await request(s.venues.add(venue)));
+      }
+      for (const sing of plan.sings) {
+        s.sings.add({ songId: songIds.get(sing.songKey), venueId: venueIds.get(sing.venue.toLowerCase()), date: sing.date });
+      }
+    });
+  }
 
   async function importCsv(file) {
     importMsg.show(`Reading ${file.name}…`);
     try {
       const text = await file.text();
-      const plan = planImport(parseCsv(text), await db.getAll('songs'));
-      if (plan.toAdd.length) await db.addAll('songs', plan.toAdd);
+      const [songs, venues, sings] = await Promise.all([db.getAll('songs'), db.getAll('venues'), db.getAll('sings')]);
+      const plan = planImport(parseCsv(text), songs, new Date(), { venues, sings });
+      if (plan.toAdd.length || plan.sings.length) await applyImport(plan, songs, venues);
       importMsg.show(importSummary(plan));
     } catch (err) {
       importMsg.show(`Could not import ${file.name}. ${errorText(err)}`, { error: true });
@@ -136,7 +155,8 @@ export async function renderSettings() {
           class: 'muted',
           text: 'Choose a CSV file with a header row. Title and artist columns are required; '
             + 'genre, year, key and tags are optional (separate tags with ; or ,). '
-            + 'Songs already in your library are skipped.',
+            + 'Songs already in your library are skipped. '
+            + 'A venue column logs a sing there for each row, dated by the date column or today when blank.',
         }),
         filePicker('Import songs from CSV', '.csv,text/csv', importCsv),
         importMsg.node),

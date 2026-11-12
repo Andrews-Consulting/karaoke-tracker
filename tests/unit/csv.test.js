@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseCsv, planImport, importSummary, CsvError } from '../../js/lib/csv.js';
+import { parseCsv, planImport, importSummary, csvDate, CsvError } from '../../js/lib/csv.js';
 import { makeSong } from '../../js/lib/song.js';
 
 const now = new Date('2026-11-11T12:00:00.000Z');
@@ -62,7 +62,9 @@ describe('planImport (R22)', () => {
   });
 
   it('returns an empty plan for a header with no rows', () => {
-    expect(plan('title,artist,genre\r\n')).toEqual({ toAdd: [], duplicates: [], invalid: [] });
+    expect(plan('title,artist,genre\r\n')).toEqual({
+      toAdd: [], duplicates: [], invalid: [], venuesToAdd: [], sings: [], singsLogged: [], singsBadDate: [],
+    });
   });
 
   it('throws a readable CsvError when the title or artist column is missing', () => {
@@ -162,5 +164,98 @@ describe('importSummary (R22)', () => {
   it('says so when the file has no songs', () => {
     expect(importSummary({ toAdd: [], duplicates: [], invalid: [] }))
       .toBe('The file has a header row but no songs, so nothing was imported.');
+  });
+
+  it('reports sings, new venues and skipped sings (R46)', () => {
+    expect(importSummary({ toAdd: songs(4), duplicates: [], invalid: [], venuesToAdd: [{}], sings: songs(3) }))
+      .toBe('Imported 4 songs. Logged 3 sings at 1 new venue.');
+    expect(importSummary({ toAdd: [], duplicates: songs(2), invalid: [], venuesToAdd: [], sings: songs(1) }))
+      .toBe('Imported 0 songs. Logged 1 sing. Skipped 2 duplicates.');
+    expect(importSummary({
+      toAdd: songs(1), duplicates: songs(1), invalid: songs(1), venuesToAdd: [{}, {}], sings: songs(2),
+      singsLogged: songs(1), singsBadDate: songs(2),
+    })).toBe('Imported 1 song. Logged 2 sings at 2 new venues. '
+      + 'Skipped 1 duplicate, 1 row without a title or artist, 1 sing already logged and 2 sings with an unreadable date.');
+  });
+});
+
+describe('csvDate (R46)', () => {
+  // `now` is 2026-11-11 at noon UTC; the local day is the same everywhere but the far Pacific.
+  const today = csvDate('', now);
+
+  it('uses the import day for a blank cell', () => {
+    expect(today).toMatch(/^2026-11-1[01]$/);
+    expect(csvDate(null, now)).toBe(today);
+    expect(csvDate('   ', now)).toBe(today);
+  });
+
+  it('reads full dates, months, years and US dates', () => {
+    expect(csvDate('2026-10-15')).toBe('2026-10-15');
+    expect(csvDate(' 2026-9-5 ')).toBe('2026-09-05');
+    expect(csvDate('2026-09')).toBe('2026-09-01');
+    expect(csvDate('2025')).toBe('2025-01-01');
+    expect(csvDate('10/15/2026')).toBe('2026-10-15');
+    expect(csvDate('1/5/2026')).toBe('2026-01-05');
+  });
+
+  it('returns null for anything else', () => {
+    for (const bad of ['yesterday', '2026-13-01', '2026-02-30', '15/10/2026', '10-15-2026', '2026-10-15T20:00', '20261015']) {
+      expect(csvDate(bad), bad).toBeNull();
+    }
+  });
+});
+
+describe('planImport sings (R46)', () => {
+  const CROWN = { id: 7, name: 'The Crown' };
+  const existingSongs = [{ id: 1, ...makeSong({ title: 'Valerie', artist: 'Amy Winehouse' }) }];
+  const planWith = (text, existing = {}) =>
+    planImport(parseCsv(text), existing.songs || [], now, { venues: existing.venues || [], sings: existing.sings || [] });
+
+  it('logs a sing per row with a venue, creating the venue once', () => {
+    const result = planWith('title,artist,venue,date\n'
+      + 'Valerie,Amy Winehouse,Viking,2026-10-15\n'
+      + 'Drive,Incubus,viking,\n'
+      + 'Beginnings,Chicago,,\n');
+    expect(result.toAdd.map((s) => s.title)).toEqual(['Valerie', 'Drive', 'Beginnings']);
+    expect(result.venuesToAdd).toEqual([{ name: 'Viking' }]);
+    expect(result.sings).toEqual([
+      { songKey: 'valerie\u0000amy winehouse', venue: 'Viking', date: '2026-10-15' },
+      { songKey: 'drive\u0000incubus', venue: 'Viking', date: csvDate('', now) },
+    ]);
+  });
+
+  it('logs sings for songs already in the library and venues that already exist', () => {
+    const result = planWith('title,artist,venue,date\nVALERIE,amy winehouse,the crown,2026-10-15\nValerie,Amy Winehouse,Viking,2026-10-16',
+      { songs: existingSongs, venues: [CROWN] });
+    expect(result.toAdd).toEqual([]);
+    expect(result.duplicates).toHaveLength(2);
+    expect(result.venuesToAdd).toEqual([{ name: 'Viking' }]);
+    expect(result.sings.map((s) => [s.venue, s.date])).toEqual([['The Crown', '2026-10-15'], ['Viking', '2026-10-16']]);
+  });
+
+  it('skips sings already logged on the device or earlier in the file', () => {
+    const sings = [{ id: 1, songId: 1, venueId: 7, date: '2026-10-15' }];
+    const result = planWith('title,artist,venue,date\n'
+      + 'Valerie,Amy Winehouse,The Crown,2026-10-15\n' // already on the device
+      + 'Valerie,Amy Winehouse,The Crown,2026-10-20\n'
+      + 'Valerie,Amy Winehouse,THE CROWN,2026-10-20\n', // earlier in the file
+    { songs: existingSongs, venues: [CROWN], sings });
+    expect(result.sings.map((s) => s.date)).toEqual(['2026-10-20']);
+    expect(result.singsLogged).toHaveLength(2);
+    expect(result.venuesToAdd).toEqual([]);
+  });
+
+  it('skips sings with an unreadable date and rows without a song', () => {
+    const result = planWith('title,artist,venue,date\nDrive,Incubus,Viking,last week\n,Nobody,Viking,2026-10-15\n');
+    expect(result.toAdd).toHaveLength(1);
+    expect(result.sings).toEqual([]);
+    expect(result.singsBadDate).toEqual([{ song: expect.objectContaining({ title: 'Drive' }), venue: 'Viking', date: 'last week' }]);
+    expect(result.venuesToAdd).toEqual([]);
+    expect(result.invalid).toHaveLength(1);
+  });
+
+  it('has empty sing fields when the file has no venue column', () => {
+    const result = planWith('title,artist\nDrive,Incubus');
+    expect(result).toMatchObject({ venuesToAdd: [], sings: [], singsLogged: [], singsBadDate: [] });
   });
 });

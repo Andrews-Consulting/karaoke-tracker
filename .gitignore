@@ -65,3 +65,5 @@ __pycache__/
 
 .claude/worktrees
 .claude/settings.local.json
+# Personal data, not part of the app
+songlist.csv
