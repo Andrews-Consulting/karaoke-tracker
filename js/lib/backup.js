@@ -103,6 +103,37 @@ export function formatCounts({ songs, venues, sings, setlists }) {
 }
 
 // The confirmation shown before a restore replaces everything on the device.
+// ---------- Backup reminder (R25) ----------
+
+export const BACKUP_REMINDER_DAYS = 30;
+export const BACKUP_SNOOZE_DAYS = 7;
+
+// Whole days from an ISO timestamp to `now`; null when the timestamp is unreadable.
+export function daysSince(iso, now = new Date()) {
+  const then = Date.parse(iso);
+  if (Number.isNaN(then)) return null;
+  return Math.max(0, Math.floor((now.getTime() - then) / 86_400_000));
+}
+
+// The reminder to show, or null for none. `lastBackupAt` is the ISO time of the
+// last backup download (null when there has never been one), `snoozedUntil` an
+// ISO time before which the owner asked not to be reminded, `songCount` how
+// many songs there are to lose. Nothing to say while the library is empty.
+export function backupReminder({ lastBackupAt = null, snoozedUntil = null, songCount = 0 }, now = new Date()) {
+  if (!(songCount > 0)) return null;
+  const snoozed = Date.parse(snoozedUntil);
+  if (!Number.isNaN(snoozed) && snoozed > now.getTime()) return null;
+  const days = lastBackupAt ? daysSince(lastBackupAt, now) : null;
+  if (days === null) return 'You have not backed up yet. A backup is the only copy of your songs and sing log.';
+  if (days < BACKUP_REMINDER_DAYS) return null;
+  return `Your last backup was ${days} days ago. Download a fresh one to be safe.`;
+}
+
+// When a snoozed reminder may show again: BACKUP_SNOOZE_DAYS from now, as ISO.
+export function snoozeUntil(now = new Date()) {
+  return new Date(now.getTime() + BACKUP_SNOOZE_DAYS * 86_400_000).toISOString();
+}
+
 export function restoreMessage(current, incoming) {
   const total = current.songs + current.venues + current.sings + current.setlists;
   if (total === 0) return `Restore ${formatCounts(incoming)} from the backup?`;

@@ -5,6 +5,7 @@ import { renderVenues } from './views/venues.js';
 import { renderSettings } from './views/settings.js';
 import { rootScreen, setViewSwitcher } from './ui.js';
 import { initTheme } from './theme.js';
+import { checkBackupReminder } from './reminder.js';
 
 initTheme(); // R32: dark by default, light or the phone's setting when chosen
 
@@ -48,3 +49,6 @@ import('./update.js')
   .catch((err) => console.warn('Update check unavailable:', err));
 
 show('songs');
+
+// R25: a reminder above the tabs when the last backup is over 30 days old.
+checkBackupReminder(show);

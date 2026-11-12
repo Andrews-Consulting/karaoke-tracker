@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildBackup, backupFileName, validateBackup, countRecords, formatCounts, restoreMessage,
+  daysSince, backupReminder, snoozeUntil, BACKUP_REMINDER_DAYS, BACKUP_SNOOZE_DAYS,
 } from '../../js/lib/backup.js';
 import { DB_VERSION } from '../../js/db.js';
 import { makeSong } from '../../js/lib/song.js';
@@ -147,5 +148,44 @@ describe('restore messages (R21)', () => {
   it('only mentions the backup when the device is empty', () => {
     expect(restoreMessage({ songs: 0, venues: 0, sings: 0, setlists: 0 }, { songs: 2, venues: 1, sings: 1, setlists: 1 }))
       .toBe('Restore 2 songs, 1 venue, 1 sing log entry and 1 setlist from the backup?');
+  });
+});
+
+describe('backup reminder (R25)', () => {
+  const daysAgo = (n) => new Date(now.getTime() - n * 86_400_000).toISOString();
+
+  it('counts whole days, never negative, and null for junk', () => {
+    expect(daysSince(daysAgo(0), now)).toBe(0);
+    expect(daysSince(daysAgo(29.9), now)).toBe(29);
+    expect(daysSince(daysAgo(30), now)).toBe(30);
+    expect(daysSince(new Date(now.getTime() + 86_400_000).toISOString(), now)).toBe(0);
+    expect(daysSince('not a date', now)).toBeNull();
+    expect(daysSince(null, now)).toBeNull();
+  });
+
+  it('says nothing while the library is empty', () => {
+    expect(backupReminder({ lastBackupAt: null, songCount: 0 }, now)).toBeNull();
+    expect(backupReminder({ lastBackupAt: daysAgo(90), songCount: 0 }, now)).toBeNull();
+  });
+
+  it('asks for a first backup when there has never been one', () => {
+    expect(backupReminder({ lastBackupAt: null, songCount: 3 }, now)).toMatch(/not backed up yet/);
+    expect(backupReminder({ lastBackupAt: 'garbage', songCount: 3 }, now)).toMatch(/not backed up yet/);
+  });
+
+  it('reminds after 30 days and not before', () => {
+    expect(BACKUP_REMINDER_DAYS).toBe(30);
+    expect(backupReminder({ lastBackupAt: daysAgo(29), songCount: 3 }, now)).toBeNull();
+    expect(backupReminder({ lastBackupAt: daysAgo(30), songCount: 3 }, now)).toBe('Your last backup was 30 days ago. Download a fresh one to be safe.');
+    expect(backupReminder({ lastBackupAt: daysAgo(45), songCount: 1 }, now)).toMatch(/45 days ago/);
+  });
+
+  it('stays quiet while snoozed, and wakes when the snooze has passed', () => {
+    const due = { lastBackupAt: daysAgo(40), songCount: 3 };
+    expect(backupReminder({ ...due, snoozedUntil: snoozeUntil(now) }, now)).toBeNull();
+    expect(backupReminder({ ...due, snoozedUntil: daysAgo(1) }, now)).not.toBeNull();
+    expect(backupReminder({ ...due, snoozedUntil: 'junk' }, now)).not.toBeNull();
+    expect(BACKUP_SNOOZE_DAYS).toBe(7);
+    expect(daysSince(now.toISOString(), new Date(snoozeUntil(now)))).toBe(7);
   });
 });

@@ -8,6 +8,7 @@ import {
 import { songKey } from '../lib/song.js';
 import { THEME_CHOICES } from '../lib/theme.js';
 import { savedThemeChoice, applyThemeChoice } from '../theme.js';
+import { recordBackup } from '../reminder.js';
 import { suggestionsEnabled, setSuggestionsEnabled } from '../musicbrainz.js';
 import {
   buildBackup, backupFileName, validateBackup, countRecords, formatCounts, restoreMessage,
@@ -155,6 +156,7 @@ export async function renderSettings() {
       const backup = buildBackup(await db.exportAll(), now);
       const name = backupFileName(now);
       saveFile(name, JSON.stringify(backup, null, 2), 'application/json');
+      await recordBackup(now); // R25: the reminder counts from here
       backupMsg.show(`Created ${name} with ${formatCounts(countRecords(backup.data))}.`);
     } catch (err) {
       backupMsg.show(`Could not create a backup. ${errorText(err)}`, { error: true });

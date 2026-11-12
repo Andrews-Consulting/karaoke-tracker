@@ -61,7 +61,7 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 | R46 | CSV import logs sings: a venue column logs one sing per row, dated by a date column or the import day | Should | Done | Venues are created as needed; sings are logged for songs already in the library too; a sing already logged (same song, venue, date) is skipped. Dates: YYYY-MM-DD, YYYY-MM, YYYY or M/D/YYYY. e2e: "R46: a venue column logs a sing per row, dated by the date column or today", "R46: an unreadable date skips the sing but keeps the song" |
 | R23 | Export songs as a CSV file | Should | Done | Settings → "Download songs as CSV": title, artist, genre, year, key, tags, status, rating, notes; imports back as duplicates only. e2e: "R23: downloads a CSV of all songs that imports back without duplicates" |
 | R24 | Print-friendly song list and setlist | Should | Done | Print stylesheet only; print from the browser's share or print menu. Hides tabs, forms and buttons; black on white. e2e: "R24: prints the song list without the tabs and forms", "R24: prints a setlist's songs", "R24: prints a venue's history with every date" |
-| R25 | Remind me to back up when the last export is over 30 days old | Could | Not started | |
+| R25 | Remind me to back up when the last export is over 30 days old | Could | Done | Banner above the tabs at startup once there are songs and no backup in 30 days; "Back up now" opens Settings, "Later" hides it for a week. The download records `lastBackupAt` in the meta store. e2e: "R25: reminds once there are songs and no backup, and goes quiet after a backup", "R25: reminds when the last backup is over 30 days old, and Later hides it for a week" |
 
 ## PWA
 
