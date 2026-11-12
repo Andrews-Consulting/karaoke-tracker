@@ -22,7 +22,7 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 | R6 | Store my key change for each song | Should | Done | E.g. -2 or +1, as set on the karaoke machine. Same e2e test as R5 |
 | R7 | Mark each song as Go-to, Want to try or Retired | Should | Done | Same e2e test as R5 |
 | R4 | Rate each song 1-5 for how well I sing it | Could | Done | Same e2e test as R5 |
-| R9 | Warn when adding a song that is already in the library | Could | Not started | Match on title + artist, ignoring case |
+| R9 | Warn when adding a song that is already in the library | Could | Done | Matches title + artist ignoring case while typing; shows "Already in your library" with Open it, and the button reads "Add anyway". e2e: "R9: warns when the song is already in the library and still allows adding" |
 
 ## Find
 
@@ -34,7 +34,7 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 | R11 | Filter by tag, rating and status | Must | Done | Filters combine, with each other and with the search. Rating is a minimum (4+). e2e: "R11: tag, status and rating filters combine" |
 | R42 | Filter and sort by genre and decade | Must | Done | Sort by title, genre, decade or decade newest first; songs without a genre or year sort last. e2e: "R42: filters by genre and decade and sorts by decade" |
 | R12 | Sort by title, artist, rating, last sung or date added | Should | Done | In the Sort by menu with the R42 orders. Last sung uses the selected venue; "longest ago first" puts never-sung songs first. e2e: "R12: sorts by artist, rating and date added", "R12: sorts by last sung at the selected venue" |
-| R13 | "Pick for me": a random song from the current filter | Could | Not started | |
+| R13 | "Pick for me": a random song from the current filter | Could | Done | Button beside the count line; picks from everything the venue, search and filters leave, and opens it. e2e: "R13: picks a random song from the current filter and opens it" |
 
 ## Setlists
 
@@ -82,7 +82,7 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 | R32 | Dark theme by default, with a light option | Should | Done | Settings → Appearance: Dark (default), Light, or Match the phone. Saved on the device; applied before the first paint. e2e: "R32: is dark by default and a light option survives a reload", "R32: \"Match the phone\" follows the phone's setting" |
 | R33 | Works at desktop widths too | Should | Done | Content stays at a readable 720 px, centred; tabs stay together in the middle. e2e: "R33: works at a desktop width with readable line lengths and no sideways scroll" |
 | R34 | Opens in under 2 seconds; search feels instant with 1,000 songs | Should | Done | The list draws 200 rows at a time with a "Show N more" button; rows are built once and reused. Measured in emulation: open in 0.7–1.3 s, each keystroke under 170 ms in the page. Needs a check on the phone. e2e: "R34: opens with 1,000 songs in under 2 seconds and searches instantly" |
-| R35 | Suggest title and artist from MusicBrainz when online | Should | Not started | Free API, no key; the only network call in the app |
+| R35 | Suggest title and artist from MusicBrainz when online | Should | Done | Free API, no key; the only network call in the app. After 3 characters of title, 400 ms after the last keystroke, up to 5 suggestions; a Settings switch turns it off. Tests never reach the real site. e2e: "R35: suggests titles and artists from MusicBrainz and fills the form on tap", "R35: makes no request when online suggestions are off", "R35: shows nothing when MusicBrainz fails" |
 
 ## Out of scope
 

@@ -60,7 +60,7 @@ npm run test:e2e    # Playwright, tests/e2e/, mobile Chromium + mobile WebKit
 ## What works today
 
 - Installable shell with offline cache (R26, R27, R29)
-- Songs: add, search, open, edit every field (notes, genre, year, key, tags, status, rating), delete with confirmation (R1, R10, R2, R3, R36, R4–R7)
+- Songs: add, search, open, edit every field (notes, genre, year, key, tags, status, rating), delete with confirmation (R1, R10, R2, R3, R36, R4–R7); title and artist suggestions from MusicBrainz while typing, with an off switch in Settings (R35); a warning when the song is already there (R9); "Pick for me" (R13)
 - Find, on the Songs tab: pick a venue or "Overall" to see times sung and last sung per song, then filter by never sung here / not since a date, tag, status, rating, genre and decade, and sort by title, artist, rating, last sung, date added, genre or decade (R37, R41, R11, R42, R12). Fast with 1,000 songs (R34); each song has a video search link (R38)
 - Setlists: general or tied to a venue; create, edit, delete; add, remove and reorder songs; songs already sung at the setlist's venue are flagged with the last date; a Mix card counts genres and decades; "Suggest songs" fills a set with never-sung songs spread across genres and decades; Tonight mode checks songs off and logs them (R39, R14, R15, R43, R16, R44, R45, R17)
 - Settings: CSV import of songs and, via a venue column, sings; CSV export; JSON backup and restore (R22, R46, R23, R20, R21)
@@ -73,7 +73,7 @@ npm run test:e2e    # Playwright, tests/e2e/, mobile Chromium + mobile WebKit
 
 ## Still to build
 
-Every Must and Should requirement is built except R35 (MusicBrainz suggestions, the only network call). R28 (hosting) is yours to do; see Deploy below. Could items are listed in [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
+Every requirement is built except R25 (backup reminder) and R28 (hosting, which is yours to do; see Deploy below). See [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
 
 ## Two things to remember
 

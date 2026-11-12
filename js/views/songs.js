@@ -4,12 +4,17 @@
 // detail with a video search link (R38), edit form and delete (R2, R3, R36;
 // the edit form also holds tags, key, status and rating). Stays quick with
 // 1,000 songs (R34): rows are built once and at most PAGE_SIZE are drawn at a time.
+// The add form suggests titles and artists from MusicBrainz (R35) and warns
+// about a song already in the library (R9); "Pick for me" opens a random song
+// from those shown (R13).
 import { db, request } from '../db.js';
 import { el, viewEl, confirmAction, openScreen, closeScreen } from '../ui.js';
 import {
-  makeSong, updateSong, validateSong, planSongDelete, describeSongDelete,
+  makeSong, updateSong, validateSong, planSongDelete, describeSongDelete, songKey,
   SONG_STATUSES, STATUS_LABELS, RATINGS, statusLabel, formatRating, formatTags,
 } from '../lib/song.js';
+import { pickRandom } from '../lib/pick.js';
+import { createSuggester } from '../musicbrainz.js';
 import { singStats, sortVenues } from '../lib/stats.js';
 import {
   SUNG_NOT_SINCE, SORT_MENU, MIN_RATING_OPTIONS, defaultFilters, decadeLabel, filterChoices, sungOptions,
@@ -136,6 +141,19 @@ export async function renderSongs({
   const count = el('p', { class: 'count' });
   const list = el('ul', { class: 'list' });
 
+  // "Pick for me" (R13): one of the songs the count line reports, at random,
+  // opened the way its row would open it.
+  const pickButton = el('button', {
+    type: 'button', class: 'btn pick', text: 'Pick for me',
+    onclick: () => {
+      const song = pickRandom(shown);
+      if (!song) return;
+      const back = backState();
+      openScreen(() => renderSong(song.id, back));
+    },
+  });
+  const pickNote = el('p', { class: 'muted pick-note', text: 'Nothing to pick from.', hidden: '' });
+
   // What the search, filters and sort give (`shown`), how many of those rows
   // are drawn (`limit`), and each song's row, built the first time it is
   // drawn and reused until the venue changes its sing line.
@@ -189,6 +207,8 @@ export async function renderSongs({
   function draw() {
     shown = applyFind(songs, stats, state.filters, state.query);
     count.textContent = `${shown.length} of ${songs.length} songs`;
+    pickButton.disabled = shown.length === 0;
+    pickNote.hidden = shown.length > 0;
     drawRows(PAGE_SIZE);
   }
 
@@ -309,16 +329,83 @@ export async function renderSongs({
   filtersBox.open = filtersOpen;
   syncFilters();
 
+  // ---- Add a song, with suggestions (R35) and a duplicate warning (R9) ----
+
   const errorBox = el('p', { class: 'error', role: 'alert', hidden: '' });
+  const suggestionList = el('ul', { class: 'suggestions', 'aria-label': 'Suggestions from MusicBrainz', hidden: '' });
+  const duplicateText = el('p', { role: 'status' });
+  const duplicateBox = el('div', { class: 'duplicate', hidden: '' },
+    duplicateText,
+    el('button', { type: 'button', class: 'btn', text: 'Open it', onclick: openDuplicate }));
+  const submitButton = el('button', { class: 'btn primary', type: 'submit', text: 'Add song' });
   const form = el('form', { class: 'stack', 'aria-label': 'Add a song' },
     textField('Title', { name: 'title', required: '' }),
+    suggestionList,
     textField('Artist', { name: 'artist', required: '' }),
     el('div', { class: 'row' }, textField('Genre', { name: 'genre' }), yearField()),
     errorBox,
-    el('button', { class: 'btn primary', type: 'submit', text: 'Add song' }));
+    duplicateBox,
+    submitButton);
+  const titleInput = form.elements.namedItem('title');
+  const artistInput = form.elements.namedItem('artist');
+
+  // R9: the first song in the library with the typed title and artist, ignoring case.
+  const songsByKey = new Map();
+  for (const s of songs) {
+    if (!songsByKey.has(songKey(s))) songsByKey.set(songKey(s), s);
+  }
+  let duplicate = null;
+
+  function checkDuplicate() {
+    const title = titleInput.value.trim();
+    const artist = artistInput.value.trim();
+    duplicate = (title && artist && songsByKey.get(songKey({ title, artist }))) || null;
+    const warning = duplicate ? `Already in your library: “${duplicate.title}” by ${duplicate.artist}.` : '';
+    // Only a change is written, so a screen reader announces the warning once.
+    if (duplicateText.textContent !== warning) duplicateText.textContent = warning;
+    duplicateBox.hidden = !duplicate;
+    submitButton.textContent = duplicate ? 'Add anyway' : 'Add song';
+  }
+
+  function openDuplicate() {
+    if (!duplicate) return;
+    const song = duplicate;
+    const back = backState();
+    openScreen(() => renderSong(song.id, back));
+  }
+
+  // R35: suggestions under the title; taking one fills title and artist.
+  function showSuggestions(suggestions) {
+    if (!form.isConnected) return;
+    suggestionList.replaceChildren(...suggestions.map((s) => el('li', {},
+      el('button', {
+        type: 'button', class: 'suggestion', 'aria-label': `Use ${s.title} by ${s.artist}`,
+        onclick: () => useSuggestion(s),
+      }, s.title, el('span', { class: 'by', text: ` — ${s.artist}` })))));
+    suggestionList.hidden = suggestions.length === 0;
+  }
+
+  const suggester = createSuggester(showSuggestions, () => form.isConnected);
+
+  function useSuggestion(s) {
+    suggester.cancel();
+    titleInput.value = s.title;
+    artistInput.value = s.artist;
+    showSuggestions([]);
+    checkDuplicate();
+    submitButton.focus({ preventScroll: true });
+  }
+
+  titleInput.addEventListener('input', () => {
+    suggester.update(titleInput.value, artistInput.value);
+    checkDuplicate();
+  });
+  artistInput.addEventListener('input', checkDuplicate);
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    suggester.cancel();
+    showSuggestions([]);
     const data = new FormData(form);
     const fields = {
       title: data.get('title'),
@@ -339,7 +426,7 @@ export async function renderSongs({
       findField('Venue', venueSelect),
       search,
       filtersBox,
-      count,
+      el('div', { class: 'pick-row' }, count, pickButton, pickNote),
       list,
       moreButton));
   draw();
