@@ -13,15 +13,15 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 | ID | Requirement | Priority | Status | Notes |
 |---|---|---|---|---|
 | R1 | Add a song with title and artist | Must | Done | e2e: "R1: adds a song with title and artist" |
-| R2 | Edit or delete a song, with a confirmation before deleting | Must | Not started | |
-| R3 | Free-text notes per song | Must | Not started | E.g. "skip the bridge", "starts cold" |
-| R36 | Collect a genre and year (decade at least) for a song, for use in sorting and finding | Must | In progress | Add form collects genre and year; missing: edit them, and an e2e test |
+| R2 | Edit or delete a song, with a confirmation before deleting | Must | Done | Deleting also removes the song's sing log and setlist entries. e2e: "R2: edits a song", "R2: deletes a song after confirming", "R2: keeps the song when the delete confirmation is dismissed" |
+| R3 | Free-text notes per song | Must | Done | E.g. "skip the bridge", "starts cold". e2e: "R3: saves free-text notes on a song" |
+| R36 | Collect a genre and year (decade at least) for a song, for use in sorting and finding | Must | Done | Year is a single number; for a decade-only song enter any year in it. e2e: "R36: edits genre and year" |
 | R8 | Log each time I sing a song and the venue; show times sung and last sung (per venue and overall) | Must | Not started | Date required, venue required |
 | R40 | Add, rename and delete venues | Must | Not started | Needed by R8, R37 and R39 |
-| R5 | Tag songs with my own tags | Should | Not started | E.g. duet, crowd-pleaser, slow, 80s |
-| R6 | Store my key change for each song | Should | Not started | E.g. -2 or +1, as set on the karaoke machine |
-| R7 | Mark each song as Go-to, Want to try or Retired | Should | Not started | |
-| R4 | Rate each song 1-5 for how well I sing it | Could | Not started | |
+| R5 | Tag songs with my own tags | Should | Done | E.g. duet, crowd-pleaser, slow, 80s. Entered in the edit form and CSV import; pulled forward so R11 has data. e2e: "R2: edits tags (R5), key (R6), status (R7) and rating (R4), and they survive a reload" |
+| R6 | Store my key change for each song | Should | Done | E.g. -2 or +1, as set on the karaoke machine. Same e2e test as R5 |
+| R7 | Mark each song as Go-to, Want to try or Retired | Should | Done | Same e2e test as R5 |
+| R4 | Rate each song 1-5 for how well I sing it | Could | Done | Same e2e test as R5 |
 | R9 | Warn when adding a song that is already in the library | Could | Not started | Match on title + artist, ignoring case |
 
 ## Find
