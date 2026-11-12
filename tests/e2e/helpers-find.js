@@ -1,7 +1,7 @@
 // Steps for the Find e2e tests (Wave 2 D). openApp, putRecords and readStore live in helpers.js.
 import { expect } from '@playwright/test';
 import { makeSong } from '../../js/lib/song.js';
-import { putRecords, readStore } from './helpers.js';
+import { putRecords, readStore, mockedMusicBrainz } from './helpers.js';
 
 // Reloads and waits for the Songs list to show all `total` songs.
 export async function reloadList(page, total) {
@@ -157,6 +157,7 @@ export function mbRecording(title, artist) {
 // each { url, accept }.
 export async function mockMusicBrainz(page, answer = () => ({ json: { recordings: [] } })) {
   const requests = [];
+  mockedMusicBrainz.add(page); // openApp() then lets requests through to this route
   await page.route('https://musicbrainz.org/**', async (route) => {
     const request = route.request();
     const headers = await request.allHeaders();

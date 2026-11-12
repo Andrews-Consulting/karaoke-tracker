@@ -2,11 +2,16 @@
 // so IndexedDB is empty when it starts.
 import { expect } from '@playwright/test';
 
+// Pages whose test answers MusicBrainz itself (see mockMusicBrainz in
+// helpers-find.js). openApp() lets those requests through to that mock.
+export const mockedMusicBrainz = new WeakSet();
+
 // Opens the app and waits until the Songs view has rendered. No test may reach
-// the real MusicBrainz (R35): every lookup is refused here unless a test
-// registers its own route afterwards, which then takes precedence.
+// the real MusicBrainz (R35): every lookup is refused here, unless the test
+// registered its own answer with mockMusicBrainz(), which then gets it.
 export async function openApp(page) {
-  await page.route('https://musicbrainz.org/**', (route) => route.abort('internetdisconnected'));
+  await page.route('https://musicbrainz.org/**', (route) =>
+    (mockedMusicBrainz.has(page) ? route.fallback() : route.abort('internetdisconnected')));
   await page.goto('./');
   await expect(page.getByRole('heading', { name: 'Songs' })).toBeVisible();
   await expect(page.getByText(/of \d+ songs/)).toBeVisible();
