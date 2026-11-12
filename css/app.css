@@ -500,3 +500,53 @@ a.btn {
 }
 
 a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---- Songs tab: suggestions, duplicates, pick (Wave 4 I) ---- */
+
+/* MusicBrainz suggestions right under the Title field (R35). */
+.stack > .suggestions { margin-top: 6px; }
+.suggestions { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.suggestions[hidden] { display: none; }
+.suggestion {
+  display: block;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.suggestion .by { color: var(--muted); }
+
+/* "Already in your library" with Open it, above the submit button (R9). */
+.duplicate { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.duplicate[hidden] { display: none; }
+.duplicate > p { flex: 1 1 12em; margin: 0; color: var(--accent); overflow-wrap: anywhere; }
+.duplicate > .btn { flex: none; }
+
+/* The count line with "Pick for me" beside it (R13). */
+.pick-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; }
+.pick-row > .count { margin: 0; }
+.pick-row > .pick { flex: none; }
+.pick-row > .pick-note { flex-basis: 100%; margin: 0; font-size: 0.875rem; }
+.pick-row > .pick-note[hidden] { display: none; }
+.pick-row > .pick:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* A checkbox with its label beside it, the box a full tap target (Settings, R35). */
+label.check { display: flex; align-items: center; gap: 12px; color: var(--text); font-size: 1rem; }
+label.check > input[type="checkbox"] {
+  flex: none;
+  width: var(--tap);
+  height: var(--tap);
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+@media print {
+  .pick-note { display: none !important; }
+}
