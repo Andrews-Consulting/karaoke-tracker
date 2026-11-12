@@ -56,21 +56,37 @@ npm run test:e2e    # Playwright, tests/e2e/, mobile Chromium + mobile WebKit
 
 - Installable shell with offline cache (R26, R27, R29)
 - Songs: add, search, open, edit every field (notes, genre, year, key, tags, status, rating), delete with confirmation (R1, R10, R2, R3, R36, R4–R7)
+- Find, on the Songs tab: pick a venue or "Overall" to see times sung and last sung per song, then filter by never sung here / not since a date, tag, status, rating, genre and decade, and sort by title, genre or decade (R37, R41, R11, R42)
+- Setlists: general or tied to a venue; create, edit, delete; add and remove songs; songs already sung at the setlist's venue are flagged with the last date (R39, R14, R15, R43)
 - Settings: CSV import, JSON backup and restore (R22, R20, R21)
 - Venues: add, rename, delete when unused; log a sing with date and venue; times sung and last sung per venue and overall (R40, R8)
 - Data stored in IndexedDB, with a persistent-storage request (R18, R19)
 
+- One-handed layout: bottom tabs, 44 px controls everywhere, actions at the bottom of detail screens, and the back gesture returns from a detail screen instead of leaving the app (R31)
+
 ## Still to build
 
-1. Find: pick a venue or "overall", then filter by never sung here / not since a date, tag, status, rating, genre and decade (R37, R41, R11, R42)
-2. Setlists, with the already-sung flag (R39, R14, R15, R43)
-3. One-handed polish and deploy notes (R31, R28)
+Every Must requirement is built. R28 (hosting) is yours to do; see Deploy below. Should and Could items are listed in [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
 
 ## Two things to remember
 
 - **Bump `CACHE_VERSION` in `sw.js`** whenever you change a cached file, and add every new file under `js/` to `APP_SHELL`, or installed copies keep the old version or break offline. While developing, DevTools → Application → Service Workers → "Update on reload" saves the trouble.
 - **Schema changes** go in a new `if (oldVersion < N)` block in `js/db.js` with `DB_VERSION` bumped. Do not edit an existing block.
 
-## Deploy
+## Deploy (R28)
 
-Any static host with HTTPS works: GitHub Pages, Netlify, Cloudflare Pages. All paths are relative, so serving from a sub-folder is fine. On the phone, open the URL and use "Add to Home Screen".
+Any static host with HTTPS works. There is nothing to build: the host serves the repo's files as they are. Service workers need HTTPS (or `localhost`), so a plain `http://` host will run the app but not install it or work offline.
+
+Only the app files matter to the host: `index.html`, `manifest.webmanifest`, `sw.js`, `css/`, `js/`, `icons/`. The `tests/`, `tools/`, `docs/` and `node_modules/` folders are harmless but unused.
+
+**GitHub Pages** (free, HTTPS included):
+
+1. Push the repo to GitHub.
+2. Repo **Settings → Pages → Build and deployment**: Source "Deploy from a branch", branch `main`, folder `/ (root)`. Save.
+3. After a minute the site is at `https://<user>.github.io/<repo>/`. The sub-folder is fine: every path in the app is relative and the manifest's `start_url` and `scope` are `.`.
+
+**Netlify or Cloudflare Pages:** connect the repo (or drag the folder onto Netlify Drop). Build command: none. Publish directory: the repo root.
+
+**On the phone:** open the URL in Safari (iPhone) or Chrome (Android), then Share → "Add to Home Screen". The installed copy opens full screen and works offline after the first visit. Take a backup from Settings now and then; it is the only copy of your data.
+
+**Shipping an update:** commit, bump `CACHE_VERSION` in `sw.js`, push. Installed copies pick up the new files on the next open and show them on the open after that, so open the app twice to see a change.

@@ -5,7 +5,7 @@
 // history) and "Overall" (history across every venue). renderVenues() always
 // shows the list, so tapping the Venues tab is a way back as well.
 import { db } from '../db.js';
-import { el, viewEl, confirmAction } from '../ui.js';
+import { el, viewEl, confirmAction, openScreen, closeScreen } from '../ui.js';
 import { filterSongs, sortByTitle } from '../lib/search.js';
 import {
   plural, todayLocalISO, isISODate, singStats, venueStats, totals, statsRows, singsBySong,
@@ -39,7 +39,9 @@ function subLine(parts) {
 }
 
 function backButton() {
-  return el('button', { class: 'btn back', type: 'button', text: '‹ All venues', onclick: () => renderVenues() });
+  return el('button', {
+    class: 'btn back', type: 'button', text: '‹ All venues', onclick: () => closeScreen(() => renderVenues()),
+  });
 }
 
 // ---------- Venue list (R40) ----------
@@ -78,7 +80,7 @@ export async function renderVenues() {
       li.replaceChildren(
         el('button', {
           class: 'open', type: 'button', 'aria-label': `Open ${venue.name}`,
-          onclick: () => renderVenue(venue.id),
+          onclick: () => openScreen(() => renderVenue(venue.id)),
         },
         el('span', { class: 'title', text: venue.name }),
         subLine(summaryParts(perVenue.get(venue.id)))),
@@ -141,7 +143,7 @@ export async function renderVenues() {
   }
 
   const overallRow = el('li', { class: 'venue-row' },
-    el('button', { class: 'open', type: 'button', 'aria-label': 'Open overall stats', onclick: () => renderOverall() },
+    el('button', { class: 'open', type: 'button', 'aria-label': 'Open overall stats', onclick: () => openScreen(() => renderOverall()) },
       el('span', { class: 'title', text: 'Overall' }),
       subLine(['All venues', ...summaryParts(totals(sings))])));
 
@@ -219,7 +221,7 @@ async function renderVenue(venueId) {
   ]);
   if (token !== screen) return;
   if (!venue) {
-    renderVenues();
+    closeScreen(() => renderVenues());
     return;
   }
 

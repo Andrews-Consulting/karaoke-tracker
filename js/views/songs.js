@@ -1,13 +1,22 @@
-// Songs view: the list with add and search (R1, R10), and one song's detail,
-// edit form and delete (R2, R3, R36; the edit form also holds tags, key,
-// status and rating).
+// Songs view: the list with add and search (R1, R10), find by venue, sings,
+// tag, status, rating, genre and decade with times sung per song (R37, R41,
+// R11, R42, R8), and one song's detail, edit form and delete (R2, R3, R36;
+// the edit form also holds tags, key, status and rating).
 import { db, request } from '../db.js';
-import { el, viewEl, confirmAction } from '../ui.js';
-import { filterSongs, sortByTitle } from '../lib/search.js';
+import { el, viewEl, confirmAction, openScreen, closeScreen } from '../ui.js';
+import { sortByTitle } from '../lib/search.js';
 import {
   makeSong, updateSong, validateSong, planSongDelete, describeSongDelete,
   SONG_STATUSES, STATUS_LABELS, RATINGS, statusLabel, formatRating, formatTags,
 } from '../lib/song.js';
+import { singStats, sortVenues } from '../lib/stats.js';
+import {
+  SUNG_NOT_SINCE, SORT_OPTIONS, MIN_RATING_OPTIONS, defaultFilters, decadeLabel, filterChoices, sungOptions,
+  countActiveFilters, applyFind, sungParts,
+} from '../lib/find.js';
+
+// The meta record that remembers the list's venue across visits and reloads (R37).
+const VENUE_KEY = 'findVenueId';
 
 // Deletes a song together with its sings and its place in every setlist, in
 // one transaction, so nothing is left pointing at a missing song (R2).
@@ -43,39 +52,193 @@ function yearField() {
   return textField('Year', { name: 'year', type: 'number', min: '1900', max: '2100', inputmode: 'numeric' });
 }
 
-// The list. Coming back from a song passes the search to restore (`query`),
-// the song to scroll to (`focusId`) and an optional status line (`message`).
-export async function renderSongs({ query = '', focusId = null, message = '' } = {}) {
-  const songs = sortByTitle(await db.getAll('songs'));
+// A <select> with [value, text] options, showing `value`.
+function fillSelect(select, options, value) {
+  select.replaceChildren(...options.map(([optionValue, text]) => el('option', { value: optionValue, text })));
+  select.value = value;
+  return select;
+}
+
+// A find control with its label beside it rather than around it, so the
+// control's name is just the label, not the label plus every option's text.
+function findField(labelText, control) {
+  control.id = `find-${control.name}`;
+  return el('div', { class: 'find-field' }, el('label', { for: control.id, text: labelText }), control);
+}
+
+// A row's sing line, each part on one line so a date never breaks at its hyphens.
+function sungLine(parts) {
+  const children = [];
+  for (const part of parts) {
+    if (children.length) children.push(' · ');
+    children.push(el('span', { class: 'nowrap', text: part }));
+  }
+  return el('span', { class: 'sung' }, ...children);
+}
+
+// The list. Coming back from a song passes back what the list showed, so it
+// is restored: the search (`query`), the venue (`venueId`; undefined means the
+// one remembered in meta), the filters and sort (`filters`) and whether the
+// filters were open (`filtersOpen`). Also the song to scroll to (`focusId`)
+// and an optional status line (`message`).
+export async function renderSongs({
+  query = '', venueId, filters = defaultFilters(), filtersOpen = false, focusId = null, message = '',
+} = {}) {
+  const [songRecords, venueRecords, sings, saved] = await Promise.all([
+    db.getAll('songs'),
+    db.getAll('venues'),
+    db.getAll('sings'),
+    venueId === undefined ? db.get('meta', VENUE_KEY) : null,
+  ]);
+  const songs = sortByTitle(songRecords);
+  const venues = sortVenues(venueRecords);
+
+  // A remembered venue that has since been deleted falls back to Overall.
+  const wanted = venueId === undefined ? (saved ? saved.value : null) : venueId;
+  const state = {
+    query,
+    venueId: venues.some((v) => v.id === wanted) ? wanted : null,
+    filters: { ...defaultFilters(), ...filters },
+  };
+  let stats = singStats(sings, state.venueId);
+
+  // What to restore when coming back from a song.
+  const backState = () => ({
+    query: state.query, venueId: state.venueId, filters: { ...state.filters }, filtersOpen: filtersBox.open,
+  });
 
   const count = el('p', { class: 'count' });
   const list = el('ul', { class: 'list' });
 
-  function draw(text) {
-    const shown = filterSongs(songs, text);
+  function songItem(s) {
+    const details = [s.artist, s.genre, s.year].filter(Boolean).join(' · ');
+    return el('li', { class: 'song-item', 'data-song-id': s.id },
+      el('button', {
+        type: 'button', class: 'song-row',
+        onclick: () => {
+          const back = backState();
+          openScreen(() => renderSong(s.id, back));
+        },
+      },
+        el('span', { class: 'title', text: s.title }),
+        el('span', { class: 'sub', text: details }),
+        sungLine(sungParts(stats.get(s.id), state.venueId != null))));
+  }
+
+  function draw() {
+    const shown = applyFind(songs, stats, state.filters, state.query);
 
     count.textContent = `${shown.length} of ${songs.length} songs`;
-    list.replaceChildren(
-      ...shown.map((s) => {
-        const details = [s.artist, s.genre, s.year].filter(Boolean).join(' · ');
-        return el('li', { class: 'song-item', 'data-song-id': s.id },
-          el('button', { type: 'button', class: 'song-row', onclick: () => renderSong(s.id, search.value) },
-            el('span', { class: 'title', text: s.title }),
-            el('span', { class: 'sub', text: details })));
-      })
-    );
+    list.replaceChildren(...shown.map(songItem));
     if (songs.length === 0) {
       list.append(el('li', { class: 'muted', text: 'No songs yet. Add your first one above.' }));
+    } else if (shown.length === 0) {
+      list.append(el('li', { class: 'muted', text: 'No songs match the search and filters.' }));
     }
   }
+
+  // ---- Venue (R37) ----
+
+  const venueSelect = fillSelect(el('select', { name: 'venue' }),
+    [['', 'Overall'], ...venues.map((v) => [String(v.id), v.name])],
+    state.venueId == null ? '' : String(state.venueId));
+  venueSelect.addEventListener('change', () => {
+    const venue = venues.find((v) => String(v.id) === venueSelect.value);
+    state.venueId = venue ? venue.id : null;
+    stats = singStats(sings, state.venueId);
+    db.put('meta', { key: VENUE_KEY, value: state.venueId })
+      .catch((err) => console.warn('Could not remember the venue:', err));
+    syncFilters();
+    draw();
+  });
 
   const search = el('input', {
     type: 'search',
     placeholder: 'Search title or artist',
     'aria-label': 'Search songs',
-    oninput: (e) => draw(e.target.value),
+    oninput: (e) => {
+      state.query = e.target.value;
+      draw();
+    },
   });
   search.value = query;
+
+  // ---- Filters and sort (R41, R11, R42) ----
+
+  const sungSelect = el('select', { name: 'sung' });
+  const sinceInput = el('input', { type: 'date', name: 'since' });
+  const sinceField = findField('Since', sinceInput);
+  const tagSelect = el('select', { name: 'tag' });
+  const statusSelect = el('select', { name: 'status' });
+  const ratingSelect = el('select', { name: 'minRating' });
+  const genreSelect = el('select', { name: 'genre' });
+  const decadeSelect = el('select', { name: 'decade' });
+  const sortSelect = el('select', { name: 'sort' });
+  const summary = el('summary');
+
+  // Shows the state in every control: after a change, Clear filters or a new venue.
+  function syncFilters() {
+    const f = state.filters;
+    const choices = filterChoices(songs, f);
+    fillSelect(sungSelect, sungOptions(state.venueId != null), f.sung);
+    if (sinceInput.value !== f.since) sinceInput.value = f.since; // never disturb a date being typed
+    sinceField.hidden = f.sung !== SUNG_NOT_SINCE;
+    fillSelect(tagSelect, [['', 'Any tag'], ...choices.tags.map((t) => [t, t])], f.tag);
+    fillSelect(statusSelect, [['', 'Any status'], ...SONG_STATUSES.map((s) => [s, STATUS_LABELS[s]])], f.status);
+    fillSelect(ratingSelect, [['', 'Any rating'], ...MIN_RATING_OPTIONS.map(([r, text]) => [String(r), text])],
+      f.minRating == null ? '' : String(f.minRating));
+    fillSelect(genreSelect, [['', 'Any genre'], ...choices.genres.map((g) => [g, g])], f.genre);
+    fillSelect(decadeSelect, [['', 'Any decade'], ...choices.decades.map((d) => [String(d), decadeLabel(d)])],
+      f.decade == null ? '' : String(f.decade));
+    fillSelect(sortSelect, SORT_OPTIONS, f.sort);
+    const active = countActiveFilters(f);
+    summary.textContent = active ? `Filters (${active})` : 'Filters';
+  }
+
+  function setFilter(key, value) {
+    state.filters = { ...state.filters, [key]: value };
+    syncFilters();
+    draw();
+  }
+
+  const onChange = (node, read) => {
+    const update = () => setFilter(node.name, read(node.value));
+    node.addEventListener('change', update);
+    if (node.tagName === 'INPUT') node.addEventListener('input', update);
+  };
+  const text = (value) => value;
+  const numberOrNull = (value) => (value === '' ? null : Number(value));
+  onChange(sungSelect, text);
+  onChange(sinceInput, text);
+  onChange(tagSelect, text);
+  onChange(statusSelect, text);
+  onChange(ratingSelect, numberOrNull);
+  onChange(genreSelect, text);
+  onChange(decadeSelect, numberOrNull);
+  onChange(sortSelect, text);
+
+  const filtersForm = el('form', { class: 'stack find-form', 'aria-label': 'Filters' },
+    el('div', { class: 'row' }, findField('Sung', sungSelect), sinceField),
+    el('div', { class: 'find-grid' },
+      findField('Tag', tagSelect),
+      findField('Status', statusSelect),
+      findField('Rating', ratingSelect),
+      findField('Genre', genreSelect),
+      findField('Decade', decadeSelect),
+      findField('Sort by', sortSelect)),
+    el('button', {
+      type: 'button', class: 'btn', text: 'Clear filters',
+      onclick: () => {
+        state.filters = defaultFilters();
+        syncFilters();
+        draw();
+      },
+    }));
+  filtersForm.addEventListener('submit', (e) => e.preventDefault());
+
+  const filtersBox = el('details', { class: 'card find-filters' }, summary, filtersForm);
+  filtersBox.open = filtersOpen;
+  syncFilters();
 
   const errorBox = el('p', { class: 'error', role: 'alert', hidden: '' });
   const form = el('form', { class: 'stack', 'aria-label': 'Add a song' },
@@ -96,17 +259,20 @@ export async function renderSongs({ query = '', focusId = null, message = '' } =
     };
     if (showErrors(form, errorBox, validateSong(fields))) return;
     await db.add('songs', makeSong(fields));
-    renderSongs();
+    // Search and filters start afresh so the new song shows; the venue stays.
+    renderSongs({ venueId: state.venueId });
   });
 
   viewEl.replaceChildren(
     el('div', { class: 'stack' },
       el('details', { class: 'card' }, el('summary', { text: 'Add a song' }), form),
       message ? el('p', { class: 'notice', role: 'status', text: message }) : null,
+      findField('Venue', venueSelect),
       search,
+      filtersBox,
       count,
       list));
-  draw(query);
+  draw();
 
   if (focusId != null) {
     const row = list.querySelector(`[data-song-id="${focusId}"] button`);
@@ -118,11 +284,12 @@ export async function renderSongs({ query = '', focusId = null, message = '' } =
 }
 
 // One song: notes first (what matters at the venue), then the other fields,
-// with Edit and Delete at the bottom within thumb reach.
-async function renderSong(id, query) {
+// with Edit and Delete at the bottom within thumb reach. `back` is the list's
+// state (search, venue, filters) to restore on the way back.
+async function renderSong(id, back) {
   const song = await db.get('songs', id);
   if (!song) {
-    renderSongs({ query, message: 'That song is no longer in your library.' });
+    closeScreen(() => renderSongs({ ...back, message: 'That song is no longer in your library.' }));
     return;
   }
 
@@ -145,12 +312,12 @@ async function renderSong(id, query) {
       errorBox.textContent = `Could not delete the song: ${err.message}`;
       return;
     }
-    renderSongs({ query, message: `Deleted “${song.title}”.` });
+    closeScreen(() => renderSongs({ ...back, message: `Deleted “${song.title}”.` }));
   }
 
   viewEl.replaceChildren(
     el('div', { class: 'stack song-detail' },
-      backButton(() => renderSongs({ query, focusId: song.id })),
+      backButton(() => closeScreen(() => renderSongs({ ...back, focusId: song.id }))),
       el('section', { class: 'card stack', 'aria-label': 'Song details' },
         el('div', {},
           el('h2', { text: song.title }),
@@ -169,7 +336,10 @@ async function renderSong(id, query) {
           field('Tags', formatTags(song.tags))),
         errorBox,
         el('div', { class: 'row' },
-          el('button', { type: 'button', class: 'btn primary', text: 'Edit', onclick: () => renderEditSong(song, query) }),
+          el('button', {
+            type: 'button', class: 'btn primary', text: 'Edit',
+            onclick: () => openScreen(() => renderEditSong(song, back)),
+          }),
           el('button', { type: 'button', class: 'btn danger', text: 'Delete', onclick: remove })))));
   viewEl.scrollTop = 0;
 }
@@ -180,7 +350,7 @@ function backButton(onclick) {
 }
 
 // Every field of a song (R2, R3, R36, plus tags, key, status and rating).
-function renderEditSong(song, query) {
+function renderEditSong(song, back) {
   const select = (name, options, value) => {
     const node = el('select', { name },
       ...options.map(([optionValue, text]) => el('option', { value: optionValue, text })));
@@ -211,7 +381,10 @@ function renderEditSong(song, query) {
     el('label', { text: 'Notes' }, notes),
     errorBox,
     el('div', { class: 'row' },
-      el('button', { type: 'button', class: 'btn', text: 'Cancel', onclick: () => renderSong(song.id, query) }),
+      el('button', {
+        type: 'button', class: 'btn', text: 'Cancel',
+        onclick: () => closeScreen(() => renderSong(song.id, back)),
+      }),
       el('button', { type: 'submit', class: 'btn primary', text: 'Save' })));
   form.elements.year.value = song.year == null ? '' : String(song.year);
 
@@ -226,7 +399,7 @@ function renderEditSong(song, query) {
       errorBox.textContent = `Could not save the song: ${err.message}`;
       return;
     }
-    renderSong(song.id, query);
+    closeScreen(() => renderSong(song.id, back));
   });
 
   viewEl.replaceChildren(el('div', { class: 'song-detail' }, form));

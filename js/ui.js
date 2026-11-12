@@ -32,6 +32,71 @@ export function confirmAction(message) {
   return window.confirm(message);
 }
 
+// ---------- Screens and the back gesture (R31) ----------
+//
+// Each tab has a root screen (its list). Opening a detail screen with
+// openScreen() pushes a history entry, so the phone's back gesture, or the
+// browser's back button, returns to the previous screen instead of leaving the
+// installed app. In-page Back buttons use closeScreen(), which goes back in
+// history so the two stay in step. The stack holds render functions, so a
+// screen reached by going back is drawn again with the state it had.
+const screens = []; // screens[0] is the current tab's root
+let currentView = null;
+let pendingBack = null; // what to render when the next popstate arrives, if not the stack entry
+let switchView = null; // set by app.js: shows another tab's root screen
+
+export function setViewSwitcher(fn) {
+  switchView = fn;
+}
+
+// Starts a tab: its list becomes the only screen on the stack. Tabs replace
+// the current history entry rather than adding one, so back from a tab's list
+// leaves the app the way it would from any other app's home screen.
+export function rootScreen(view, render) {
+  currentView = view;
+  screens.length = 0;
+  screens.push(render);
+  pendingBack = null;
+  history.replaceState({ view, depth: 0 }, '');
+  return render();
+}
+
+// Shows a detail screen on top of the current one, with a history entry.
+export function openScreen(render) {
+  screens.push(render);
+  history.pushState({ view: currentView, depth: screens.length - 1 }, '');
+  return render();
+}
+
+// Leaves the current detail screen, rendering `render` (usually the screen
+// below with some state, e.g. the song to scroll to). Goes back in history when
+// the current entry is this screen's, so the back gesture stays in step.
+export function closeScreen(render) {
+  const top = screens.length - 1;
+  const state = history.state;
+  if (top > 0 && state && state.view === currentView && state.depth === top) {
+    pendingBack = render;
+    history.back(); // the popstate handler trims the stack and renders
+    return;
+  }
+  screens.length = Math.max(1, top);
+  render();
+}
+
+window.addEventListener('popstate', (event) => {
+  const state = event.state || { view: currentView, depth: 0 };
+  if (state.view && state.view !== currentView && switchView) {
+    pendingBack = null;
+    switchView(state.view);
+    return;
+  }
+  const depth = Math.max(0, Math.min(state.depth ?? 0, screens.length - 1));
+  screens.length = depth + 1;
+  const render = pendingBack || screens[depth];
+  pendingBack = null;
+  if (render) render();
+});
+
 // A "Not built yet" card listing what a section will do.
 export function placeholder(lines) {
   return () => {

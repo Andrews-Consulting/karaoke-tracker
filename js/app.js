@@ -3,6 +3,7 @@ import { renderSongs } from './views/songs.js';
 import { renderSetlists } from './views/setlists.js';
 import { renderVenues } from './views/venues.js';
 import { renderSettings } from './views/settings.js';
+import { rootScreen, setViewSwitcher } from './ui.js';
 
 const titleEl = document.getElementById('view-title');
 const tabButtons = document.querySelectorAll('.tabs button');
@@ -21,12 +22,13 @@ export function show(name) {
     if (button.dataset.view === name) button.setAttribute('aria-current', 'page');
     else button.removeAttribute('aria-current');
   }
-  view.render();
+  rootScreen(name, view.render); // R31: detail screens stack on top of this one
 }
 
 for (const button of tabButtons) {
   button.addEventListener('click', () => show(button.dataset.view));
 }
+setViewSwitcher(show);
 
 // ---------- Startup ----------
 
