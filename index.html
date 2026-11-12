@@ -16,6 +16,17 @@
   <meta name="apple-mobile-web-app-title" content="Karaoke">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
+  <script>
+    // R32: apply the saved theme before the first paint, so there is no flash.
+    // js/theme.js keeps it current after that.
+    try {
+      var savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'light'
+          || (savedTheme === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches)) {
+        document.documentElement.dataset.theme = 'light';
+      }
+    } catch (e) { /* storage blocked: stay dark */ }
+  </script>
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>

@@ -6,6 +6,8 @@ import {
   parseCsv, planImport, importSummary, songsToCsv, csvFileName,
 } from '../lib/csv.js';
 import { songKey } from '../lib/song.js';
+import { THEME_CHOICES } from '../lib/theme.js';
+import { savedThemeChoice, applyThemeChoice } from '../theme.js';
 import {
   buildBackup, backupFileName, validateBackup, countRecords, formatCounts, restoreMessage,
 } from '../lib/backup.js';
@@ -52,6 +54,16 @@ function saveFile(name, text, type) {
 }
 
 export async function renderSettings() {
+  // ---- R32: appearance ----
+  const themeSelect = el('select', { name: 'theme', id: 'setting-theme' },
+    ...THEME_CHOICES.map(([value, text]) => el('option', { value, text })));
+  themeSelect.value = savedThemeChoice();
+  themeSelect.addEventListener('change', () => applyThemeChoice(themeSelect.value));
+  const appearance = el('div', { class: 'card stack' },
+    el('strong', { text: 'Appearance' }),
+    el('label', { for: 'setting-theme', text: 'Theme' }),
+    themeSelect);
+
   const status = el('p', { class: 'muted' });
 
   async function refresh() {
@@ -169,6 +181,7 @@ export async function renderSettings() {
 
   viewEl.replaceChildren(
     el('div', { class: 'stack' },
+      appearance,
       el('div', { class: 'card stack' }, el('strong', { text: 'Storage' }), status, ask),
       el('div', { class: 'card stack' },
         el('strong', { text: 'Import songs' }),

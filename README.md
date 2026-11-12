@@ -64,10 +64,11 @@ npm run test:e2e    # Playwright, tests/e2e/, mobile Chromium + mobile WebKit
 - Data stored in IndexedDB, with a persistent-storage request (R18, R19)
 
 - One-handed layout: bottom tabs, 44 px controls everywhere, actions at the bottom of detail screens, and the back gesture returns from a detail screen instead of leaving the app (R31)
+- Dark by default with a light option and "Match the phone" (R32); readable at desktop widths (R33)
 
 ## Still to build
 
-Every Must requirement is built. R28 (hosting) is yours to do; see Deploy below. Should and Could items are listed in [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
+Every Must and Should requirement is built except R35 (MusicBrainz suggestions, the only network call). R28 (hosting) is yours to do; see Deploy below. Could items are listed in [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
 
 ## Two things to remember
 
