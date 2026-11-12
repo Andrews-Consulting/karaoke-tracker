@@ -31,6 +31,7 @@ Then open <http://localhost:8000>. The VS Code "Live Server" extension works too
 | `manifest.webmanifest` | Install settings (name, icons, colors) |
 | `icons/` | App icons; regenerate with `python3 tools/make_icons.py` |
 | `tools/serve.js` | Zero-dependency static server used by Playwright and `npm run serve` |
+| `tools/screenshots.js` | Phone screenshots of every screen for design review (`npm run screenshots`) |
 | `tests/unit/` | Vitest tests for `js/lib/` |
 | `tests/e2e/` | Playwright tests, named by requirement ID |
 | `docs/REQUIREMENTS.md` | Requirements and their status |
@@ -51,6 +52,10 @@ npm run test:e2e    # Playwright, tests/e2e/, mobile Chromium + mobile WebKit
 - Playwright starts `tools/serve.js` on `PORT` (default 8000). Run `PORT=8001 npm run test:e2e` to test a second checkout at the same time.
 - Every test gets a fresh browser context, so IndexedDB starts empty.
 - E2E test names carry the requirement ID they prove, e.g. `R10: searches by title or artist as I type`.
+
+## Screenshots
+
+`npm run screenshots` writes a PNG of every screen to `screenshots/<device>/<theme>/`, for an iPhone 14 (WebKit) and a Pixel 7 (Chromium) in dark and light, from a fixed sample library. `DEVICE=iphone THEME=dark npm run screenshots` does one set. It uses port 8004 and is for design review; the folder is not committed.
 
 ## What works today
 
