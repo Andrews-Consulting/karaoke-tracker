@@ -278,3 +278,57 @@ label > textarea { margin-top: 4px; color: var(--text); resize: vertical; }
   padding: 4px 0;
   border-bottom: 0;
 }
+
+/* ---- Setlists view (Wave 2 E) ---- */
+.setlists-view h2 { margin: 0; font-size: 1.25rem; overflow-wrap: anywhere; }
+.setlists-view form h2, .setlists-view h3 { margin: 0; font-size: 1rem; }
+.setlists-view .venue-line, .setlists-view .count, .setlists-view .empty { margin: 0; }
+.setlists-view .error, .setlists-view .status { margin: 0; }
+.setlists-view .error { color: var(--error); }
+.setlists-view .status { color: var(--accent); }
+.setlists-view .error:empty, .setlists-view .status:empty, .setlists-view .count:empty { display: none; }
+.setlists-view .title { display: block; font-weight: 600; overflow-wrap: anywhere; }
+.setlists-view .sub { display: block; color: var(--muted); font-size: 0.875rem; }
+.setlists-view .nowrap { white-space: nowrap; }
+
+/* List rows: the name opens the setlist, Edit and Delete sit beside it. */
+.setlist-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.setlist-row .open {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tap);
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.setlist-row .actions { display: flex; gap: 8px; }
+.setlist-row > form { flex-basis: 100%; }
+
+/* Songs in one setlist, in order, each with a Remove button (R15). */
+.setlist-song { display: flex; align-items: center; gap: 8px; }
+.setlist-song .text { flex: 1; min-width: 0; }
+
+/* Already sung at this setlist's venue (R43). */
+.setlists-view .flag {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 0 8px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 0.875rem;
+}
+
+.setlists-view .picks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.setlists-view .pick {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 8px 12px;
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
