@@ -37,11 +37,11 @@ if (navigator.storage && navigator.storage.persist) {
   navigator.storage.persist().catch(() => {});
 }
 
-// R27: offline support. Service workers need HTTPS or http://localhost.
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch((err) => {
-    console.warn('Service worker registration failed:', err);
-  });
-}
+// R27: offline support, and R30: offer to reload when a new version is ready.
+// Service workers need HTTPS or http://localhost. Loaded on its own so that
+// startup never waits on it, and a failure here cannot stop the app.
+import('./update.js')
+  .then(({ watchForUpdates }) => watchForUpdates('sw.js'))
+  .catch((err) => console.warn('Update check unavailable:', err));
 
 show('songs');

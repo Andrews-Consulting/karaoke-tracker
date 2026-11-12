@@ -347,3 +347,75 @@ label > textarea { margin-top: 4px; color: var(--text); resize: vertical; }
 
 /* Label above its control, as when the label wraps it (see label > select above). */
 .find-field > label + select, .find-field > label + input { margin-top: 4px; }
+
+/* ---- Data and PWA polish (Wave 3 H) ---- */
+
+/* New version banner (R30). js/update.js appends it to <body>; the flex order
+   puts it between the screen and the tabs, within thumb reach. */
+.update-banner {
+  order: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--surface);
+  border-top: 2px solid var(--accent);
+}
+.update-banner p { flex: 1 1 12em; margin: 0; }
+.tabs { order: 2; }
+
+/* Printing from the browser's share or print menu (R24): the song list, a
+   setlist's songs or a venue's history in black on white, without the tabs,
+   forms, buttons and search boxes. List rows are buttons on screen, so those
+   stay and print as plain text. */
+@media print {
+  :root {
+    --bg: #fff;
+    --surface: #fff;
+    --border: #999;
+    --text: #000;
+    --muted: #333;
+    --accent: #000;
+    --accent-text: #fff;
+    --error: #000;
+    --tap: 0px; /* no tap targets on paper */
+    color-scheme: light;
+  }
+
+  @page { margin: 12mm; }
+
+  html { font-size: 11pt; }
+  html, body { height: auto; background: #fff; color: #000; }
+  body { display: block; line-height: 1.35; }
+
+  .tabs, .update-banner, form, .btn, button:not(.song-row):not(.open), input, select, textarea, label,
+  details.card, .find-field, .message, .notice, .status, .error, .picks {
+    display: none !important;
+  }
+  /* Separate rules: a browser without :has() drops only these. */
+  .card:has(> form) { display: none !important; }
+  .card:has(input[type="search"]) { display: none !important; }
+
+  .top { padding: 0 0 8pt; border: 0; }
+  .top h1 { font-size: 14pt; }
+  main { flex: none; overflow: visible; max-width: none; padding: 0; }
+  h2 { font-size: 13pt; }
+  .card, details.card { background: none; border: 0; border-radius: 0; padding: 0; }
+
+  /* One thin rule between rows, and no row split across pages. */
+  .list li { padding: 3pt 0; border-bottom: 0.5pt solid #999; break-inside: avoid; }
+  .song-row { padding: 3pt 0; color: #000; }
+  .venue-row .open, .setlist-row .open { padding: 0; color: #000; }
+  .list .sub, .song-row .sung, .count, .muted { color: #333; font-size: 11pt; }
+  .setlists-view .flag { margin: 0; padding: 0; border: 0; color: #000; font-size: 11pt; font-style: italic; }
+
+  /* A venue's history: the summary prints as plain text, without its arrow,
+     and closed entries print too where the browser supports ::details-content
+     (elsewhere they stay closed). A separate rule, as with :has() above. */
+  details::details-content { display: block; content-visibility: visible; }
+  summary { list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  .venues-view .history summary::after { content: none; }
+  .venues-view .entries li { padding: 0; border: 0; }
+}
