@@ -131,3 +131,49 @@ export function mixLine(page, name) {
   return mixCard(page).locator('.mix-lines > div')
     .filter({ has: page.locator('dt', { hasText: name }) }).locator('dd');
 }
+
+// ---------- Suggest (R45) and Tonight (R17), Wave 4 J ----------
+
+// The open setlist's "Suggest songs" form.
+export function suggestForm(page) {
+  return page.getByRole('form', { name: 'Suggest songs' });
+}
+
+// Types `howMany` into the form (left as it is when undefined), taps Suggest
+// songs and waits for the line saying what happened.
+export async function suggest(page, howMany, expected) {
+  const form = suggestForm(page);
+  if (howMany !== undefined) await form.getByLabel('How many').fill(String(howMany));
+  await form.getByRole('button', { name: 'Suggest songs' }).click();
+  await expect(form.getByRole('status')).toHaveText(expected);
+}
+
+// The Tonight toggle on the open setlist.
+export function tonightButton(page) {
+  return page.getByRole('button', { name: 'Tonight', exact: true });
+}
+
+// Turns Tonight mode on or off and waits until the rows have changed over.
+export async function setTonight(page, on) {
+  const button = tonightButton(page);
+  if ((await button.getAttribute('aria-pressed')) !== String(on)) await button.click();
+  await expect(button).toHaveAttribute('aria-pressed', String(on));
+  const songs = page.getByRole('list', { name: 'Songs in this setlist' });
+  if (on) await expect(songs.getByRole('button', { name: /^Remove / })).toHaveCount(0);
+  else await expect(songs.getByRole('checkbox')).toHaveCount(0);
+}
+
+// A song's "Sang <title>" checkbox in Tonight mode.
+export function sangBox(page, title) {
+  return page.getByRole('list', { name: 'Songs in this setlist' })
+    .getByRole('checkbox', { name: `Sang ${title}`, exact: true });
+}
+
+// Today in the page's own time zone, 'YYYY-MM-DD', as the app dates a sing.
+export function pageToday(page) {
+  return page.evaluate(() => {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  });
+}
