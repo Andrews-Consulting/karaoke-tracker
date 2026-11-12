@@ -135,3 +135,47 @@ details.card > summary {
 
 label { display: block; font-size: 0.875rem; color: var(--muted); }
 label > input, label > select { margin-top: 4px; color: var(--text); }
+
+/* ---- Songs view (Wave 1 A) ---- */
+
+/* Each list row is one full-width button, so the whole row is the tap target (R31). */
+.list li.song-item { padding: 0; }
+
+.song-row {
+  display: block;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 10px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.song-row .title, .song-row .sub { display: block; }
+
+.song-detail h2 { margin: 0; font-size: 1.25rem; overflow-wrap: anywhere; }
+.song-detail h3 { margin: 0 0 4px; font-size: 0.875rem; font-weight: 600; color: var(--muted); }
+.song-detail .artist { margin: 0; color: var(--muted); }
+
+.song-notes { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.song-fields { margin: 0; }
+
+.song-fields .field {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+}
+
+.song-fields dt { color: var(--muted); font-size: 0.875rem; }
+.song-fields dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+
+label > textarea { margin-top: 4px; color: var(--text); resize: vertical; }
+
+.btn.danger { color: var(--danger, #ff7a7a); border-color: currentColor; }
+
+.error { margin: 0; color: var(--danger, #ff7a7a); }
+.notice { margin: 0; }

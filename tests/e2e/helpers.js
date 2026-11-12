@@ -21,6 +21,57 @@ export async function addSong(page, { title, artist, genre, year } = {}) {
   await expect(page.getByRole('listitem').filter({ hasText: title })).toBeVisible();
 }
 
+// Taps a song in the list and waits for its details to open.
+export async function openSong(page, title) {
+  await page.getByRole('listitem').filter({ hasText: title }).getByRole('button').click();
+  await expect(page.getByRole('heading', { level: 2, name: title })).toBeVisible();
+}
+
+// Writes records straight into an IndexedDB store, for data no screen creates
+// yet (e.g. sings and setlists). Call after openApp(), which creates the
+// database. Records without an id get one; resolves with the ids, in order.
+export async function putRecords(page, store, records) {
+  return page.evaluate(async ({ store, records }) => {
+    const conn = await new Promise((resolve, reject) => {
+      const req = indexedDB.open('karaoke-tracker');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    try {
+      if (!conn.objectStoreNames.contains(store)) throw new Error(`No "${store}" store; call openApp() first`);
+      return await new Promise((resolve, reject) => {
+        const tx = conn.transaction(store, 'readwrite');
+        const reqs = records.map((record) => tx.objectStore(store).put(record));
+        tx.oncomplete = () => resolve(reqs.map((req) => req.result));
+        tx.onerror = () => reject(tx.error);
+      });
+    } finally {
+      conn.close();
+    }
+  }, { store, records });
+}
+
+// Reads every record in an IndexedDB store, in id order.
+export async function readStore(page, store) {
+  return page.evaluate(async (store) => {
+    const conn = await new Promise((resolve, reject) => {
+      const req = indexedDB.open('karaoke-tracker');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    try {
+      if (!conn.objectStoreNames.contains(store)) throw new Error(`No "${store}" store; call openApp() first`);
+      return await new Promise((resolve, reject) => {
+        const req = conn.transaction(store, 'readonly').objectStore(store).getAll();
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    } finally {
+      conn.close();
+    }
+  }, store);
+}
+
 // Waits until the service worker controls the page, so the shell is cached.
 export async function waitForServiceWorker(page) {
   await page.waitForFunction(async () => {
