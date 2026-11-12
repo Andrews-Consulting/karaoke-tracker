@@ -347,3 +347,23 @@ label > textarea { margin-top: 4px; color: var(--text); resize: vertical; }
 
 /* Label above its control, as when the label wraps it (see label > select above). */
 .find-field > label + select, .find-field > label + input { margin-top: 4px; }
+
+/* ---- Find and library polish (Wave 3 F) ---- */
+
+/* Sort by (R42, R12) takes the full width, so the longer orders read in full on a phone. */
+.find-grid > .find-field:has(> #find-sort) { grid-column: 1 / -1; }
+
+/* "Show N more" under a long list (R34). */
+.btn.more { width: 100%; }
+
+/* A link that looks and sizes like .btn: the video search on a song (R38). */
+a.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: inherit;
+  text-decoration: none;
+}
+
+a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

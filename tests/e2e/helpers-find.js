@@ -80,3 +80,52 @@ export async function expectTapTarget(locator) {
   const box = await locator.boundingBox();
   expect(box.height).toBeGreaterThanOrEqual(44);
 }
+
+// ---------- A big library (R34, Wave 3 F) ----------
+
+const WORDS_A = ['Midnight', 'Summer', 'Electric', 'Broken', 'Golden', 'Wild', 'Lonely', 'Crazy', 'Sweet', 'Dancing',
+  'Burning', 'Silver', 'Endless', 'Secret', 'Neon', 'Velvet', 'Purple', 'Little', 'Brand New', 'Lucky'];
+const WORDS_B = ['Heart', 'Love', 'Train', 'City', 'Dreams', 'Rain', 'Fire', 'Night', 'Road', 'Kiss', 'Sky', 'Radio',
+  'Girl', 'Boy', 'Highway', 'Moon', 'Lights', 'Ocean', 'Thunder', 'Memory', 'Paradise', 'Angel', 'Shadow', 'River', 'Song'];
+const FIRST_NAMES = ['Amy', 'Bruno', 'Cher', 'Dolly', 'Elton', 'Freddie', 'Gloria', 'Harry', 'Iggy', 'Janis', 'Kylie',
+  'Lionel', 'Madonna', 'Nina', 'Ozzy'];
+const LAST_NAMES = ['Stone', 'Rivers', 'Knight', 'Bell', 'Fox', 'Gray', 'Hart', 'King'];
+const GENRES = ['Pop', 'Rock', 'Soul', 'Country', 'Disco', 'R&B', 'Indie', 'Metal', 'Jazz', ''];
+const TAGS = ['duet', 'slow', 'crowd-pleaser', 'high', 'low', 'rap', 'party'];
+const STATUSES = ['go-to', 'go-to', 'want-to-try', 'go-to', 'retired'];
+
+// `n` varied songs (fields for makeSong) and sings ({ index, date }, `index`
+// into the songs) at one venue, the same every run. Titles, artists, genres,
+// years, tags, ratings, statuses and dates added all vary; some songs have no
+// genre, year or rating. The sings fall on the first 40% of the songs, some
+// of them twice.
+export function bigLibrary(n = 1000, singCount = 500) {
+  const day = 24 * 60 * 60 * 1000;
+  const start = Date.UTC(2024, 0, 1);
+  const songs = Array.from({ length: n }, (_, i) => ({
+    title: `${WORDS_A[i % 20]} ${WORDS_B[Math.floor(i / 20) % 25]}${i >= 500 ? ' Again' : ''}`,
+    artist: `${FIRST_NAMES[i % 15]} ${LAST_NAMES[(i * 7) % 8]}`,
+    genre: GENRES[i % 10],
+    year: i % 13 === 0 ? null : 1960 + ((i * 37) % 65),
+    tags: i % 3 === 0 ? [TAGS[i % 7], TAGS[(i + 3) % 7]] : [TAGS[i % 7]],
+    rating: i % 6 === 0 ? null : (i % 5) + 1,
+    status: STATUSES[i % 5],
+    createdAt: new Date(start + i * 7 * 60 * 60 * 1000).toISOString(),
+  }));
+  const sings = Array.from({ length: singCount }, (_, k) => ({
+    index: (k * 13) % Math.ceil(n * 0.4),
+    date: new Date(start + (k * 3) * day).toISOString().slice(0, 10),
+  }));
+  return { songs, sings };
+}
+
+// Writes bigLibrary() straight into IndexedDB (each store in one transaction),
+// with every sing at one venue, "The Crown". Does not reload. Resolves with
+// the song fields and the venue's id.
+export async function seedBigLibrary(page, n = 1000, singCount = 500) {
+  const { songs, sings } = bigLibrary(n, singCount);
+  const songIds = await putRecords(page, 'songs', songs.map((fields) => makeSong(fields)));
+  const [venueId] = await putRecords(page, 'venues', [{ name: 'The Crown' }]);
+  await putRecords(page, 'sings', sings.map(({ index, date }) => ({ songId: songIds[index], venueId, date })));
+  return { songs, venueId };
+}

@@ -1,22 +1,33 @@
 // Songs view: the list with add and search (R1, R10), find by venue, sings,
 // tag, status, rating, genre and decade with times sung per song (R37, R41,
-// R11, R42, R8), and one song's detail, edit form and delete (R2, R3, R36;
-// the edit form also holds tags, key, status and rating).
+// R11, R42, R8), sorted by any of the R42 and R12 orders, and one song's
+// detail with a video search link (R38), edit form and delete (R2, R3, R36;
+// the edit form also holds tags, key, status and rating). Stays quick with
+// 1,000 songs (R34): rows are built once and at most PAGE_SIZE are drawn at a time.
 import { db, request } from '../db.js';
 import { el, viewEl, confirmAction, openScreen, closeScreen } from '../ui.js';
-import { sortByTitle } from '../lib/search.js';
 import {
   makeSong, updateSong, validateSong, planSongDelete, describeSongDelete,
   SONG_STATUSES, STATUS_LABELS, RATINGS, statusLabel, formatRating, formatTags,
 } from '../lib/song.js';
 import { singStats, sortVenues } from '../lib/stats.js';
 import {
-  SUNG_NOT_SINCE, SORT_OPTIONS, MIN_RATING_OPTIONS, defaultFilters, decadeLabel, filterChoices, sungOptions,
-  countActiveFilters, applyFind, sungParts,
+  SUNG_NOT_SINCE, SORT_MENU, MIN_RATING_OPTIONS, defaultFilters, decadeLabel, filterChoices, sungOptions,
+  countActiveFilters, applyFind, sungParts, titleOrder,
 } from '../lib/find.js';
 
 // The meta record that remembers the list's venue across visits and reloads (R37).
 const VENUE_KEY = 'findVenueId';
+
+// How many rows the list draws at first, and adds with each "Show more" (R34).
+// The count line always gives the full number that match.
+const PAGE_SIZE = 200;
+
+// A video search for the song, opened by the owner in a new tab (R38).
+function videoSearchUrl(song) {
+  const terms = [song.title, song.artist].map((t) => String(t ?? '').trim()).filter(Boolean).join(' ');
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(terms)}`;
+}
 
 // Deletes a song together with its sings and its place in every setlist, in
 // one transaction, so nothing is left pointing at a missing song (R2).
@@ -66,6 +77,21 @@ function findField(labelText, control) {
   return el('div', { class: 'find-field' }, el('label', { for: control.id, text: labelText }), control);
 }
 
+// Makes `items` the children of `parent`, in order. Rows that stay are left
+// where they are, so the browser keeps their style and layout and only the
+// rows that come or go cost anything as the search narrows or widens (R34).
+function setChildren(parent, items) {
+  const keep = new Set(items);
+  for (const child of [...parent.children]) {
+    if (!keep.has(child)) child.remove();
+  }
+  let next = parent.firstChild;
+  for (const item of items) {
+    if (item === next) next = next.nextSibling;
+    else parent.insertBefore(item, next);
+  }
+}
+
 // A row's sing line, each part on one line so a date never breaks at its hyphens.
 function sungLine(parts) {
   const children = [];
@@ -90,7 +116,7 @@ export async function renderSongs({
     db.getAll('sings'),
     venueId === undefined ? db.get('meta', VENUE_KEY) : null,
   ]);
-  const songs = sortByTitle(songRecords);
+  const songs = titleOrder(songRecords);
   const venues = sortVenues(venueRecords);
 
   // A remembered venue that has since been deleted falls back to Overall.
@@ -110,6 +136,40 @@ export async function renderSongs({
   const count = el('p', { class: 'count' });
   const list = el('ul', { class: 'list' });
 
+  // What the search, filters and sort give (`shown`), how many of those rows
+  // are drawn (`limit`), and each song's row, built the first time it is
+  // drawn and reused until the venue changes its sing line.
+  let shown = [];
+  let limit = PAGE_SIZE;
+  const rows = new Map();
+
+  function rowFor(s) {
+    let item = rows.get(s.id);
+    if (!item) {
+      item = songItem(s);
+      rows.set(s.id, item);
+    }
+    return item;
+  }
+
+  const moreButton = el('button', {
+    type: 'button', class: 'btn more', hidden: '',
+    onclick: () => {
+      const added = shown.slice(limit, limit + PAGE_SIZE).map(rowFor);
+      limit += PAGE_SIZE;
+      list.append(...added);
+      showMoreButton();
+      // Focus moves to the first new row, where the button was.
+      added[0]?.querySelector('button').focus({ preventScroll: true });
+    },
+  });
+
+  function showMoreButton() {
+    const left = shown.length - limit;
+    moreButton.hidden = left <= 0;
+    moreButton.textContent = left > 0 ? `Show ${Math.min(left, PAGE_SIZE)} more` : '';
+  }
+
   function songItem(s) {
     const details = [s.artist, s.genre, s.year].filter(Boolean).join(' · ');
     return el('li', { class: 'song-item', 'data-song-id': s.id },
@@ -125,16 +185,24 @@ export async function renderSongs({
         sungLine(sungParts(stats.get(s.id), state.venueId != null))));
   }
 
+  // Runs the search, filters and sort again and draws the first page of rows.
   function draw() {
-    const shown = applyFind(songs, stats, state.filters, state.query);
-
+    shown = applyFind(songs, stats, state.filters, state.query);
     count.textContent = `${shown.length} of ${songs.length} songs`;
-    list.replaceChildren(...shown.map(songItem));
+    drawRows(PAGE_SIZE);
+  }
+
+  // Draws the first `n` rows of `shown`.
+  function drawRows(n) {
+    limit = n;
+    const items = shown.slice(0, limit).map(rowFor);
     if (songs.length === 0) {
-      list.append(el('li', { class: 'muted', text: 'No songs yet. Add your first one above.' }));
+      items.push(el('li', { class: 'muted', text: 'No songs yet. Add your first one above.' }));
     } else if (shown.length === 0) {
-      list.append(el('li', { class: 'muted', text: 'No songs match the search and filters.' }));
+      items.push(el('li', { class: 'muted', text: 'No songs match the search and filters.' }));
     }
+    setChildren(list, items);
+    showMoreButton();
   }
 
   // ---- Venue (R37) ----
@@ -146,10 +214,11 @@ export async function renderSongs({
     const venue = venues.find((v) => String(v.id) === venueSelect.value);
     state.venueId = venue ? venue.id : null;
     stats = singStats(sings, state.venueId);
+    rows.clear(); // every row's sing line is for the old venue
     db.put('meta', { key: VENUE_KEY, value: state.venueId })
       .catch((err) => console.warn('Could not remember the venue:', err));
     syncFilters();
-    draw();
+    draw(); // also re-sorts, for the last-sung orders (R12)
   });
 
   const search = el('input', {
@@ -190,7 +259,7 @@ export async function renderSongs({
     fillSelect(genreSelect, [['', 'Any genre'], ...choices.genres.map((g) => [g, g])], f.genre);
     fillSelect(decadeSelect, [['', 'Any decade'], ...choices.decades.map((d) => [String(d), decadeLabel(d)])],
       f.decade == null ? '' : String(f.decade));
-    fillSelect(sortSelect, SORT_OPTIONS, f.sort);
+    fillSelect(sortSelect, SORT_MENU, f.sort);
     const active = countActiveFilters(f);
     summary.textContent = active ? `Filters (${active})` : 'Filters';
   }
@@ -271,10 +340,14 @@ export async function renderSongs({
       search,
       filtersBox,
       count,
-      list));
+      list,
+      moreButton));
   draw();
 
   if (focusId != null) {
+    // Coming back from a song further down than the first page draws enough pages to reach it.
+    const index = shown.findIndex((s) => s.id === focusId);
+    if (index >= limit) drawRows(Math.ceil((index + 1) / PAGE_SIZE) * PAGE_SIZE);
     const row = list.querySelector(`[data-song-id="${focusId}"] button`);
     if (row) {
       row.scrollIntoView({ block: 'center' });
@@ -335,6 +408,9 @@ async function renderSong(id, back) {
           field('Year', song.year == null ? '' : String(song.year)),
           field('Tags', formatTags(song.tags))),
         errorBox,
+        // Opens in a new tab, so the app stays where it was; nothing is fetched or saved (R38).
+        el('a', { class: 'btn video-link', href: videoSearchUrl(song), target: '_blank', rel: 'noopener' },
+          'Search video', el('span', { 'aria-hidden': 'true', text: ' ↗' })),
         el('div', { class: 'row' },
           el('button', {
             type: 'button', class: 'btn primary', text: 'Edit',
