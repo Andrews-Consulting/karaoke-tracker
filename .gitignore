@@ -64,3 +64,4 @@ __pycache__/
 *.docx
 
 .claude/worktrees
+.claude/settings.local.json
