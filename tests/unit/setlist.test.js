@@ -560,6 +560,14 @@ describe('R45 suggestCandidates', () => {
     expect(out).not.toContain(301);
     expect(out).toHaveLength(pool.length - 3);
   });
+
+  it('leaves out Retired songs, since they are not to be sung', () => {
+    const withRetired = pool.map((song) => (song.id === 401 ? { ...song, status: 'retired' } : song));
+    const out = ids(suggestCandidates(withRetired, [], emptyAt(CROWN)));
+    expect(out).not.toContain(401);
+    expect(out).toHaveLength(pool.length - 1);
+    expect(ids(suggestCandidates(pool, [], emptyAt(CROWN)))).toContain(401);
+  });
 });
 
 describe('R45 suggestSongs', () => {

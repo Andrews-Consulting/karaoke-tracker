@@ -46,8 +46,8 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 | R43 | Flag songs in a setlist that I have already sung at its venue | Must | Done | Shows the date last sung there; general setlists show no flag. e2e: "R43: flags songs already sung at the setlist's venue with the last date", "R43: a general setlist shows no sung flags" |
 | R16 | Reorder songs in a setlist by dragging | Should | Done | Drag handle (pointer events, works with touch) plus Up and Down buttons and arrow keys on the handle. No auto-scroll while dragging; use the buttons for long moves. Real-finger drag needs a check on the phone. e2e: "R16: moves a song up and down with the buttons and the order survives a reload", "R16: drags a song to a new position" |
 | R44 | Show a setlist's mix by genre and decade | Should | Done | A collapsible "Mix" card on the setlist: counts per genre (most first) and per decade (oldest first); "No genre" and "No year" last. e2e: "R44: shows the mix by genre and decade and updates when a song is removed" |
-| R45 | Suggest a set: N songs not yet sung at the venue, spread across genres and decades | Could | Not started | A starting point I can edit |
-| R17 | Tonight mode: check off songs as I sing them, which logs them | Could | Not started | Depends on R8 |
+| R45 | Suggest a set: N songs not yet sung at the venue, spread across genres and decades | Could | Done | "Suggest songs" card on the setlist: adds N (1 to 50, default 10) never-sung, non-Retired songs to the end, round-robin across genres then decades, in random order. e2e: "R45: suggests never-sung songs spread across genres and decades", "R45: says so when fewer songs are left than asked for" |
+| R17 | Tonight mode: check off songs as I sing them, which logs them | Could | Done | "Tonight" toggle on the setlist: each song becomes a checkbox that logs a sing at the venue for the night's date; unchecking removes it without confirmation. A general setlist asks for the venue first. e2e: "R17: checking off a song in Tonight mode logs a sing today, and unchecking removes it", "R17: a general setlist asks for a venue before logging" |
 
 ## Data
 

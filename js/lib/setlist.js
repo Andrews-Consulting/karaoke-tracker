@@ -276,14 +276,15 @@ function groupBy(items, keyOf) {
 // Genre ignoring case and spaces; '' is the "No genre" group.
 const genreKey = (song) => String(song?.genre ?? '').trim().toLowerCase();
 
-// Songs a suggestion can choose from: not in the setlist already, and never
-// sung at its venue (for a general setlist, never sung anywhere).
+// Songs a suggestion can choose from: not in the setlist already, not Retired,
+// and never sung at its venue (for a general setlist, never sung anywhere).
 export function suggestCandidates(songs, sings, setlist) {
   const inList = new Set(uniqueIds(setlist.songIds));
   const sung = singStats(Array.isArray(sings) ? sings : [], setlist.venueId ?? null);
   const seen = new Set();
   return (Array.isArray(songs) ? songs : []).filter((song) => {
-    if (!song || inList.has(song.id) || sung.has(song.id) || seen.has(song.id)) return false;
+    if (!song || song.status === 'retired') return false;
+    if (inList.has(song.id) || sung.has(song.id) || seen.has(song.id)) return false;
     seen.add(song.id);
     return true;
   });
