@@ -59,8 +59,8 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 | R21 | Restore from a JSON backup | Must | Done | Confirm before replacing existing data. e2e: "R21: restores a backup after confirming" and "R21: leaves data alone when the restore confirmation is dismissed" |
 | R22 | Import songs from a CSV file | Must | Done | Title and artist required; genre, year, key and tags optional. The fastest way to load 500+ songs. e2e: "R22: imports a CSV of songs". Semicolon-separated CSVs are not detected |
 | R46 | CSV import logs sings: a venue column logs one sing per row, dated by a date column or the import day | Should | Done | Venues are created as needed; sings are logged for songs already in the library too; a sing already logged (same song, venue, date) is skipped. Dates: YYYY-MM-DD, YYYY-MM, YYYY or M/D/YYYY. e2e: "R46: a venue column logs a sing per row, dated by the date column or today", "R46: an unreadable date skips the sing but keeps the song" |
-| R23 | Export songs as a CSV file | Should | Not started | |
-| R24 | Print-friendly song list and setlist | Should | Not started | Print stylesheet + browser print dialog |
+| R23 | Export songs as a CSV file | Should | Done | Settings → "Download songs as CSV": title, artist, genre, year, key, tags, status, rating, notes; imports back as duplicates only. e2e: "R23: downloads a CSV of all songs that imports back without duplicates" |
+| R24 | Print-friendly song list and setlist | Should | Done | Print stylesheet only; print from the browser's share or print menu. Hides tabs, forms and buttons; black on white. e2e: "R24: prints the song list without the tabs and forms", "R24: prints a setlist's songs", "R24: prints a venue's history with every date" |
 | R25 | Remind me to back up when the last export is over 30 days old | Could | Not started | |
 
 ## PWA
@@ -70,8 +70,8 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 | R26 | Web app manifest so it installs to the home screen | Must | Done | Name, icons, standalone display, theme color. e2e: "R26: has an installable web app manifest"; real install only checkable on a phone |
 | R27 | Service worker caches the app so it works fully offline | Must | Done | e2e: "R27: loads offline after the service worker is installed" |
 | R28 | Served over HTTPS from a static host | Must | Ready to deploy | Steps for GitHub Pages, Netlify and Cloudflare Pages are in README "Deploy". The app needs no build and uses relative paths, so a sub-folder works. Done once it is live at an https URL |
-| R29 | iPhone home-screen icon and status-bar settings | Should | Not started | apple-touch-icon and related meta tags |
-| R30 | Detect a new version and offer to reload | Should | Not started | |
+| R29 | iPhone home-screen icon and status-bar settings | Should | Done | apple-touch-icon (180 px) and the apple-mobile-web-app meta tags in index.html. e2e: "R29: has iPhone home-screen icon and status-bar meta tags" |
+| R30 | Detect a new version and offer to reload | Should | Done | When a new service worker takes control, a banner above the tabs offers Reload or Later; the app also checks for updates when it returns to the foreground. e2e: "R30: offers to reload when a new version is installed" |
 
 ## UX
 
