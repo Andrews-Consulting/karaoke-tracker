@@ -5,7 +5,7 @@
 // Two screens in one tab: the setlist list and one setlist. renderSetlists()
 // always shows the list, so tapping the Setlists tab is a way back as well.
 import { db } from '../db.js';
-import { el, viewEl, confirmAction } from '../ui.js';
+import { el, viewEl, confirmAction, openScreen, closeScreen } from '../ui.js';
 import { plural, sortVenues } from '../lib/stats.js';
 import {
   setlistNameError, sortSetlists, venueValue, venueIdFromValue, venueOptions, venueLabel, venueLine,
@@ -96,7 +96,7 @@ export async function renderSetlists() {
       li.replaceChildren(
         el('button', {
           class: 'open', type: 'button', 'aria-label': `Open ${setlist.name}`,
-          onclick: () => renderSetlist(setlist.id),
+          onclick: () => openScreen(() => renderSetlist(setlist.id)),
         },
         el('span', { class: 'title', text: setlist.name }),
         subLine([venueLabel(setlist, venues), plural(songCount, 'song', 'songs')])),
@@ -167,7 +167,7 @@ async function renderSetlist(id) {
   ]);
   if (!stillCurrent(token)) return;
   if (!found) {
-    renderSetlists();
+    closeScreen(() => renderSetlists());
     return;
   }
 
@@ -250,7 +250,9 @@ async function renderSetlist(id) {
   }
 
   show(
-    el('button', { class: 'btn back', type: 'button', text: '‹ All setlists', onclick: () => renderSetlists() }),
+    el('button', {
+      class: 'btn back', type: 'button', text: '‹ All setlists', onclick: () => closeScreen(() => renderSetlists()),
+    }),
     el('h2', { text: setlist.name }),
     el('p', { class: 'muted venue-line', text: venueLine(setlist, venues) }),
     count,

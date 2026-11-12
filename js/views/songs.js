@@ -3,7 +3,7 @@
 // R11, R42, R8), and one song's detail, edit form and delete (R2, R3, R36;
 // the edit form also holds tags, key, status and rating).
 import { db, request } from '../db.js';
-import { el, viewEl, confirmAction } from '../ui.js';
+import { el, viewEl, confirmAction, openScreen, closeScreen } from '../ui.js';
 import { sortByTitle } from '../lib/search.js';
 import {
   makeSong, updateSong, validateSong, planSongDelete, describeSongDelete,
@@ -113,7 +113,13 @@ export async function renderSongs({
   function songItem(s) {
     const details = [s.artist, s.genre, s.year].filter(Boolean).join(' · ');
     return el('li', { class: 'song-item', 'data-song-id': s.id },
-      el('button', { type: 'button', class: 'song-row', onclick: () => renderSong(s.id, backState()) },
+      el('button', {
+        type: 'button', class: 'song-row',
+        onclick: () => {
+          const back = backState();
+          openScreen(() => renderSong(s.id, back));
+        },
+      },
         el('span', { class: 'title', text: s.title }),
         el('span', { class: 'sub', text: details }),
         sungLine(sungParts(stats.get(s.id), state.venueId != null))));
@@ -283,7 +289,7 @@ export async function renderSongs({
 async function renderSong(id, back) {
   const song = await db.get('songs', id);
   if (!song) {
-    renderSongs({ ...back, message: 'That song is no longer in your library.' });
+    closeScreen(() => renderSongs({ ...back, message: 'That song is no longer in your library.' }));
     return;
   }
 
@@ -306,12 +312,12 @@ async function renderSong(id, back) {
       errorBox.textContent = `Could not delete the song: ${err.message}`;
       return;
     }
-    renderSongs({ ...back, message: `Deleted “${song.title}”.` });
+    closeScreen(() => renderSongs({ ...back, message: `Deleted “${song.title}”.` }));
   }
 
   viewEl.replaceChildren(
     el('div', { class: 'stack song-detail' },
-      backButton(() => renderSongs({ ...back, focusId: song.id })),
+      backButton(() => closeScreen(() => renderSongs({ ...back, focusId: song.id }))),
       el('section', { class: 'card stack', 'aria-label': 'Song details' },
         el('div', {},
           el('h2', { text: song.title }),
@@ -330,7 +336,10 @@ async function renderSong(id, back) {
           field('Tags', formatTags(song.tags))),
         errorBox,
         el('div', { class: 'row' },
-          el('button', { type: 'button', class: 'btn primary', text: 'Edit', onclick: () => renderEditSong(song, back) }),
+          el('button', {
+            type: 'button', class: 'btn primary', text: 'Edit',
+            onclick: () => openScreen(() => renderEditSong(song, back)),
+          }),
           el('button', { type: 'button', class: 'btn danger', text: 'Delete', onclick: remove })))));
   viewEl.scrollTop = 0;
 }
@@ -372,7 +381,10 @@ function renderEditSong(song, back) {
     el('label', { text: 'Notes' }, notes),
     errorBox,
     el('div', { class: 'row' },
-      el('button', { type: 'button', class: 'btn', text: 'Cancel', onclick: () => renderSong(song.id, back) }),
+      el('button', {
+        type: 'button', class: 'btn', text: 'Cancel',
+        onclick: () => closeScreen(() => renderSong(song.id, back)),
+      }),
       el('button', { type: 'submit', class: 'btn primary', text: 'Save' })));
   form.elements.year.value = song.year == null ? '' : String(song.year);
 
@@ -387,7 +399,7 @@ function renderEditSong(song, back) {
       errorBox.textContent = `Could not save the song: ${err.message}`;
       return;
     }
-    renderSong(song.id, back);
+    closeScreen(() => renderSong(song.id, back));
   });
 
   viewEl.replaceChildren(el('div', { class: 'song-detail' }, form));

@@ -68,7 +68,7 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 |---|---|---|---|---|
 | R26 | Web app manifest so it installs to the home screen | Must | Done | Name, icons, standalone display, theme color. e2e: "R26: has an installable web app manifest"; real install only checkable on a phone |
 | R27 | Service worker caches the app so it works fully offline | Must | Done | e2e: "R27: loads offline after the service worker is installed" |
-| R28 | Served over HTTPS from a static host | Must | Not started | E.g. GitHub Pages, Netlify or Cloudflare Pages; required for service workers |
+| R28 | Served over HTTPS from a static host | Must | Ready to deploy | Steps for GitHub Pages, Netlify and Cloudflare Pages are in README "Deploy". The app needs no build and uses relative paths, so a sub-folder works. Done once it is live at an https URL |
 | R29 | iPhone home-screen icon and status-bar settings | Should | Not started | apple-touch-icon and related meta tags |
 | R30 | Detect a new version and offer to reload | Should | Not started | |
 
@@ -76,7 +76,7 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 
 | ID | Requirement | Priority | Status | Notes |
 |---|---|---|---|---|
-| R31 | Mobile-first layout, usable one-handed | Must | In progress | Tap targets at least 44 px. Bottom tabs and 44 px controls exist; final pass and e2e check after Wave 2 |
+| R31 | Mobile-first layout, usable one-handed | Must | Done | Bottom tabs, actions at the bottom of detail screens, every control at least 44 px. Detail screens add a history entry so the back gesture returns to the list instead of leaving the app. e2e: "R31: every control on every screen is at least 44 px tall and wide", "R31: the back gesture returns from a song and its edit form instead of leaving the app", "R31: the back gesture returns from a venue, overall and a setlist to their lists", "R31: the in-page Back button keeps the history in step with the screens". One-hand feel needs a check on the phone |
 | R38 | Web search for a song (to listen to outside the venue) | Should | Not started | A button on each song opens a video search for "title artist" in a new tab. Nothing is saved; needs a connection |
 | R32 | Dark theme by default, with a light option | Should | Not started | Readable in a dim bar |
 | R33 | Works at desktop widths too | Should | Not started | |
