@@ -16,8 +16,8 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 | R2 | Edit or delete a song, with a confirmation before deleting | Must | Done | Deleting also removes the song's sing log and setlist entries. e2e: "R2: edits a song", "R2: deletes a song after confirming", "R2: keeps the song when the delete confirmation is dismissed" |
 | R3 | Free-text notes per song | Must | Done | E.g. "skip the bridge", "starts cold". e2e: "R3: saves free-text notes on a song" |
 | R36 | Collect a genre and year (decade at least) for a song, for use in sorting and finding | Must | Done | Year is a single number; for a decade-only song enter any year in it. e2e: "R36: edits genre and year" |
-| R8 | Log each time I sing a song and the venue; show times sung and last sung (per venue and overall) | Must | Not started | Date required, venue required |
-| R40 | Add, rename and delete venues | Must | Not started | Needed by R8, R37 and R39 |
+| R8 | Log each time I sing a song and the venue; show times sung and last sung (per venue and overall) | Must | Done | Date required, venue required. Logged from the Venues tab; "Overall" row shows cross-venue stats. Per-song stats in the Songs list come with R37. e2e: "R8: logs a sing with date and venue and shows times sung and last sung at that venue", "R8: shows overall times sung and last sung across venues" |
+| R40 | Add, rename and delete venues | Must | Done | Needed by R8, R37 and R39. A venue with sing log entries or setlists cannot be deleted. e2e: "R40: adds, renames and deletes a venue", "R40: refuses to delete a venue that has sing log entries" |
 | R5 | Tag songs with my own tags | Should | Done | E.g. duet, crowd-pleaser, slow, 80s. Entered in the edit form and CSV import; pulled forward so R11 has data. e2e: "R2: edits tags (R5), key (R6), status (R7) and rating (R4), and they survive a reload" |
 | R6 | Store my key change for each song | Should | Done | E.g. -2 or +1, as set on the karaoke machine. Same e2e test as R5 |
 | R7 | Mark each song as Go-to, Want to try or Retired | Should | Done | Same e2e test as R5 |
