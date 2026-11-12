@@ -2,13 +2,12 @@
 // and restore (R21).
 import { db } from '../db.js';
 import { el, viewEl, confirmAction } from '../ui.js';
+import { parseCsv, planImport, importSummary } from '../lib/csv.js';
+import {
+  buildBackup, backupFileName, validateBackup, countRecords, formatCounts, restoreMessage,
+} from '../lib/backup.js';
 
 export const APP_VERSION = '0.2.0';
-
-// The CSV and backup helpers load on first use, so starting the app (online or
-// from the service worker cache) never depends on them.
-const loadCsv = () => import('../lib/csv.js');
-const loadBackup = () => import('../lib/backup.js');
 
 const errorText = (err) => (err && err.message) || String(err);
 
@@ -67,7 +66,6 @@ export async function renderSettings() {
     importMsg.show(`Reading ${file.name}…`);
     try {
       const text = await file.text();
-      const { parseCsv, planImport, importSummary } = await loadCsv();
       const plan = planImport(parseCsv(text), await db.getAll('songs'));
       if (plan.toAdd.length) await db.addAll('songs', plan.toAdd);
       importMsg.show(importSummary(plan));
@@ -81,7 +79,6 @@ export async function renderSettings() {
 
   async function downloadBackup() {
     try {
-      const { buildBackup, backupFileName, countRecords, formatCounts } = await loadBackup();
       const now = new Date();
       const backup = buildBackup(await db.exportAll(), now);
       const name = backupFileName(now);
@@ -103,7 +100,6 @@ export async function renderSettings() {
     backupMsg.show(`Reading ${file.name}…`);
     try {
       const text = await file.text();
-      const { validateBackup, countRecords, formatCounts, restoreMessage } = await loadBackup();
 
       let parsed;
       try {

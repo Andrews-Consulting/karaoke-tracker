@@ -55,9 +55,9 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 |---|---|---|---|---|
 | R18 | Keep all data on the device in IndexedDB; no account, no server | Must | Done | e2e: "R18: data survives a reload" |
 | R19 | Ask the browser for persistent storage | Must | Done | `navigator.storage.persist()`; lowers the risk of Safari clearing data. e2e: "R19: asks for persistent storage at startup" |
-| R20 | Export a full backup as one JSON file | Must | Not started | Songs, tags, venues, setlists and sing log |
-| R21 | Restore from a JSON backup | Must | Not started | Confirm before replacing existing data |
-| R22 | Import songs from a CSV file | Must | Not started | Title and artist required; genre, year, key and tags optional. The fastest way to load 500+ songs |
+| R20 | Export a full backup as one JSON file | Must | Done | Songs, tags, venues, setlists and sing log. e2e: "R20: downloads a JSON backup containing all songs". Download inside the installed iPhone app needs a check on the phone |
+| R21 | Restore from a JSON backup | Must | Done | Confirm before replacing existing data. e2e: "R21: restores a backup after confirming" and "R21: leaves data alone when the restore confirmation is dismissed" |
+| R22 | Import songs from a CSV file | Must | Done | Title and artist required; genre, year, key and tags optional. The fastest way to load 500+ songs. e2e: "R22: imports a CSV of songs". Semicolon-separated CSVs are not detected |
 | R23 | Export songs as a CSV file | Should | Not started | |
 | R24 | Print-friendly song list and setlist | Should | Not started | Print stylesheet + browser print dialog |
 | R25 | Remind me to back up when the last export is over 30 days old | Could | Not started | |
