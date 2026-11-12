@@ -1,11 +1,11 @@
-// Find on the Songs list (R37, R41, R11, R42): filters and sort orders, on
+// Find on the Songs list (R37, R41, R11, R42, R12): filters and sort orders, on
 // top of the R10 text search. Pure: no DOM, no IndexedDB, so Vitest can test it.
 //
 // Filters are a plain object; defaultFilters() lists every field. Sing stats
 // come from singStats() in stats.js: Map songId -> { count, lastSung }, for the
 // selected venue or overall. Dates are local 'YYYY-MM-DD' strings compared as
 // strings, like everywhere else in the app.
-import { filterSongs, sortByTitle } from './search.js';
+import { filterSongs } from './search.js';
 import { SONG_STATUSES, normalizeRating } from './song.js';
 import { isISODate, plural } from './stats.js';
 
@@ -33,9 +33,6 @@ export const SORT_MENU = [
   ['added', 'Date added, newest first'],
   ...SORT_OPTIONS.slice(1),
 ];
-
-// The sort orders that read the sing stats, so a new venue re-sorts the list.
-export const SORTS_BY_SINGS = ['last-sung', 'last-sung-oldest'];
 
 // Minimum rating choices (R11) as [value, label], highest first.
 export const MIN_RATING_OPTIONS = [[5, '5'], [4, '4+'], [3, '3+'], [2, '2+'], [1, '1+']];
@@ -241,12 +238,23 @@ const COMPARE = {
   },
 };
 
-// A sorted copy. Title order (sortByTitle) is the default and breaks every
-// tie, because the sort is stable and starts from title order. `stats` is
-// singStats() for the selected venue or overall; only the last-sung orders
-// read it, and without it every song counts as never sung.
+// A copy in title order: the same order as sortByTitle() in search.js (title,
+// then artist, ignoring case), but compared with one collator built up front.
+// localeCompare() with options builds a new collator on every call, which
+// adds up to tens of milliseconds over 1,000 songs (R34).
+const compareTitles = (a, b) =>
+  baseCollator.compare(a.title, b.title) || baseCollator.compare(a.artist, b.artist);
+
+export function titleOrder(songs) {
+  return [...songs].sort(compareTitles);
+}
+
+// A sorted copy. Title order is the default and breaks every tie, because
+// the sort is stable and starts from title order. `stats` is singStats() for
+// the selected venue or overall; only the last-sung orders read it, and
+// without it every song counts as never sung.
 export function sortSongs(songs, sortKey = 'title', stats = new Map()) {
-  const byTitle = sortByTitle(songs);
+  const byTitle = titleOrder(songs);
   const compare = Object.hasOwn(COMPARE, sortKey) ? COMPARE[sortKey] : null;
   return compare ? byTitle.sort((a, b) => compare(a, b, stats)) : byTitle;
 }

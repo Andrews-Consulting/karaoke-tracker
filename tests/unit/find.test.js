@@ -5,7 +5,8 @@ import {
   countActiveFilters, matchesFilters, sortSongs, applyFind, sungParts,
 } from '../../js/lib/find.js';
 import { singStats } from '../../js/lib/stats.js';
-import { SORT_MENU, SORTS_BY_SINGS } from '../../js/lib/find.js';
+import { SORT_MENU, titleOrder } from '../../js/lib/find.js';
+import { sortByTitle } from '../../js/lib/search.js';
 
 // A complete song record, like makeSong() builds, with an id.
 let nextId = 1;
@@ -326,10 +327,6 @@ describe('R12 the "Sort by" menu', () => {
     expect(defaultFilters().sort).toBe(SORT_MENU[0][0]);
   });
 
-  it('marks only the last-sung orders as needing the sing stats', () => {
-    expect(SORTS_BY_SINGS).toEqual(['last-sung', 'last-sung-oldest']);
-  });
-
   it('does not count any sort order as a filter', () => {
     for (const [sort] of SORT_MENU) expect(countActiveFilters(filters({ sort }))).toBe(0);
   });
@@ -347,6 +344,39 @@ describe('R12 the "Sort by" menu', () => {
     const before = [...library];
     for (const [key] of SORT_MENU) sortSongs(library, key, new Map());
     expect(library).toEqual(before);
+  });
+});
+
+describe('R34 titleOrder: the title order with one collator', () => {
+  const library = [
+    song({ title: 'Valerie', artist: 'Amy Winehouse' }),
+    song({ title: 'valerie', artist: 'The Zutons' }),
+    song({ title: 'Ça plane pour moi', artist: 'Plastic Bertrand' }),
+    song({ title: 'Caravan', artist: 'Van Morrison' }),
+    song({ title: 'Hello', artist: 'Lionel Richie' }),
+    song({ title: 'hello', artist: 'adele' }),
+    song({ title: 'HELLO', artist: 'Adele' }),
+    song({ title: 'Mr. Brightside', artist: 'The Killers' }),
+    song({ title: 'Mr Blue Sky', artist: 'ELO' }),
+    song({ title: '99 Luftballons', artist: 'Nena' }),
+    song({ title: 'Take On Me', artist: 'a-ha' }),
+    song({ title: 'Take on me', artist: 'A-ha' }),
+    song({ title: 'Éclair', artist: '' }),
+    song({ title: 'Eclipse', artist: 'Pink Floyd' }),
+    song({ title: '', artist: 'Nobody' }),
+  ];
+
+  it('gives the same order as sortByTitle() in search.js, ties included', () => {
+    expect(titleOrder(library)).toEqual(sortByTitle(library));
+    expect(titleOrder([...library].reverse())).toEqual(sortByTitle([...library].reverse()));
+  });
+
+  it('is what sortSongs() uses for title order, and it never changes its input', () => {
+    const before = [...library];
+    expect(sortSongs(library, 'title')).toEqual(sortByTitle(library));
+    expect(titleOrder(library)).not.toBe(library);
+    expect(library).toEqual(before);
+    expect(titleOrder([])).toEqual([]);
   });
 });
 
