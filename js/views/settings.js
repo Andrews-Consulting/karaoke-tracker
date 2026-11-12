@@ -1,8 +1,10 @@
 // Settings view: persistent storage (R19), CSV import (R22, with sings R46),
-// JSON backup (R20) and restore (R21).
+// CSV export (R23), JSON backup (R20) and restore (R21).
 import { db, request } from '../db.js';
 import { el, viewEl, confirmAction } from '../ui.js';
-import { parseCsv, planImport, importSummary } from '../lib/csv.js';
+import {
+  parseCsv, planImport, importSummary, songsToCsv, csvFileName,
+} from '../lib/csv.js';
 import { songKey } from '../lib/song.js';
 import {
   buildBackup, backupFileName, validateBackup, countRecords, formatCounts, restoreMessage,
@@ -36,6 +38,17 @@ function filePicker(text, accept, onFile) {
     if (file) onFile(file);
   });
   return el('label', { class: 'btn file-btn' }, text, input);
+}
+
+// Hands `text` to the browser as a download called `name`, through a
+// temporary <a download> on a Blob URL.
+function saveFile(name, text, type) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const link = el('a', { href: url, download: name, hidden: '' });
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 export async function renderSettings() {
@@ -93,6 +106,20 @@ export async function renderSettings() {
     }
   }
 
+  // ---- R23: download every song as CSV ----
+  const exportMsg = messageArea();
+
+  async function downloadCsv() {
+    try {
+      const songs = await db.getAll('songs');
+      const name = csvFileName(new Date());
+      saveFile(name, songsToCsv(songs), 'text/csv;charset=utf-8');
+      exportMsg.show(`Created ${name} with ${songs.length} ${songs.length === 1 ? 'song' : 'songs'}.`);
+    } catch (err) {
+      exportMsg.show(`Could not create the CSV file. ${errorText(err)}`, { error: true });
+    }
+  }
+
   // ---- R20: download a JSON backup ----
   const backupMsg = messageArea();
 
@@ -101,13 +128,7 @@ export async function renderSettings() {
       const now = new Date();
       const backup = buildBackup(await db.exportAll(), now);
       const name = backupFileName(now);
-      const url = URL.createObjectURL(
-        new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
-      const link = el('a', { href: url, download: name, hidden: '' });
-      document.body.append(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      saveFile(name, JSON.stringify(backup, null, 2), 'application/json');
       backupMsg.show(`Created ${name} with ${formatCounts(countRecords(backup.data))}.`);
     } catch (err) {
       backupMsg.show(`Could not create a backup. ${errorText(err)}`, { error: true });
@@ -160,6 +181,15 @@ export async function renderSettings() {
         }),
         filePicker('Import songs from CSV', '.csv,text/csv', importCsv),
         importMsg.node),
+      el('div', { class: 'card stack' },
+        el('strong', { text: 'Export songs' }),
+        el('p', {
+          class: 'muted',
+          text: 'Save every song to a CSV file for a spreadsheet: title, artist, genre, year, key, tags, '
+            + 'status, rating and notes. It imports back here. Venues, sings and setlists are only in the backup.',
+        }),
+        el('button', { class: 'btn', type: 'button', text: 'Download songs as CSV', onclick: downloadCsv }),
+        exportMsg.node),
       el('div', { class: 'card stack' },
         el('strong', { text: 'Backup' }),
         el('p', {
