@@ -40,10 +40,10 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 
 | ID | Requirement | Priority | Status | Notes |
 |---|---|---|---|---|
-| R39 | A setlist is either venue-specific or general | Must | Not started | |
-| R14 | Create, rename and delete setlists | Must | Not started | |
-| R15 | Add and remove songs; a song can be in several setlists | Must | Not started | |
-| R43 | Flag songs in a setlist that I have already sung at its venue | Must | Not started | Shows the date last sung there; depends on R8 and R39 |
+| R39 | A setlist is either venue-specific or general | Must | Done | The venue can be changed later, including to General. e2e: "R39: a setlist is general or tied to a venue, and the venue can be changed" |
+| R14 | Create, rename and delete setlists | Must | Done | Names are unique, ignoring case; delete confirms and says how many songs it holds. e2e: "R14: creates, renames and deletes a setlist", "R14: keeps the setlist when the delete confirmation is dismissed", "R14: lists setlists by name and refuses empty and duplicate names" |
+| R15 | Add and remove songs; a song can be in several setlists | Must | Done | Search picker shows up to 20 matches; removing needs no confirmation. e2e: "R15: adds and removes songs, and a song can be in two setlists", "R15: a quick double tap adds a song only once" |
+| R43 | Flag songs in a setlist that I have already sung at its venue | Must | Done | Shows the date last sung there; general setlists show no flag. e2e: "R43: flags songs already sung at the setlist's venue with the last date", "R43: a general setlist shows no sung flags" |
 | R16 | Reorder songs in a setlist by dragging | Should | Not started | |
 | R44 | Show a setlist's mix by genre and decade | Should | Not started | Counts per genre and decade, so gaps and repeats stand out; depends on R36 |
 | R45 | Suggest a set: N songs not yet sung at the venue, spread across genres and decades | Could | Not started | A starting point I can edit |
