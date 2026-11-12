@@ -4,6 +4,9 @@ import { renderSetlists } from './views/setlists.js';
 import { renderVenues } from './views/venues.js';
 import { renderSettings } from './views/settings.js';
 import { rootScreen, setViewSwitcher } from './ui.js';
+import { initTheme } from './theme.js';
+
+initTheme(); // R32: dark by default, light or the phone's setting when chosen
 
 const titleEl = document.getElementById('view-title');
 const tabButtons = document.querySelectorAll('.tabs button');
@@ -37,11 +40,11 @@ if (navigator.storage && navigator.storage.persist) {
   navigator.storage.persist().catch(() => {});
 }
 
-// R27: offline support. Service workers need HTTPS or http://localhost.
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch((err) => {
-    console.warn('Service worker registration failed:', err);
-  });
-}
+// R27: offline support, and R30: offer to reload when a new version is ready.
+// Service workers need HTTPS or http://localhost. Loaded on its own so that
+// startup never waits on it, and a failure here cannot stop the app.
+import('./update.js')
+  .then(({ watchForUpdates }) => watchForUpdates('sw.js'))
+  .catch((err) => console.warn('Update check unavailable:', err));
 
 show('songs');

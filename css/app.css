@@ -11,6 +11,20 @@
   color-scheme: dark;
 }
 
+/* Light option (R32): js/theme.js sets data-theme from the saved choice. Keep
+   --bg in step with THEME_COLORS in js/lib/theme.js. */
+:root[data-theme="light"] {
+  --bg: #f6f3fb;
+  --surface: #ffffff;
+  --border: #d9d3e6;
+  --text: #1b1727;
+  --muted: #5d5771;
+  --accent: #c8176a;
+  --accent-text: #ffffff;
+  --error: #b3261e;
+  color-scheme: light;
+}
+
 * { box-sizing: border-box; }
 
 html, body { height: 100%; }
@@ -30,7 +44,7 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
-.top h1 { margin: 0; font-size: 1.25rem; }
+.top h1 { margin: 0 auto; max-width: 688px; font-size: 1.25rem; } /* lines up with <main> on a desktop (R33) */
 
 main {
   flex: 1;
@@ -45,6 +59,7 @@ main {
 /* Bottom tabs: reachable with a thumb (R31) */
 .tabs {
   display: flex;
+  justify-content: center;
   border-top: 1px solid var(--border);
   background: var(--surface);
   padding-bottom: env(safe-area-inset-bottom);
@@ -52,6 +67,7 @@ main {
 
 .tabs button {
   flex: 1;
+  max-width: 180px; /* on a desktop the tabs stay together in the middle (R33) */
   min-height: 56px;
   border: 0;
   background: none;
@@ -347,3 +363,140 @@ label > textarea { margin-top: 4px; color: var(--text); resize: vertical; }
 
 /* Label above its control, as when the label wraps it (see label > select above). */
 .find-field > label + select, .find-field > label + input { margin-top: 4px; }
+
+/* ---- Data and PWA polish (Wave 3 H) ---- */
+
+/* New version banner (R30). js/update.js appends it to <body>; the flex order
+   puts it between the screen and the tabs, within thumb reach. */
+.update-banner {
+  order: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--surface);
+  border-top: 2px solid var(--accent);
+}
+.update-banner p { flex: 1 1 12em; margin: 0; }
+.tabs { order: 2; }
+
+/* Printing from the browser's share or print menu (R24): the song list, a
+   setlist's songs or a venue's history in black on white, without the tabs,
+   forms, buttons and search boxes. List rows are buttons on screen, so those
+   stay and print as plain text. */
+@media print {
+  :root {
+    --bg: #fff;
+    --surface: #fff;
+    --border: #999;
+    --text: #000;
+    --muted: #333;
+    --accent: #000;
+    --accent-text: #fff;
+    --error: #000;
+    --tap: 0px; /* no tap targets on paper */
+    color-scheme: light;
+  }
+
+  @page { margin: 12mm; }
+
+  html { font-size: 11pt; }
+  html, body { height: auto; background: #fff; color: #000; }
+  body { display: block; line-height: 1.35; }
+
+  .tabs, .update-banner, form, .btn, button:not(.song-row):not(.open), input, select, textarea, label,
+  details.card, .find-field, .message, .notice, .status, .error, .picks {
+    display: none !important;
+  }
+  /* Separate rules: a browser without :has() drops only these. */
+  .card:has(> form) { display: none !important; }
+  .card:has(input[type="search"]) { display: none !important; }
+
+  .top { padding: 0 0 8pt; border: 0; }
+  .top h1 { font-size: 14pt; }
+  main { flex: none; overflow: visible; max-width: none; padding: 0; }
+  h2 { font-size: 13pt; }
+  .card, details.card { background: none; border: 0; border-radius: 0; padding: 0; }
+
+  /* One thin rule between rows, and no row split across pages. */
+  .list li { padding: 3pt 0; border-bottom: 0.5pt solid #999; break-inside: avoid; }
+  .song-row { padding: 3pt 0; color: #000; }
+  .venue-row .open, .setlist-row .open { padding: 0; color: #000; }
+  .list .sub, .song-row .sung, .count, .muted { color: #333; font-size: 11pt; }
+  .setlists-view .flag { margin: 0; padding: 0; border: 0; color: #000; font-size: 11pt; font-style: italic; }
+
+  /* A venue's history: the summary prints as plain text, without its arrow,
+     and closed entries print too where the browser supports ::details-content
+     (elsewhere they stay closed). A separate rule, as with :has() above. */
+  details::details-content { display: block; content-visibility: visible; }
+  summary { list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  .venues-view .history summary::after { content: none; }
+  .venues-view .entries li { padding: 0; border: 0; }
+}
+
+/* ---- Setlists polish (Wave 3 G) ---- */
+
+/* Song rows (R16): drag handle, the song, then Up, Down and Remove. On a phone
+   the buttons wrap onto their own line under the song, at the right, so titles
+   keep the full width; wider screens fit everything on one line. */
+.setlist-song { flex-wrap: wrap; }
+.setlist-song .text { flex: 1 1 12rem; }
+.setlist-song .sub { overflow-wrap: anywhere; }
+.setlist-song .moves { display: flex; gap: 6px; margin-left: auto; }
+.setlist-song .moves .btn { padding: 8px 12px; }
+.setlist-song .btn.move { min-width: var(--tap); padding: 0; font-size: 1.125rem; }
+.setlist-song .btn.move:disabled { opacity: 0.35; }
+
+.setlist-song .handle {
+  min-width: var(--tap);
+  padding: 0;
+  border-color: transparent;
+  background: none;
+  color: var(--muted);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none; /* a finger on the handle drags the row, not the page */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* The row being dragged is lifted above the others and follows the pointer. */
+.setlist-song.dragging {
+  position: relative;
+  z-index: 1;
+  background: var(--surface);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.55);
+}
+.setlist-song.dragging .handle { color: var(--accent); cursor: grabbing; }
+
+/* Mix by genre and decade (R44). */
+.mix .mix-empty { margin: 4px 0 0; }
+.mix .mix-lines { margin: 4px 0 0; }
+.mix .mix-lines > div + div { margin-top: 8px; }
+.mix .mix-lines dt { color: var(--muted); font-size: 0.875rem; }
+.mix .mix-lines dd { margin: 0; overflow-wrap: anywhere; }
+
+/* ---- Find and library polish (Wave 3 F) ---- */
+
+/* Sort by (R42, R12) takes the full width, so the longer orders read in full on a phone. */
+.find-grid > .find-field:has(> #find-sort) { grid-column: 1 / -1; }
+
+/* "Show N more" under a long list (R34). */
+.btn.more { width: 100%; }
+
+/* A link that looks and sizes like .btn: the video search on a song (R38). */
+a.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: inherit;
+  text-decoration: none;
+}
+
+a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

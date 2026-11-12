@@ -1,4 +1,5 @@
-// Setlist logic for the Setlists tab (R39, R14, R15, R43). Pure: no DOM, no IndexedDB.
+// Setlist logic for the Setlists tab (R39, R14, R15, R43, R16, R44). Pure: no
+// DOM, no IndexedDB.
 //
 // A setlist is { id, name, venueId|null, songIds[] } (see js/db.js). venueId null
 // is a general setlist (R39). songIds are in setlist order and never repeat
@@ -6,8 +7,13 @@
 // Functions here never change their inputs; they return new objects.
 import { plural, singStats } from './stats.js';
 import { filterSongs, sortByTitle } from './search.js';
+import { decadeOf, decadeLabel } from './find.js';
 
 const byName = (a, b) => String(a.name).localeCompare(String(b.name), undefined, { sensitivity: 'base' });
+
+// Case-insensitive text order, with a fixed tie-break so the result is stable.
+const compareText = (a, b) =>
+  a.localeCompare(b, undefined, { sensitivity: 'base' }) || (a < b ? -1 : a > b ? 1 : 0);
 
 // songIds in order with repeats dropped, so a stored setlist never lists a song twice.
 function uniqueIds(ids) {
@@ -119,6 +125,89 @@ export function pickableSongs(songs, setlist, query = '', limit = 20) {
   const inList = new Set(setlist.songIds || []);
   const matches = sortByTitle(filterSongs(songs, query)).filter((song) => !inList.has(song.id));
   return { shown: matches.slice(0, limit), total: matches.length };
+}
+
+// ---------- Order (R16) ----------
+
+// The ids in the order the list shows them: every id, or with `songsById` only
+// the songs that still exist, as setlistSongs() lists them.
+function shownIds(setlist, songsById) {
+  return songsById ? setlistSongs(setlist, songsById).map((s) => s.id) : uniqueIds(setlist.songIds);
+}
+
+const notANumber = (value) => typeof value !== 'number' || Number.isNaN(value);
+
+// Moves a song to position `newIndex` (0 is first); the others keep their
+// order. An index past either end moves it to that end. An unknown id or an
+// index that is not a number leaves the order as it was. With `songsById` (a
+// Map or an array of songs), positions count only songs that still exist, so
+// they match the list on screen; ids of deleted songs keep their places.
+export function moveSongId(setlist, songId, newIndex, songsById = null) {
+  const songIds = uniqueIds(setlist.songIds);
+  const shown = shownIds({ songIds }, songsById);
+  const from = shown.indexOf(songId);
+  if (from === -1 || notANumber(newIndex)) return { ...setlist, songIds };
+  const to = Math.min(Math.max(Math.trunc(newIndex), 0), shown.length - 1);
+  if (to === from) return { ...setlist, songIds };
+  // Just before the song now at `to` when moving up, just after it when moving down.
+  const rest = songIds.filter((id) => id !== songId);
+  rest.splice(rest.indexOf(shown[to]) + (to > from ? 1 : 0), 0, songId);
+  return { ...setlist, songIds: rest };
+}
+
+// Moves a song `delta` places: -1 is up one, 1 is down one. Stops at the ends,
+// so moving the first song up or the last song down changes nothing.
+// `songsById` works as in moveSongId().
+export function moveSongIdBy(setlist, songId, delta, songsById = null) {
+  const from = shownIds(setlist, songsById).indexOf(songId);
+  if (from === -1 || notANumber(delta)) return { ...setlist, songIds: uniqueIds(setlist.songIds) };
+  return moveSongId(setlist, songId, from + Math.trunc(delta), songsById);
+}
+
+// ---------- Mix by genre and decade (R44) ----------
+
+export const NO_GENRE = 'No genre';
+export const NO_YEAR = 'No year';
+
+// Songs per genre as [{ label, count }]: most first, then by name. Genres match
+// ignoring case and keep the first spelling seen. Songs without a genre are
+// counted as "No genre", always last.
+export function mixByGenre(songs) {
+  const groups = new Map(); // lowercased genre -> { label, count }
+  let none = 0;
+  for (const song of Array.isArray(songs) ? songs : []) {
+    const genre = String(song?.genre ?? '').trim();
+    if (!genre) {
+      none += 1;
+      continue;
+    }
+    const group = groups.get(genre.toLowerCase());
+    if (group) group.count += 1;
+    else groups.set(genre.toLowerCase(), { label: genre, count: 1 });
+  }
+  const out = [...groups.values()].sort((a, b) => b.count - a.count || compareText(a.label, b.label));
+  if (none) out.push({ label: NO_GENRE, count: none });
+  return out;
+}
+
+// Songs per decade as [{ label: '1980s', count }], oldest first. Songs without
+// a year are counted as "No year", always last.
+export function mixByDecade(songs) {
+  const counts = new Map(); // decade -> count
+  let none = 0;
+  for (const song of Array.isArray(songs) ? songs : []) {
+    const decade = decadeOf(song?.year);
+    if (decade === null) none += 1;
+    else counts.set(decade, (counts.get(decade) || 0) + 1);
+  }
+  const out = [...counts].sort((a, b) => a[0] - b[0]).map(([decade, count]) => ({ label: decadeLabel(decade), count }));
+  if (none) out.push({ label: NO_YEAR, count: none });
+  return out;
+}
+
+// 'Rock 4 · Soul 2' from mixByGenre() or mixByDecade(); '' for no items.
+export function formatMix(items) {
+  return (Array.isArray(items) ? items : []).map(({ label, count }) => `${label} ${count}`).join(' · ');
 }
 
 // ---------- Already sung at the venue (R43) ----------

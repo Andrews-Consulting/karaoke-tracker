@@ -136,3 +136,76 @@ test.describe('UX', () => {
     await expectTapTargets(page, 'Settings');
   });
 });
+
+const bodyBackground = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+const themeColor = (page) => page.locator('meta[name="theme-color"]').getAttribute('content');
+const DARK_BG = 'rgb(20, 18, 26)';
+const LIGHT_BG = 'rgb(246, 243, 251)';
+
+async function openSettings(page) {
+  await page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name: 'Settings' }).click();
+  await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+}
+
+test.describe('Theme', () => {
+  test('R32: is dark by default and a light option survives a reload', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' }); // the phone prefers light, the app still starts dark
+    await openApp(page);
+    expect(await bodyBackground(page)).toBe(DARK_BG);
+    expect(await themeColor(page)).toBe('#14121a');
+
+    await openSettings(page);
+    await page.getByLabel('Theme', { exact: true }).selectOption('light');
+    await expect.poll(() => bodyBackground(page)).toBe(LIGHT_BG);
+    expect(await themeColor(page)).toBe('#f6f3fb');
+
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Songs' })).toBeVisible();
+    expect(await bodyBackground(page)).toBe(LIGHT_BG);
+    await openSettings(page);
+    await expect(page.getByLabel('Theme', { exact: true })).toHaveValue('light');
+
+    await page.getByLabel('Theme', { exact: true }).selectOption('dark');
+    await expect.poll(() => bodyBackground(page)).toBe(DARK_BG);
+  });
+
+  test('R32: "Match the phone" follows the phone\'s setting', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await openApp(page);
+    await openSettings(page);
+    await page.getByLabel('Theme', { exact: true }).selectOption('system');
+    expect(await bodyBackground(page)).toBe(DARK_BG);
+
+    await page.emulateMedia({ colorScheme: 'light' });
+    await expect.poll(() => bodyBackground(page)).toBe(LIGHT_BG);
+
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Songs' })).toBeVisible();
+    expect(await bodyBackground(page)).toBe(LIGHT_BG);
+  });
+});
+
+test.describe('Desktop', () => {
+  test('R33: works at a desktop width with readable line lengths and no sideways scroll', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await openApp(page);
+    await seedEverything(page);
+
+    const main = page.locator('main');
+    const box = await main.boundingBox();
+    expect(box.width).toBeLessThanOrEqual(720);
+    expect(box.x).toBeGreaterThan(200); // centred, not stuck to the left edge
+
+    const tabs = await page.getByRole('navigation', { name: 'Sections' }).getByRole('button').all();
+    for (const tab of tabs) expect((await tab.boundingBox()).width).toBeLessThanOrEqual(180);
+
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+    expect(overflow).toBe(false);
+
+    await openSong(page, 'Valerie');
+    await expect(page.getByRole('heading', { level: 2, name: 'Valerie' })).toBeVisible();
+    await openSetlists(page);
+    await openSetlist(page, 'Friday');
+    await expect(page.getByRole('list', { name: 'Songs in this setlist' })).toBeVisible();
+  });
+});

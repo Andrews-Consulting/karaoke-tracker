@@ -56,17 +56,19 @@ npm run test:e2e    # Playwright, tests/e2e/, mobile Chromium + mobile WebKit
 
 - Installable shell with offline cache (R26, R27, R29)
 - Songs: add, search, open, edit every field (notes, genre, year, key, tags, status, rating), delete with confirmation (R1, R10, R2, R3, R36, R4–R7)
-- Find, on the Songs tab: pick a venue or "Overall" to see times sung and last sung per song, then filter by never sung here / not since a date, tag, status, rating, genre and decade, and sort by title, genre or decade (R37, R41, R11, R42)
-- Setlists: general or tied to a venue; create, edit, delete; add and remove songs; songs already sung at the setlist's venue are flagged with the last date (R39, R14, R15, R43)
-- Settings: CSV import, JSON backup and restore (R22, R20, R21)
+- Find, on the Songs tab: pick a venue or "Overall" to see times sung and last sung per song, then filter by never sung here / not since a date, tag, status, rating, genre and decade, and sort by title, artist, rating, last sung, date added, genre or decade (R37, R41, R11, R42, R12). Fast with 1,000 songs (R34); each song has a video search link (R38)
+- Setlists: general or tied to a venue; create, edit, delete; add, remove and reorder songs; songs already sung at the setlist's venue are flagged with the last date; a Mix card counts genres and decades (R39, R14, R15, R43, R16, R44)
+- Settings: CSV import of songs and, via a venue column, sings; CSV export; JSON backup and restore (R22, R46, R23, R20, R21)
+- Print-friendly song list, setlist and venue history from the browser's print menu (R24); new-version banner with Reload (R30); iPhone icon and status-bar tags (R29)
 - Venues: add, rename, delete when unused; log a sing with date and venue; times sung and last sung per venue and overall (R40, R8)
 - Data stored in IndexedDB, with a persistent-storage request (R18, R19)
 
 - One-handed layout: bottom tabs, 44 px controls everywhere, actions at the bottom of detail screens, and the back gesture returns from a detail screen instead of leaving the app (R31)
+- Dark by default with a light option and "Match the phone" (R32); readable at desktop widths (R33)
 
 ## Still to build
 
-Every Must requirement is built. R28 (hosting) is yours to do; see Deploy below. Should and Could items are listed in [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
+Every Must and Should requirement is built except R35 (MusicBrainz suggestions, the only network call). R28 (hosting) is yours to do; see Deploy below. Could items are listed in [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
 
 ## Two things to remember
 
@@ -89,4 +91,4 @@ Only the app files matter to the host: `index.html`, `manifest.webmanifest`, `sw
 
 **On the phone:** open the URL in Safari (iPhone) or Chrome (Android), then Share → "Add to Home Screen". The installed copy opens full screen and works offline after the first visit. Take a backup from Settings now and then; it is the only copy of your data.
 
-**Shipping an update:** commit, bump `CACHE_VERSION` in `sw.js`, push. Installed copies pick up the new files on the next open and show them on the open after that, so open the app twice to see a change.
+**Shipping an update:** commit, bump `CACHE_VERSION` in `sw.js`, push. An open copy of the app shows "A new version is ready" with a Reload button once the new files are cached (R30); a closed copy picks them up on its next open.

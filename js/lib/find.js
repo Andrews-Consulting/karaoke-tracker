@@ -1,11 +1,11 @@
-// Find on the Songs list (R37, R41, R11, R42): filters and sort orders, on
+// Find on the Songs list (R37, R41, R11, R42, R12): filters and sort orders, on
 // top of the R10 text search. Pure: no DOM, no IndexedDB, so Vitest can test it.
 //
 // Filters are a plain object; defaultFilters() lists every field. Sing stats
 // come from singStats() in stats.js: Map songId -> { count, lastSung }, for the
 // selected venue or overall. Dates are local 'YYYY-MM-DD' strings compared as
 // strings, like everywhere else in the app.
-import { filterSongs, sortByTitle } from './search.js';
+import { filterSongs } from './search.js';
 import { SONG_STATUSES, normalizeRating } from './song.js';
 import { isISODate, plural } from './stats.js';
 
@@ -20,6 +20,18 @@ export const SORT_OPTIONS = [
   ['genre', 'Genre'],
   ['decade', 'Decade'],
   ['decade-desc', 'Decade, newest first'],
+];
+
+// Every sort order the "Sort by" menu offers, in menu order: R42's above plus
+// R12's by artist, rating, last sung and date added. Title stays the default.
+export const SORT_MENU = [
+  ['title', 'Title'],
+  ['artist', 'Artist'],
+  ['rating', 'Rating, best first'],
+  ['last-sung', 'Last sung, most recent first'],
+  ['last-sung-oldest', 'Last sung, longest ago first'],
+  ['added', 'Date added, newest first'],
+  ...SORT_OPTIONS.slice(1),
 ];
 
 // Minimum rating choices (R11) as [value, label], highest first.
@@ -164,18 +176,56 @@ export function matchesFilters(song, stats, filters = defaultFilters()) {
   return true;
 }
 
-// ---------- Sorting (R42) ----------
+// ---------- Sorting (R42, R12) ----------
 
 // Missing values (null) sort last, whichever way the rest goes.
 const missingLast = (a, b) => (a === null) - (b === null);
 
+// The same order as localeCompare(b, undefined, { sensitivity: 'base' }), which
+// is defined in terms of this collator, but built once rather than per call.
+const baseCollator = new Intl.Collator(undefined, { sensitivity: 'base' });
+
+// Text where blank sorts last, otherwise ignoring case.
+function textBlankLast(ta, tb) {
+  if (!ta || !tb) return !ta - !tb;
+  return baseCollator.compare(ta, tb);
+}
+
+// A date-like string (a 'YYYY-MM-DD' sing date or an ISO createdAt), newest
+// first, compared as strings; null and blanks are missing and sort last.
+function newestFirst(a, b) {
+  if (!a || !b) return !a - !b;
+  return a < b ? 1 : a > b ? -1 : 0;
+}
+
+// The song's last sing at the selected venue (or overall), or null if never.
+function lastSungOf(song, stats) {
+  const entry = stats ? stats.get(song.id) : undefined;
+  return entry && entry.count > 0 && entry.lastSung ? entry.lastSung : null;
+}
+
+// Each comparator gets two songs and the stats map; ties return 0 and are
+// left in title order by the stable sort.
 const COMPARE = {
-  genre: (a, b) => {
-    const ga = fold(a.genre);
-    const gb = fold(b.genre);
-    if (!ga || !gb) return !ga - !gb;
-    return ga.localeCompare(gb, undefined, { sensitivity: 'base' });
+  artist: (a, b) => textBlankLast(fold(a.artist), fold(b.artist)),
+  rating: (a, b) => {
+    const ra = normalizeRating(a.rating);
+    const rb = normalizeRating(b.rating);
+    return ra === null || rb === null ? missingLast(ra, rb) : rb - ra;
   },
+  // Most recently sung first; never sung last.
+  'last-sung': (a, b, stats) => newestFirst(lastSungOf(a, stats), lastSungOf(b, stats)),
+  // Never sung first (the ones to pick), then the longest ago.
+  'last-sung-oldest': (a, b, stats) => {
+    const la = lastSungOf(a, stats);
+    const lb = lastSungOf(b, stats);
+    if (la === null || lb === null) return (lb === null) - (la === null);
+    return la < lb ? -1 : la > lb ? 1 : 0;
+  },
+  added: (a, b) => newestFirst(
+    typeof a.createdAt === 'string' ? a.createdAt : null,
+    typeof b.createdAt === 'string' ? b.createdAt : null),
+  genre: (a, b) => textBlankLast(fold(a.genre), fold(b.genre)),
   decade: (a, b) => {
     const da = decadeOf(a.year);
     const db = decadeOf(b.year);
@@ -188,23 +238,37 @@ const COMPARE = {
   },
 };
 
-// A sorted copy. Title order (sortByTitle) is the default and breaks every
-// tie, because the sort is stable and starts from title order.
-export function sortSongs(songs, sortKey = 'title') {
-  const byTitle = sortByTitle(songs);
-  const compare = COMPARE[sortKey];
-  return compare ? byTitle.sort(compare) : byTitle;
+// A copy in title order: the same order as sortByTitle() in search.js (title,
+// then artist, ignoring case), but compared with one collator built up front.
+// localeCompare() with options builds a new collator on every call, which
+// adds up to tens of milliseconds over 1,000 songs (R34).
+const compareTitles = (a, b) =>
+  baseCollator.compare(a.title, b.title) || baseCollator.compare(a.artist, b.artist);
+
+export function titleOrder(songs) {
+  return [...songs].sort(compareTitles);
+}
+
+// A sorted copy. Title order is the default and breaks every tie, because
+// the sort is stable and starts from title order. `stats` is singStats() for
+// the selected venue or overall; only the last-sung orders read it, and
+// without it every song counts as never sung.
+export function sortSongs(songs, sortKey = 'title', stats = new Map()) {
+  const byTitle = titleOrder(songs);
+  const compare = Object.hasOwn(COMPARE, sortKey) ? COMPARE[sortKey] : null;
+  return compare ? byTitle.sort((a, b) => compare(a, b, stats)) : byTitle;
 }
 
 // ---------- Together ----------
 
 // The songs to show: the text search (R10), then the filters, then the sort.
-// `statsBySong` is singStats() for the selected venue or overall.
+// `statsBySong` is singStats() for the selected venue or overall; the sing
+// filters and the last-sung sorts both use it.
 export function applyFind(songs, statsBySong = new Map(), filters = defaultFilters(), query = '') {
   const f = { ...defaultFilters(), ...filters };
   const shown = filterSongs(songs, query)
     .filter((song) => matchesFilters(song, statsBySong ? statsBySong.get(song.id) : undefined, f));
-  return sortSongs(shown, f.sort);
+  return sortSongs(shown, f.sort, statsBySong);
 }
 
 // A song row's sing line (R8, R37) in parts that each stay on one line:

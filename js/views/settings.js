@@ -1,8 +1,13 @@
-// Settings view: persistent storage (R19), CSV import (R22), JSON backup (R20)
-// and restore (R21).
-import { db } from '../db.js';
+// Settings view: persistent storage (R19), CSV import (R22, with sings R46),
+// CSV export (R23), JSON backup (R20) and restore (R21).
+import { db, request } from '../db.js';
 import { el, viewEl, confirmAction } from '../ui.js';
-import { parseCsv, planImport, importSummary } from '../lib/csv.js';
+import {
+  parseCsv, planImport, importSummary, songsToCsv, csvFileName,
+} from '../lib/csv.js';
+import { songKey } from '../lib/song.js';
+import { THEME_CHOICES } from '../lib/theme.js';
+import { savedThemeChoice, applyThemeChoice } from '../theme.js';
 import {
   buildBackup, backupFileName, validateBackup, countRecords, formatCounts, restoreMessage,
 } from '../lib/backup.js';
@@ -37,7 +42,28 @@ function filePicker(text, accept, onFile) {
   return el('label', { class: 'btn file-btn' }, text, input);
 }
 
+// Hands `text` to the browser as a download called `name`, through a
+// temporary <a download> on a Blob URL.
+function saveFile(name, text, type) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const link = el('a', { href: url, download: name, hidden: '' });
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 export async function renderSettings() {
+  // ---- R32: appearance ----
+  const themeSelect = el('select', { name: 'theme', id: 'setting-theme' },
+    ...THEME_CHOICES.map(([value, text]) => el('option', { value, text })));
+  themeSelect.value = savedThemeChoice();
+  themeSelect.addEventListener('change', () => applyThemeChoice(themeSelect.value));
+  const appearance = el('div', { class: 'card stack' },
+    el('strong', { text: 'Appearance' }),
+    el('label', { for: 'setting-theme', text: 'Theme' }),
+    themeSelect);
+
   const status = el('p', { class: 'muted' });
 
   async function refresh() {
@@ -59,18 +85,50 @@ export async function renderSettings() {
     },
   });
 
-  // ---- R22: import songs from CSV ----
+  // ---- R22, R46: import songs, and sings, from CSV ----
   const importMsg = messageArea();
+
+  // Writes a plan in one transaction: songs, then venues, then the sings that
+  // point at them, so a failure part-way leaves nothing half-imported.
+  function applyImport(plan, songs, venues) {
+    const stores = ['songs', 'venues', 'sings'];
+    return db.transaction(stores, 'readwrite', async (s) => {
+      const songIds = new Map(songs.map((song) => [songKey(song), song.id]));
+      for (const song of plan.toAdd) songIds.set(songKey(song), await request(s.songs.add(song)));
+      const venueIds = new Map(venues.map((v) => [v.name.trim().toLowerCase(), v.id]));
+      for (const venue of plan.venuesToAdd) {
+        venueIds.set(venue.name.toLowerCase(), await request(s.venues.add(venue)));
+      }
+      for (const sing of plan.sings) {
+        s.sings.add({ songId: songIds.get(sing.songKey), venueId: venueIds.get(sing.venue.toLowerCase()), date: sing.date });
+      }
+    });
+  }
 
   async function importCsv(file) {
     importMsg.show(`Reading ${file.name}…`);
     try {
       const text = await file.text();
-      const plan = planImport(parseCsv(text), await db.getAll('songs'));
-      if (plan.toAdd.length) await db.addAll('songs', plan.toAdd);
+      const [songs, venues, sings] = await Promise.all([db.getAll('songs'), db.getAll('venues'), db.getAll('sings')]);
+      const plan = planImport(parseCsv(text), songs, new Date(), { venues, sings });
+      if (plan.toAdd.length || plan.sings.length) await applyImport(plan, songs, venues);
       importMsg.show(importSummary(plan));
     } catch (err) {
       importMsg.show(`Could not import ${file.name}. ${errorText(err)}`, { error: true });
+    }
+  }
+
+  // ---- R23: download every song as CSV ----
+  const exportMsg = messageArea();
+
+  async function downloadCsv() {
+    try {
+      const songs = await db.getAll('songs');
+      const name = csvFileName(new Date());
+      saveFile(name, songsToCsv(songs), 'text/csv;charset=utf-8');
+      exportMsg.show(`Created ${name} with ${songs.length} ${songs.length === 1 ? 'song' : 'songs'}.`);
+    } catch (err) {
+      exportMsg.show(`Could not create the CSV file. ${errorText(err)}`, { error: true });
     }
   }
 
@@ -82,13 +140,7 @@ export async function renderSettings() {
       const now = new Date();
       const backup = buildBackup(await db.exportAll(), now);
       const name = backupFileName(now);
-      const url = URL.createObjectURL(
-        new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
-      const link = el('a', { href: url, download: name, hidden: '' });
-      document.body.append(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      saveFile(name, JSON.stringify(backup, null, 2), 'application/json');
       backupMsg.show(`Created ${name} with ${formatCounts(countRecords(backup.data))}.`);
     } catch (err) {
       backupMsg.show(`Could not create a backup. ${errorText(err)}`, { error: true });
@@ -129,6 +181,7 @@ export async function renderSettings() {
 
   viewEl.replaceChildren(
     el('div', { class: 'stack' },
+      appearance,
       el('div', { class: 'card stack' }, el('strong', { text: 'Storage' }), status, ask),
       el('div', { class: 'card stack' },
         el('strong', { text: 'Import songs' }),
@@ -136,10 +189,20 @@ export async function renderSettings() {
           class: 'muted',
           text: 'Choose a CSV file with a header row. Title and artist columns are required; '
             + 'genre, year, key and tags are optional (separate tags with ; or ,). '
-            + 'Songs already in your library are skipped.',
+            + 'Songs already in your library are skipped. '
+            + 'A venue column logs a sing there for each row, dated by the date column or today when blank.',
         }),
         filePicker('Import songs from CSV', '.csv,text/csv', importCsv),
         importMsg.node),
+      el('div', { class: 'card stack' },
+        el('strong', { text: 'Export songs' }),
+        el('p', {
+          class: 'muted',
+          text: 'Save every song to a CSV file for a spreadsheet: title, artist, genre, year, key, tags, '
+            + 'status, rating and notes. It imports back here. Venues, sings and setlists are only in the backup.',
+        }),
+        el('button', { class: 'btn', type: 'button', text: 'Download songs as CSV', onclick: downloadCsv }),
+        exportMsg.node),
       el('div', { class: 'card stack' },
         el('strong', { text: 'Backup' }),
         el('p', {
