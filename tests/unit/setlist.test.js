@@ -4,6 +4,7 @@ import {
   makeSetlist, updateSetlist, describeSetlistDelete, addSongId, removeSongId, setlistSongs,
   pickableSongs, sungFlags,
 } from '../../js/lib/setlist.js';
+import { moveSongId, moveSongIdBy, mixByGenre, mixByDecade, formatMix } from '../../js/lib/setlist.js';
 
 const CROWN = 1;
 const ANCHOR = 2;
@@ -305,5 +306,165 @@ describe('R43 sungFlags', () => {
     ];
     expect(sungFlags(friday, two).get(12)).toBe('2026-11-01');
     expect(sungFlags(friday, [...two].reverse()).get(12)).toBe('2026-11-01');
+  });
+});
+
+describe('R16 moveSongId', () => {
+  const four = { id: 7, name: 'Four', venueId: null, songIds: [1, 2, 3, 4] };
+
+  it('moves a song to a new position, keeping the others in order, without changing the input', () => {
+    const next = moveSongId(four, 4, 1);
+    expect(next.songIds).toEqual([1, 4, 2, 3]);
+    expect(next).not.toBe(four);
+    expect(next).toMatchObject({ id: 7, name: 'Four', venueId: null });
+    expect(four.songIds).toEqual([1, 2, 3, 4]);
+    expect(moveSongId(four, 1, 2).songIds).toEqual([2, 3, 1, 4]);
+  });
+
+  it('moves to either end', () => {
+    expect(moveSongId(four, 3, 0).songIds).toEqual([3, 1, 2, 4]);
+    expect(moveSongId(four, 2, 3).songIds).toEqual([1, 3, 4, 2]);
+  });
+
+  it('clamps an index past either end to that end', () => {
+    expect(moveSongId(four, 3, -5).songIds).toEqual([3, 1, 2, 4]);
+    expect(moveSongId(four, 2, 99).songIds).toEqual([1, 3, 4, 2]);
+    expect(moveSongId(four, 2, Infinity).songIds).toEqual([1, 3, 4, 2]);
+  });
+
+  it('is a no-op for an unknown id, the same index or an index that is not a number', () => {
+    expect(moveSongId(four, 99, 0).songIds).toEqual([1, 2, 3, 4]);
+    expect(moveSongId(four, 2, 1).songIds).toEqual([1, 2, 3, 4]);
+    expect(moveSongId(four, 2, NaN).songIds).toEqual([1, 2, 3, 4]);
+    expect(moveSongId(four, 2, '0').songIds).toEqual([1, 2, 3, 4]);
+    expect(moveSongId({ name: 'x' }, 1, 0).songIds).toEqual([]);
+  });
+
+  it('never creates a repeated id, and drops one already there', () => {
+    expect(moveSongId({ songIds: [1, 2, 1, 3] }, 3, 0).songIds).toEqual([3, 1, 2]);
+    expect(moveSongId({ songIds: [1, 2, 1, 3] }, 1, 2).songIds).toEqual([2, 3, 1]);
+    for (let to = 0; to < 4; to += 1) {
+      const ids = moveSongId(four, 2, to).songIds;
+      expect(new Set(ids).size).toBe(4);
+      expect([...ids].sort()).toEqual([1, 2, 3, 4]);
+    }
+  });
+
+  it('with songsById, counts only songs that still exist, as the list on screen does', () => {
+    const byId = new Map([1, 2, 3].map((id) => [id, { id, title: `Song ${id}` }]));
+    const withGone = { songIds: [9, 1, 2, 8, 3] }; // 9 and 8 were deleted
+    expect(moveSongId(withGone, 3, 0, byId).songIds).toEqual([9, 3, 1, 2, 8]);
+    expect(moveSongId(withGone, 1, 1, byId).songIds).toEqual([9, 2, 1, 8, 3]);
+    expect(moveSongId(withGone, 1, 99, byId).songIds).toEqual([9, 2, 8, 3, 1]);
+    expect(moveSongId(withGone, 9, 0, byId).songIds).toEqual([9, 1, 2, 8, 3]); // not shown, so not moved
+    expect(moveSongId(withGone, 3, 0, [...byId.values()]).songIds).toEqual([9, 3, 1, 2, 8]);
+  });
+});
+
+describe('R16 moveSongIdBy', () => {
+  const four = { id: 7, name: 'Four', venueId: null, songIds: [1, 2, 3, 4] };
+
+  it('moves a song up or down one place, without changing the input', () => {
+    expect(moveSongIdBy(four, 3, -1).songIds).toEqual([1, 3, 2, 4]);
+    expect(moveSongIdBy(four, 1, 1).songIds).toEqual([2, 1, 3, 4]);
+    expect(four.songIds).toEqual([1, 2, 3, 4]);
+  });
+
+  it('moves several places and stops at the ends', () => {
+    expect(moveSongIdBy(four, 4, -2).songIds).toEqual([1, 4, 2, 3]);
+    expect(moveSongIdBy(four, 3, -10).songIds).toEqual([3, 1, 2, 4]);
+    expect(moveSongIdBy(four, 2, 10).songIds).toEqual([1, 3, 4, 2]);
+  });
+
+  it('is a no-op for the first song up, the last song down, delta 0 and an unknown id', () => {
+    expect(moveSongIdBy(four, 1, -1).songIds).toEqual([1, 2, 3, 4]);
+    expect(moveSongIdBy(four, 4, 1).songIds).toEqual([1, 2, 3, 4]);
+    expect(moveSongIdBy(four, 2, 0).songIds).toEqual([1, 2, 3, 4]);
+    expect(moveSongIdBy(four, 99, -1).songIds).toEqual([1, 2, 3, 4]);
+    expect(moveSongIdBy(four, 2, NaN).songIds).toEqual([1, 2, 3, 4]);
+    expect(moveSongIdBy({ name: 'x' }, 1, 1)).toEqual({ name: 'x', songIds: [] });
+  });
+
+  it('never creates a repeated id', () => {
+    let list = four;
+    for (const [id, delta] of [[1, 1], [1, 1], [4, -3], [2, 2], [3, -1]]) list = moveSongIdBy(list, id, delta);
+    expect(list.songIds).toHaveLength(4);
+    expect(new Set(list.songIds).size).toBe(4);
+    expect(moveSongIdBy({ songIds: [1, 2, 1] }, 2, -1).songIds).toEqual([2, 1]);
+  });
+
+  it('with songsById, steps over ids of songs that no longer exist', () => {
+    const byId = new Map([1, 2].map((id) => [id, { id }]));
+    const withGone = { songIds: [1, 9, 2] };
+    expect(moveSongIdBy(withGone, 2, -1, byId).songIds).toEqual([2, 1, 9]);
+    expect(moveSongIdBy(withGone, 1, 1, byId).songIds).toEqual([9, 2, 1]);
+    // Without it the deleted id takes a place, so one step up moves past it only.
+    expect(moveSongIdBy(withGone, 2, -1).songIds).toEqual([1, 2, 9]);
+  });
+});
+
+describe('R44 mix by genre and decade', () => {
+  const mixSongs = [
+    { id: 1, title: 'Hotel California', genre: 'Rock', year: 1976 },
+    { id: 2, title: 'Dancing Queen', genre: 'Pop', year: 1976 },
+    { id: 3, title: 'Livin\' on a Prayer', genre: ' rock ', year: 1986 },
+    { id: 4, title: 'Valerie', genre: 'Soul', year: 2006 },
+    { id: 5, title: 'Untitled', genre: '', year: null },
+    { id: 6, title: 'Mr. Brightside', genre: 'ROCK', year: 2004 },
+    { id: 7, title: 'Back to Black', genre: 'soul', year: 1980 },
+    { id: 8, title: 'No fields' },
+  ];
+
+  it('counts genres ignoring case, keeping the first spelling, most first and then by name', () => {
+    expect(mixByGenre(mixSongs)).toEqual([
+      { label: 'Rock', count: 3 },
+      { label: 'Soul', count: 2 },
+      { label: 'Pop', count: 1 },
+      { label: 'No genre', count: 2 },
+    ]);
+  });
+
+  it('breaks count ties by name ignoring case, and puts No genre last whatever its count', () => {
+    const songs = [{ genre: 'soul' }, { genre: 'Funk' }, { genre: '' }, { genre: null }, { genre: '   ' }, { genre: 'disco' }];
+    expect(mixByGenre(songs).map((g) => g.label)).toEqual(['disco', 'Funk', 'soul', 'No genre']);
+    expect(mixByGenre(songs).at(-1)).toEqual({ label: 'No genre', count: 3 });
+  });
+
+  it('counts decades oldest first, with No year last', () => {
+    expect(mixByDecade(mixSongs)).toEqual([
+      { label: '1970s', count: 2 },
+      { label: '1980s', count: 2 },
+      { label: '2000s', count: 2 },
+      { label: 'No year', count: 2 },
+    ]);
+    expect(mixByDecade([{ year: 2019 }, { year: 1959 }, { year: 2010 }, { year: '' }]).map((d) => d.label))
+      .toEqual(['1950s', '2010s', 'No year']);
+  });
+
+  it('leaves out No genre and No year when every song has one', () => {
+    const songs = [{ genre: 'Rock', year: 1979 }, { genre: 'Rock', year: 1971 }];
+    expect(mixByGenre(songs)).toEqual([{ label: 'Rock', count: 2 }]);
+    expect(mixByDecade(songs)).toEqual([{ label: '1970s', count: 2 }]);
+  });
+
+  it('is empty for an empty or missing list', () => {
+    expect(mixByGenre([])).toEqual([]);
+    expect(mixByDecade([])).toEqual([]);
+    expect(mixByGenre(undefined)).toEqual([]);
+    expect(mixByDecade(null)).toEqual([]);
+  });
+
+  it('formats the counts as one line', () => {
+    expect(formatMix(mixByGenre(mixSongs))).toBe('Rock 3 · Soul 2 · Pop 1 · No genre 2');
+    expect(formatMix(mixByDecade(mixSongs))).toBe('1970s 2 · 1980s 2 · 2000s 2 · No year 2');
+    expect(formatMix([{ label: 'Rock', count: 1 }])).toBe('Rock 1');
+    expect(formatMix([])).toBe('');
+  });
+
+  it('does not change its input', () => {
+    const copy = structuredClone(mixSongs);
+    mixByGenre(mixSongs);
+    mixByDecade(mixSongs);
+    expect(mixSongs).toEqual(copy);
   });
 });
