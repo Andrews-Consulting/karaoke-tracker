@@ -5,6 +5,7 @@ import {
   countActiveFilters, matchesFilters, sortSongs, applyFind, sungParts,
 } from '../../js/lib/find.js';
 import { singStats } from '../../js/lib/stats.js';
+import { SORT_MENU, SORTS_BY_SINGS } from '../../js/lib/find.js';
 
 // A complete song record, like makeSong() builds, with an id.
 let nextId = 1;
@@ -305,5 +306,203 @@ describe('R8 R37 sungParts', () => {
     expect(sungParts(undefined, true)).toEqual(['Never sung here']);
     expect(sungParts(undefined, false)).toEqual(['Never sung']);
     expect(sungParts({ count: 0, lastSung: null }, true)).toEqual(['Never sung here']);
+  });
+});
+
+describe('R12 the "Sort by" menu', () => {
+  it('offers title first, the R12 orders, then every R42 order', () => {
+    expect(SORT_MENU).toEqual([
+      ['title', 'Title'],
+      ['artist', 'Artist'],
+      ['rating', 'Rating, best first'],
+      ['last-sung', 'Last sung, most recent first'],
+      ['last-sung-oldest', 'Last sung, longest ago first'],
+      ['added', 'Date added, newest first'],
+      ['genre', 'Genre'],
+      ['decade', 'Decade'],
+      ['decade-desc', 'Decade, newest first'],
+    ]);
+    for (const option of SORT_OPTIONS) expect(SORT_MENU).toContainEqual(option);
+    expect(defaultFilters().sort).toBe(SORT_MENU[0][0]);
+  });
+
+  it('marks only the last-sung orders as needing the sing stats', () => {
+    expect(SORTS_BY_SINGS).toEqual(['last-sung', 'last-sung-oldest']);
+  });
+
+  it('does not count any sort order as a filter', () => {
+    for (const [sort] of SORT_MENU) expect(countActiveFilters(filters({ sort }))).toBe(0);
+  });
+
+  it('handles an empty library for every order, with or without stats', () => {
+    for (const [key] of SORT_MENU) {
+      expect(sortSongs([], key)).toEqual([]);
+      expect(sortSongs([], key, new Map())).toEqual([]);
+      expect(sortSongs([], key, undefined)).toEqual([]);
+    }
+  });
+
+  it('never changes its input', () => {
+    const library = [song({ title: 'B', rating: 2 }), song({ title: 'A', rating: 5 })];
+    const before = [...library];
+    for (const [key] of SORT_MENU) sortSongs(library, key, new Map());
+    expect(library).toEqual(before);
+  });
+});
+
+describe('R12 sortSongs by artist', () => {
+  it('sorts by artist ignoring case, then title, with no artist last', () => {
+    const library = [
+      song({ title: 'Valerie', artist: 'Amy Winehouse' }),
+      song({ title: 'Take On Me', artist: 'a-ha' }),
+      song({ title: 'Mystery', artist: '' }),
+      song({ title: 'Africa', artist: 'Toto' }),
+      song({ title: 'Back to Black', artist: 'amy winehouse' }),
+      song({ title: 'Dancing Queen', artist: 'ABBA' }),
+      song({ title: 'Anonymous', artist: '   ' }),
+      song({ title: 'Lost', artist: undefined }),
+    ];
+    expect(titles(sortSongs(library, 'artist'))).toEqual(
+      ['Take On Me', 'Dancing Queen', 'Back to Black', 'Valerie', 'Africa', 'Anonymous', 'Lost', 'Mystery']);
+  });
+
+  it('breaks ties by title, then by the title order\'s own tie-break', () => {
+    const library = [
+      song({ title: 'hello', artist: 'Adele', year: 2015 }),
+      song({ title: 'Easy on Me', artist: 'ADELE' }),
+      song({ title: 'Hello', artist: 'adele', year: 2016 }),
+    ];
+    const sorted = sortSongs(library, 'artist');
+    expect(titles(sorted)).toEqual(['Easy on Me', 'hello', 'Hello']);
+    // Same title and artist ignoring case: they keep their order from the input.
+    expect(sorted.slice(1).map((s) => s.year)).toEqual([2015, 2016]);
+  });
+});
+
+describe('R12 sortSongs by rating', () => {
+  it('sorts 5 to 1, then title, with unrated (or invalid) last', () => {
+    const library = [
+      song({ title: 'Three', rating: 3 }),
+      song({ title: 'Unrated', rating: null }),
+      song({ title: 'Five b', rating: 5 }),
+      song({ title: 'One', rating: 1 }),
+      song({ title: 'Five a', rating: 5 }),
+      song({ title: 'Broken', rating: 9 }),
+      song({ title: 'Text four', rating: '4' }),
+      song({ title: 'Absent', rating: undefined }),
+    ];
+    expect(titles(sortSongs(library, 'rating'))).toEqual(
+      ['Five a', 'Five b', 'Text four', 'Three', 'One', 'Absent', 'Broken', 'Unrated']);
+  });
+});
+
+describe('R12 sortSongs by last sung', () => {
+  const CROWN = 1;
+  const ANCHOR = 2;
+  const valerie = song({ title: 'Valerie' });
+  const queen = song({ title: 'Dancing Queen' });
+  const africa = song({ title: 'Africa' });
+  const rehab = song({ title: 'Rehab' });
+  const toxic = song({ title: 'Toxic' });
+  const library = [valerie, queen, africa, rehab, toxic];
+  const sings = [
+    { id: 1, songId: valerie.id, venueId: CROWN, date: '2026-10-01' },
+    { id: 2, songId: valerie.id, venueId: ANCHOR, date: '2026-11-05' },
+    { id: 3, songId: queen.id, venueId: CROWN, date: '2026-09-15' },
+    { id: 4, songId: rehab.id, venueId: ANCHOR, date: '2026-10-01' },
+    { id: 5, songId: toxic.id, venueId: CROWN, date: '2026-10-01' },
+  ];
+
+  it('most recent first, with never sung last and ties by title', () => {
+    expect(titles(sortSongs(library, 'last-sung', singStats(sings)))).toEqual(
+      ['Valerie', 'Rehab', 'Toxic', 'Dancing Queen', 'Africa']);
+  });
+
+  it('longest ago first, with never sung first and ties by title', () => {
+    expect(titles(sortSongs(library, 'last-sung-oldest', singStats(sings)))).toEqual(
+      ['Africa', 'Dancing Queen', 'Rehab', 'Toxic', 'Valerie']);
+  });
+
+  it('uses the stats for the selected venue', () => {
+    const crown = singStats(sings, CROWN);
+    expect(titles(sortSongs(library, 'last-sung', crown))).toEqual(
+      ['Toxic', 'Valerie', 'Dancing Queen', 'Africa', 'Rehab']);
+    expect(titles(sortSongs(library, 'last-sung-oldest', crown))).toEqual(
+      ['Africa', 'Rehab', 'Dancing Queen', 'Toxic', 'Valerie']);
+    const anchor = singStats(sings, ANCHOR);
+    expect(titles(sortSongs(library, 'last-sung', anchor))).toEqual(
+      ['Valerie', 'Rehab', 'Africa', 'Dancing Queen', 'Toxic']);
+    expect(titles(sortSongs(library, 'last-sung-oldest', anchor))).toEqual(
+      ['Africa', 'Dancing Queen', 'Toxic', 'Rehab', 'Valerie']);
+  });
+
+  it('treats a zero count or a missing date as never sung', () => {
+    const stats = new Map([
+      [valerie.id, { count: 0, lastSung: null }],
+      [queen.id, { count: 1, lastSung: '2026-01-01' }],
+      [rehab.id, { count: 2, lastSung: '' }],
+    ]);
+    expect(titles(sortSongs(library, 'last-sung', stats))).toEqual(
+      ['Dancing Queen', 'Africa', 'Rehab', 'Toxic', 'Valerie']);
+    expect(titles(sortSongs(library, 'last-sung-oldest', stats))).toEqual(
+      ['Africa', 'Rehab', 'Toxic', 'Valerie', 'Dancing Queen']);
+  });
+
+  it('without stats, every song is never sung and the order is by title', () => {
+    const byTitle = ['Africa', 'Dancing Queen', 'Rehab', 'Toxic', 'Valerie'];
+    for (const key of ['last-sung', 'last-sung-oldest']) {
+      expect(titles(sortSongs(library, key))).toEqual(byTitle);
+      expect(titles(sortSongs(library, key, new Map()))).toEqual(byTitle);
+      expect(titles(sortSongs(library, key, null))).toEqual(byTitle);
+    }
+  });
+});
+
+describe('R12 sortSongs by date added', () => {
+  it('sorts newest first by the createdAt string, with missing last and ties by title', () => {
+    const library = [
+      song({ title: 'Old', createdAt: '2025-03-01T10:00:00.000Z' }),
+      song({ title: 'Missing', createdAt: undefined }),
+      song({ title: 'Newest', createdAt: '2026-11-01T09:30:00.000Z' }),
+      song({ title: 'Same time b', createdAt: '2026-06-01T12:00:00.000Z' }),
+      song({ title: 'Blank', createdAt: '' }),
+      song({ title: 'Same time a', createdAt: '2026-06-01T12:00:00.000Z' }),
+      song({ title: 'Not text', createdAt: 12345 }),
+      song({ title: 'Same day, earlier', createdAt: '2026-06-01T08:00:00.000Z' }),
+    ];
+    expect(titles(sortSongs(library, 'added'))).toEqual(
+      ['Newest', 'Same time a', 'Same time b', 'Same day, earlier', 'Old', 'Blank', 'Missing', 'Not text']);
+  });
+});
+
+describe('R12 applyFind sorts with the stats it is given', () => {
+  const CROWN = 1;
+  const valerie = song({ title: 'Valerie', artist: 'Amy Winehouse', rating: 4, createdAt: '2026-01-02T00:00:00.000Z' });
+  const queen = song({ title: 'Dancing Queen', artist: 'ABBA', rating: 5, createdAt: '2026-01-03T00:00:00.000Z' });
+  const africa = song({ title: 'Africa', artist: 'Toto', rating: 4, createdAt: '2026-01-01T00:00:00.000Z' });
+  const library = [valerie, queen, africa];
+  const sings = [
+    { id: 1, songId: valerie.id, venueId: CROWN, date: '2026-10-01' },
+    { id: 2, songId: queen.id, venueId: 2, date: '2026-11-01' },
+  ];
+
+  it('passes the venue\'s stats to the last-sung sorts', () => {
+    const recent = filters({ sort: 'last-sung' });
+    expect(titles(applyFind(library, singStats(sings), recent))).toEqual(['Dancing Queen', 'Valerie', 'Africa']);
+    expect(titles(applyFind(library, singStats(sings, CROWN), recent))).toEqual(['Valerie', 'Africa', 'Dancing Queen']);
+    const oldest = filters({ sort: 'last-sung-oldest' });
+    expect(titles(applyFind(library, singStats(sings, CROWN), oldest))).toEqual(['Africa', 'Dancing Queen', 'Valerie']);
+    expect(titles(applyFind(library, undefined, oldest))).toEqual(['Africa', 'Dancing Queen', 'Valerie']);
+  });
+
+  it('combines the new orders with the search and the filters', () => {
+    expect(titles(applyFind(library, singStats(sings), filters({ sort: 'artist' }))))
+      .toEqual(['Dancing Queen', 'Valerie', 'Africa']);
+    expect(titles(applyFind(library, singStats(sings), filters({ sort: 'rating', minRating: 4 }), 'a')))
+      .toEqual(['Dancing Queen', 'Africa', 'Valerie']);
+    expect(titles(applyFind(library, singStats(sings), filters({ sort: 'added', sung: SUNG_NEVER }))))
+      .toEqual(['Africa']);
+    expect(titles(applyFind(library, singStats(sings, CROWN), filters({ sort: 'added', sung: SUNG_NEVER }))))
+      .toEqual(['Dancing Queen', 'Africa']);
   });
 });
