@@ -347,3 +347,48 @@ label > textarea { margin-top: 4px; color: var(--text); resize: vertical; }
 
 /* Label above its control, as when the label wraps it (see label > select above). */
 .find-field > label + select, .find-field > label + input { margin-top: 4px; }
+
+/* ---- Setlists polish (Wave 3 G) ---- */
+
+/* Song rows (R16): drag handle, the song, then Up, Down and Remove. On a phone
+   the buttons wrap onto their own line under the song, at the right, so titles
+   keep the full width; wider screens fit everything on one line. */
+.setlist-song { flex-wrap: wrap; }
+.setlist-song .text { flex: 1 1 12rem; }
+.setlist-song .sub { overflow-wrap: anywhere; }
+.setlist-song .moves { display: flex; gap: 6px; margin-left: auto; }
+.setlist-song .moves .btn { padding: 8px 12px; }
+.setlist-song .btn.move { min-width: var(--tap); padding: 0; font-size: 1.125rem; }
+.setlist-song .btn.move:disabled { opacity: 0.35; }
+
+.setlist-song .handle {
+  min-width: var(--tap);
+  padding: 0;
+  border-color: transparent;
+  background: none;
+  color: var(--muted);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none; /* a finger on the handle drags the row, not the page */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* The row being dragged is lifted above the others and follows the pointer. */
+.setlist-song.dragging {
+  position: relative;
+  z-index: 1;
+  background: var(--surface);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.55);
+}
+.setlist-song.dragging .handle { color: var(--accent); cursor: grabbing; }
+
+/* Mix by genre and decade (R44). */
+.mix .mix-empty { margin: 4px 0 0; }
+.mix .mix-lines { margin: 4px 0 0; }
+.mix .mix-lines > div + div { margin-top: 8px; }
+.mix .mix-lines dt { color: var(--muted); font-size: 0.875rem; }
+.mix .mix-lines dd { margin: 0; overflow-wrap: anywhere; }

@@ -82,3 +82,52 @@ export async function removeFromSetlist(page, { title, artist }) {
 function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+
+// ---------- Reorder (R16) and mix (R44), Wave 3 G ----------
+
+// A song's drag handle in the open setlist.
+export function dragHandle(page, title) {
+  return page.getByRole('list', { name: 'Songs in this setlist' })
+    .getByRole('button', { name: `Move ${title}`, exact: true });
+}
+
+// A song's Up or Down button: direction is 'up' or 'down'.
+export function moveButton(page, title, direction) {
+  return page.getByRole('list', { name: 'Songs in this setlist' })
+    .getByRole('button', { name: `Move ${title} ${direction}`, exact: true });
+}
+
+// Drags a song by its handle with the mouse (pointer events) onto the row of
+// `targetTitle`, so it takes that song's place, and drops it. `beforeDrop`
+// runs while the row is still held.
+export async function dragSong(page, title, targetTitle, beforeDrop = null) {
+  await page.getByRole('list', { name: 'Songs in this setlist' }).scrollIntoViewIfNeeded();
+  const from = await dragHandle(page, title).boundingBox();
+  const to = await setlistSongRow(page, targetTitle).boundingBox();
+  const x = from.x + from.width / 2;
+  // Past the target row's middle, from whichever side the song comes.
+  const y = to.y + to.height * (to.y > from.y ? 0.75 : 0.25);
+  await page.mouse.move(x, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(x, y, { steps: 10 });
+  if (beforeDrop) await beforeDrop();
+  await page.mouse.up();
+}
+
+// The open setlist's Mix card (R44).
+export function mixCard(page) {
+  return page.locator('details.mix');
+}
+
+// Opens the Mix card when it is closed.
+export async function openMix(page) {
+  const card = mixCard(page);
+  if (!(await card.evaluate((node) => node.open))) await card.locator('summary').click();
+  await expect(card).toHaveJSProperty('open', true);
+}
+
+// One line of the Mix card: 'Genres' or 'Decades'.
+export function mixLine(page, name) {
+  return mixCard(page).locator('.mix-lines > div')
+    .filter({ has: page.locator('dt', { hasText: name }) }).locator('dd');
+}
