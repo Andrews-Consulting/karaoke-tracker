@@ -332,3 +332,18 @@ label > textarea { margin-top: 4px; color: var(--text); resize: vertical; }
   border-radius: 8px;
   cursor: pointer;
 }
+
+/* ---- Find (Wave 2 D) ---- */
+
+/* A song row's sing line under the artist line (R8, R37); dates never break at their hyphens. */
+.song-row .sung { display: block; color: var(--muted); font-size: 0.875rem; }
+.song-row .nowrap { white-space: nowrap; }
+
+/* Filters (R41, R11, R42): menus in two columns so they fit a phone screen. */
+.find-filters .find-form { margin-top: 4px; padding-bottom: 4px; }
+.find-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 8px; }
+.find-form [hidden] { display: none; }
+.find-form .btn { width: 100%; }
+
+/* Label above its control, as when the label wraps it (see label > select above). */
+.find-field > label + select, .find-field > label + input { margin-top: 4px; }
