@@ -1,4 +1,4 @@
-// CSV import (R22). Pure: no DOM, no IndexedDB.
+// CSV import (R22) and export (R23, at the end of this file). Pure: no DOM, no IndexedDB.
 //
 //   const plan = planImport(parseCsv(text), existingSongs);
 //   await db.addAll('songs', plan.toAdd);
@@ -15,6 +15,7 @@
 
 import { makeSong, songKey } from './song.js';
 import { isISODate, todayLocalISO } from './stats.js';
+import { sortByTitle } from './search.js';
 
 export const CSV_COLUMNS = ['title', 'artist', 'genre', 'year', 'key', 'tags', 'venue', 'date'];
 
@@ -225,4 +226,40 @@ export function importSummary({
   if (singsBadDate.length) skipped.push(`${plural(singsBadDate.length, 'sing')} with an unreadable date`);
   if (skipped.length) text += ` Skipped ${listed(skipped)}.`;
   return text;
+}
+
+// ---------- Export (R23) ----------
+//
+//   const text = songsToCsv(await db.getAll('songs'));
+//   save(csvFileName(), text);
+//
+// The file opens in a spreadsheet as UTF-8 and imports back with planImport():
+// every song comes back as a duplicate, with genre, year, key and tags intact.
+// Status, rating and notes are exported for the spreadsheet; the import ignores them.
+
+export const EXPORT_COLUMNS = ['title', 'artist', 'genre', 'year', 'key', 'tags', 'status', 'rating', 'notes'];
+
+// One CSV field (RFC 4180): quoted, with inner quotes doubled, when it holds a
+// comma, a quote, CR or LF. null and undefined are empty fields.
+export function toCsvField(value) {
+  if (value === null || value === undefined) return '';
+  const text = String(value);
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+// The whole file: a UTF-8 BOM (so spreadsheets read accents and emoji
+// correctly), the header, then one row per song by title, ignoring case.
+// Tags are joined with "; ". Every record ends with CRLF.
+export function songsToCsv(songs = []) {
+  const row = (cells) => `${cells.map(toCsvField).join(',')}\r\n`;
+  const lines = sortByTitle(songs).map((song) => row(EXPORT_COLUMNS.map((column) => {
+    const value = song[column];
+    return column === 'tags' ? (Array.isArray(value) ? value.join('; ') : value) : value;
+  })));
+  return `﻿${row(EXPORT_COLUMNS)}${lines.join('')}`;
+}
+
+// karaoke-songs-YYYY-MM-DD.csv, using the local calendar day.
+export function csvFileName(now = new Date()) {
+  return `karaoke-songs-${todayLocalISO(now)}.csv`;
 }

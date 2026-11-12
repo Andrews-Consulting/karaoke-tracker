@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { parseCsv, planImport, importSummary, csvDate, CsvError } from '../../js/lib/csv.js';
 import { makeSong } from '../../js/lib/song.js';
+import { toCsvField, songsToCsv, csvFileName } from '../../js/lib/csv.js';
+import { sortByTitle } from '../../js/lib/search.js';
 
 const now = new Date('2026-11-11T12:00:00.000Z');
 const plan = (text, existing = []) => planImport(parseCsv(text), existing, now);
@@ -257,5 +259,142 @@ describe('planImport sings (R46)', () => {
   it('has empty sing fields when the file has no venue column', () => {
     const result = planWith('title,artist\nDrive,Incubus');
     expect(result).toMatchObject({ venuesToAdd: [], sings: [], singsLogged: [], singsBadDate: [] });
+  });
+});
+
+// ---------- Export (R23) ----------
+
+const HEADER = 'title,artist,genre,year,key,tags,status,rating,notes';
+const BOM = '﻿';
+const stored = (id, fields) => ({ id, ...makeSong(fields, now) });
+// The data rows of an export, without the BOM, header or final CRLF.
+const exportRows = (songs) => songsToCsv(songs).slice(BOM.length).split('\r\n').slice(1, -1);
+
+describe('toCsvField (R23)', () => {
+  it('leaves plain text and numbers alone', () => {
+    expect(toCsvField('Valerie')).toBe('Valerie');
+    expect(toCsvField('-2')).toBe('-2');
+    expect(toCsvField(2006)).toBe('2006');
+    expect(toCsvField(0)).toBe('0');
+  });
+
+  it('writes null, undefined and empty text as an empty field', () => {
+    expect(toCsvField(null)).toBe('');
+    expect(toCsvField(undefined)).toBe('');
+    expect(toCsvField('')).toBe('');
+  });
+
+  it('quotes a field holding a comma, quote, CR or LF, doubling inner quotes', () => {
+    expect(toCsvField('Hello, Goodbye')).toBe('"Hello, Goodbye"');
+    expect(toCsvField('"Heroes"')).toBe('"""Heroes"""');
+    expect(toCsvField('Say "hi"')).toBe('"Say ""hi"""');
+    expect(toCsvField('line one\nline two')).toBe('"line one\nline two"');
+    expect(toCsvField('line one\r\nline two')).toBe('"line one\r\nline two"');
+    expect(toCsvField('a\rb')).toBe('"a\rb"');
+  });
+
+  it('leaves semicolons, spaces and unicode unquoted', () => {
+    expect(toCsvField('duet; slow')).toBe('duet; slow');
+    expect(toCsvField('Beyoncé ♫ 99 Luftballons 🎤')).toBe('Beyoncé ♫ 99 Luftballons 🎤');
+  });
+});
+
+describe('songsToCsv (R23)', () => {
+  it('starts with a UTF-8 BOM and the header, and ends every record with CRLF', () => {
+    const text = songsToCsv([stored(1, { title: 'Valerie', artist: 'Amy Winehouse' })]);
+    expect(text.startsWith(`${BOM}${HEADER}\r\n`)).toBe(true);
+    expect(text.endsWith('\r\n')).toBe(true);
+    expect(text.replace(/\r\n/g, '')).not.toMatch(/[\r\n]/);
+  });
+
+  it('writes only the header for an empty library', () => {
+    expect(songsToCsv([])).toBe(`${BOM}${HEADER}\r\n`);
+    expect(songsToCsv()).toBe(`${BOM}${HEADER}\r\n`);
+  });
+
+  it('writes every field in column order, tags joined with "; "', () => {
+    const song = stored(1, {
+      title: 'Valerie', artist: 'Amy Winehouse', genre: 'Soul', year: 2006, key: '-2',
+      tags: ['duet', 'crowd-pleaser'], status: 'want-to-try', rating: 4, notes: 'starts cold',
+    });
+    expect(exportRows([song])).toEqual(['Valerie,Amy Winehouse,Soul,2006,-2,duet; crowd-pleaser,want-to-try,4,starts cold']);
+  });
+
+  it('writes empty fields for no genre, year, key, tags, rating or notes', () => {
+    expect(exportRows([stored(1, { title: 'Waterloo', artist: 'ABBA' })])).toEqual(['Waterloo,ABBA,,,,,go-to,,']);
+  });
+
+  it('quotes titles, artists and notes with commas, quotes and line breaks', () => {
+    const song = stored(1, {
+      title: 'Hello, Goodbye', artist: 'The "Fab" Four', notes: 'skip the bridge\nstarts cold, slow',
+    });
+    expect(exportRows([song])).toEqual([
+      '"Hello, Goodbye","The ""Fab"" Four",,,,,go-to,,"skip the bridge\nstarts cold, slow"',
+    ]);
+  });
+
+  it('sorts by title ignoring case, then by artist', () => {
+    const songs = [
+      stored(1, { title: 'waterloo', artist: 'ABBA' }),
+      stored(2, { title: 'Valerie', artist: 'The Zutons' }),
+      stored(3, { title: 'Africa', artist: 'Toto' }),
+      stored(4, { title: 'valerie', artist: 'Amy Winehouse' }),
+    ];
+    expect(exportRows(songs).map((row) => row.split(',').slice(0, 2).join(' / ')))
+      .toEqual(['Africa / Toto', 'valerie / Amy Winehouse', 'Valerie / The Zutons', 'waterloo / ABBA']);
+  });
+
+  it('does not change or reorder the songs it is given', () => {
+    const songs = [stored(1, { title: 'Waterloo', artist: 'ABBA' }), stored(2, { title: 'Africa', artist: 'Toto' })];
+    const copy = structuredClone(songs);
+    songsToCsv(songs);
+    expect(songs).toEqual(copy);
+  });
+
+  it('keeps unicode as it is', () => {
+    expect(exportRows([stored(1, { title: 'Déjà Vu', artist: 'Beyoncé', tags: ['français', '🎤'] })]))
+      .toEqual(['Déjà Vu,Beyoncé,,,,français; 🎤,go-to,,']);
+  });
+});
+
+describe('csvFileName (R23)', () => {
+  it('uses the local calendar day', () => {
+    expect(csvFileName(new Date(2026, 10, 11, 23, 59))).toBe('karaoke-songs-2026-11-11.csv');
+    expect(csvFileName(new Date(2027, 0, 5, 0, 1))).toBe('karaoke-songs-2027-01-05.csv');
+  });
+});
+
+describe('CSV export round trip (R23)', () => {
+  const library = [
+    stored(1, {
+      title: 'Valerie', artist: 'Amy Winehouse', genre: 'Soul', year: 2006, key: '-2',
+      tags: ['duet', 'crowd-pleaser'], status: 'go-to', rating: 5, notes: 'starts cold',
+    }),
+    stored(2, { title: 'Hello, Goodbye', artist: 'The Beatles', genre: 'Pop', year: 1967, tags: ['60s'] }),
+    stored(3, { title: '"Heroes"', artist: 'David Bowie', key: '+1', notes: 'line one\r\nline two, "quoted"' }),
+    stored(4, { title: 'Déjà Vu', artist: 'Beyoncé', genre: 'R&B', year: null, rating: null }),
+    stored(5, { title: 'Waterloo', artist: 'ABBA', status: 'retired', rating: 3 }),
+  ];
+
+  it('parses back to the same cells', () => {
+    const rows = parseCsv(songsToCsv(library));
+    expect(rows[0]).toEqual(HEADER.split(','));
+    expect(rows).toHaveLength(library.length + 1);
+    const heroes = rows.find((row) => row[0] === '"Heroes"');
+    expect(heroes).toEqual(['"Heroes"', 'David Bowie', '', '', '+1', '', 'go-to', '', 'line one\r\nline two, "quoted"']);
+  });
+
+  it('imports into the same library as duplicates only', () => {
+    const result = planImport(parseCsv(songsToCsv(library)), library, now);
+    expect(result.toAdd).toEqual([]);
+    expect(result.invalid).toEqual([]);
+    expect(result.duplicates).toHaveLength(library.length);
+    expect(importSummary(result)).toBe('Imported 0 songs. Skipped 5 duplicates.');
+  });
+
+  it('keeps title, artist, genre, year, key and tags when imported into an empty library', () => {
+    const result = planImport(parseCsv(songsToCsv(library)), [], now);
+    const pick = ({ title, artist, genre, year, key, tags }) => ({ title, artist, genre, year, key, tags });
+    expect(result.toAdd.map(pick)).toEqual(sortByTitle(library).map(pick));
   });
 });

@@ -50,6 +50,16 @@ export async function downloadBackup(page) {
   return { filename: download.suggestedFilename(), text, json: JSON.parse(text) };
 }
 
+// Taps "Download songs as CSV" (R23) and returns the file name and raw text,
+// BOM included.
+export async function downloadSongsCsv(page) {
+  const downloading = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download songs as CSV' }).click();
+  const download = await downloading;
+  const text = await readFile(await download.path(), 'utf8');
+  return { filename: download.suggestedFilename(), text };
+}
+
 // Answers the next confirm() dialog and resolves with its message.
 export function answerNextDialog(page, accept) {
   return new Promise((resolve) => {
