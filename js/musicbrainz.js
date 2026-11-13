@@ -3,7 +3,7 @@
 // leaves "Online suggestions" on in Settings, at most one request at a time,
 // 400 ms after the last keystroke, because MusicBrainz allows about one
 // request a second. Failures show nothing: the form works the same offline.
-import { suggestionUrl, parseSuggestions, shouldSuggest } from './lib/musicbrainz.js';
+import { suggestionUrl, parseSuggestions, shouldSuggest, artistUrl, parseGenres } from './lib/musicbrainz.js';
 
 const STORAGE_KEY = 'musicbrainz';
 const DEBOUNCE_MS = 400;
@@ -23,6 +23,28 @@ export function setSuggestionsEnabled(on) {
     localStorage.setItem(STORAGE_KEY, on ? 'on' : 'off');
   } catch {
     // Private mode or storage blocked: the choice lasts for this visit only.
+  }
+}
+
+// The artist's genres (R63), fetched once per artist when a suggestion is
+// tapped and remembered for the visit. Resolves with [] on any failure.
+const genreCache = new Map();
+export async function fetchArtistGenres(artistId) {
+  if (!artistId || !suggestionsEnabled() || navigator.onLine === false) return [];
+  if (genreCache.has(artistId)) return genreCache.get(artistId);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const response = await fetch(artistUrl(artistId), { headers: { Accept: 'application/json' }, signal: controller.signal });
+    if (!response.ok) throw new Error(`MusicBrainz answered ${response.status}`);
+    const genres = parseGenres(await response.json());
+    genreCache.set(artistId, genres);
+    return genres;
+  } catch (err) {
+    console.debug('No MusicBrainz genres:', err);
+    return [];
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

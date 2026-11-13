@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   SUNG_ANY, SUNG_NEVER, SUNG_NOT_SINCE, SORT_OPTIONS, MIN_RATING_OPTIONS,
   defaultFilters, decadeOf, decadeLabel, tagsInUse, genresInUse, decadesInUse, filterChoices, sungOptions,
-  countActiveFilters, matchesFilters, sortSongs, applyFind, sungParts,
+  countActiveFilters, matchesFilters, sortSongs, applyFind, sungParts, NO_STATUS_FILTER,
 } from '../../js/lib/find.js';
 import { singStats } from '../../js/lib/stats.js';
 import { SORT_MENU, titleOrder } from '../../js/lib/find.js';
@@ -161,10 +161,14 @@ describe('R11 matchesFilters: tag, status and rating', () => {
     expect(matchesFilters(song({ tags: undefined }), undefined, filters({ tag: 'duet' }))).toBe(false);
   });
 
-  it('matches a status exactly; an unknown stored status reads as Go-to', () => {
+  it('matches a status exactly; a blank or unknown stored status is "not set" (R64)', () => {
     expect(matchesFilters(valerie, undefined, filters({ status: 'want-to-try' }))).toBe(true);
     expect(matchesFilters(valerie, undefined, filters({ status: 'go-to' }))).toBe(false);
-    expect(matchesFilters(song({ status: 'odd' }), undefined, filters({ status: 'go-to' }))).toBe(true);
+    expect(matchesFilters(song({ status: 'odd' }), undefined, filters({ status: 'go-to' }))).toBe(false);
+    expect(matchesFilters(song({ status: '' }), undefined, filters({ status: NO_STATUS_FILTER }))).toBe(true);
+    expect(matchesFilters(song({ status: 'odd' }), undefined, filters({ status: NO_STATUS_FILTER }))).toBe(true);
+    expect(matchesFilters(valerie, undefined, filters({ status: NO_STATUS_FILTER }))).toBe(false);
+    expect(countActiveFilters(filters({ status: NO_STATUS_FILTER }))).toBe(1);
     expect(matchesFilters(valerie, undefined, filters({ status: 'nonsense' }))).toBe(true); // not a filter
   });
 

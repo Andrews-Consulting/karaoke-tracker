@@ -321,7 +321,7 @@ describe('songsToCsv (R23)', () => {
   });
 
   it('writes empty fields for no genre, year, key, tags, rating or notes', () => {
-    expect(exportRows([stored(1, { title: 'Waterloo', artist: 'ABBA' })])).toEqual(['Waterloo,ABBA,,,,,go-to,,']);
+    expect(exportRows([stored(1, { title: 'Waterloo', artist: 'ABBA' })])).toEqual(['Waterloo,ABBA,,,,,,,']); // status not set (R64)
   });
 
   it('quotes titles, artists and notes with commas, quotes and line breaks', () => {
@@ -329,7 +329,7 @@ describe('songsToCsv (R23)', () => {
       title: 'Hello, Goodbye', artist: 'The "Fab" Four', notes: 'skip the bridge\nstarts cold, slow',
     });
     expect(exportRows([song])).toEqual([
-      '"Hello, Goodbye","The ""Fab"" Four",,,,,go-to,,"skip the bridge\nstarts cold, slow"',
+      '"Hello, Goodbye","The ""Fab"" Four",,,,,,,"skip the bridge\nstarts cold, slow"',
     ]);
   });
 
@@ -353,7 +353,7 @@ describe('songsToCsv (R23)', () => {
 
   it('keeps unicode as it is', () => {
     expect(exportRows([stored(1, { title: 'Déjà Vu', artist: 'Beyoncé', tags: ['français', '🎤'] })]))
-      .toEqual(['Déjà Vu,Beyoncé,,,,français; 🎤,go-to,,']);
+      .toEqual(['Déjà Vu,Beyoncé,,,,français; 🎤,,,']);
   });
 });
 
@@ -381,7 +381,7 @@ describe('CSV export round trip (R23)', () => {
     expect(rows[0]).toEqual(HEADER.split(','));
     expect(rows).toHaveLength(library.length + 1);
     const heroes = rows.find((row) => row[0] === '"Heroes"');
-    expect(heroes).toEqual(['"Heroes"', 'David Bowie', '', '', '+1', '', 'go-to', '', 'line one\r\nline two, "quoted"']);
+    expect(heroes).toEqual(['"Heroes"', 'David Bowie', '', '', '+1', '', '', '', 'line one\r\nline two, "quoted"']);
   });
 
   it('imports into the same library as duplicates only', () => {

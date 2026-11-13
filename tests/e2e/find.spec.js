@@ -221,7 +221,7 @@ test.describe('Find', () => {
 
     // Each tag once, whatever its case.
     await expect(filter(page, 'Tag').locator('option')).toHaveText(['Any tag', 'crowd-pleaser', 'Duet']);
-    await expect(filter(page, 'Status').locator('option')).toHaveText(['Any status', 'Go-to', 'Want to try', 'Retired']);
+    await expect(filter(page, 'Status').locator('option')).toHaveText(['Any status', 'Go-to', 'Want to try', 'Retired', 'Not set']);
     await expect(filter(page, 'Rating').locator('option')).toHaveText(['Any rating', '5', '4+', '3+', '2+', '1+']);
     for (const label of ['Tag', 'Status', 'Rating']) await expectTapTarget(filter(page, label));
 

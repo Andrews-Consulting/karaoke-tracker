@@ -5,7 +5,8 @@ import { renderVenues } from './views/venues.js';
 import { renderSettings } from './views/settings.js';
 import { rootScreen, setViewSwitcher } from './ui.js';
 import { initTheme } from './theme.js';
-import { checkBackupReminder } from './reminder.js';
+import { checkBackupReminder, checkSafariMove } from './reminder.js';
+import { goToBackup } from './views/songs.js';
 
 initTheme(); // R32: dark by default, light or the phone's setting when chosen
 
@@ -52,3 +53,5 @@ show('songs');
 
 // R25: a reminder above the tabs when the last backup is over 30 days old.
 checkBackupReminder(show);
+// R65: in Safari on an iPhone, a nudge to move the data to the installed app.
+checkSafariMove(goToBackup);

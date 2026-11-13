@@ -32,6 +32,57 @@ export function recordBackup(now = new Date()) {
   return db.put('meta', { key: LAST_BACKUP_KEY, value: now.toISOString() });
 }
 
+// ---- Moving from Safari to the Home Screen (R65) ----
+//
+// On an iPhone the installed app and Safari keep separate data, and nothing
+// can copy between them. So while the app runs in Safari (navigator.standalone
+// is false there and nowhere else) and holds songs, a banner says so and
+// points at Share backup; the installed app's empty Songs tab points at Restore.
+const MOVE_SNOOZE_KEY = 'moveBannerSnoozedUntil';
+
+export function runningInSafariOnIphone() {
+  return navigator.standalone === false;
+}
+
+export async function checkSafariMove(goToBackup) {
+  if (!runningInSafariOnIphone()) return;
+  try {
+    const snoozed = Date.parse(localStorage.getItem(MOVE_SNOOZE_KEY));
+    if (!Number.isNaN(snoozed) && snoozed > Date.now()) return;
+  } catch { /* storage blocked: show it */ }
+  let songCount = 0;
+  try {
+    songCount = await db.count('songs');
+  } catch (err) {
+    console.debug('Move banner skipped:', err);
+    return;
+  }
+  if (!songCount) return;
+
+  const banner = el('div', { class: 'update-banner move', role: 'region', 'aria-label': 'Move to the Home Screen' },
+    el('p', {
+      text: 'You are using Mic Jaunt in Safari. Add it to the Home Screen for offline use. '
+        + 'Songs entered here do not move over by themselves: share a backup, then restore it in the installed app.',
+    }),
+    el('button', {
+      class: 'btn primary', type: 'button', text: 'Move my data',
+      onclick: () => {
+        banner.remove();
+        goToBackup();
+      },
+    }),
+    el('button', {
+      class: 'btn', type: 'button', text: 'Later',
+      onclick: () => {
+        try {
+          localStorage.setItem(MOVE_SNOOZE_KEY, snoozeUntil(new Date()));
+        } catch { /* storage blocked */ }
+        banner.remove();
+      },
+    }));
+  document.body.append(banner);
+}
+
 // Checks once and shows the banner if due. `showView('settings')` opens Settings.
 export async function checkBackupReminder(showView, now = new Date()) {
   let message;

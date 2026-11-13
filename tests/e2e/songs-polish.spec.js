@@ -65,8 +65,8 @@ test.describe('Online suggestions', () => {
     const url = new URL(requests[0].url);
     expect(url.origin + url.pathname).toBe('https://musicbrainz.org/ws/2/recording');
     expect(url.searchParams.get('fmt')).toBe('json');
-    expect(url.searchParams.get('limit')).toBe('5');
-    expect(url.searchParams.get('query')).toBe('recording:"Valerie"');
+    expect(url.searchParams.get('limit')).toBe('25');
+    expect(url.searchParams.get('query')).toBe('recording:(Valerie*)');
     expect(requests[0].accept).toBe('application/json');
     for (const button of await buttons.all()) await expectTapTarget(button);
 
@@ -79,15 +79,17 @@ test.describe('Online suggestions', () => {
     await title.fill('Valerie');
     await expect(buttons).toHaveCount(2);
     expect(requests).toHaveLength(2);
-    expect(new URL(requests[1].url).searchParams.get('query')).toBe('recording:"Valerie" AND artist:"The \\"Zutons\\""');
+    expect(new URL(requests[1].url).searchParams.get('query')).toBe('recording:(Valerie*) AND artist:(The AND \\"Zutons\\"*)');
 
-    // Tapping one fills title and artist and clears the list.
+    // Tapping one fills title and artist and clears the list; the only extra
+    // request is the artist's genres (R63), not another search.
     await form.getByRole('button', { name: 'Use Valerie by The Zutons' }).click();
     await expect(title).toHaveValue('Valerie');
     await expect(form.getByLabel('Artist')).toHaveValue('The Zutons');
     await expect(suggestionList(page)).toBeHidden();
     await page.waitForTimeout(QUIET_MS);
-    expect(requests).toHaveLength(2); // filling the form is not typing
+    expect(requests).toHaveLength(3); // filling the form is not typing
+    expect(new URL(requests[2].url).pathname).toBe('/ws/2/artist/test-The%20Zutons');
 
     await form.getByRole('button', { name: 'Add song' }).click();
     await expect(page.getByText('1 of 1 songs')).toBeVisible();
@@ -103,7 +105,7 @@ test.describe('Online suggestions', () => {
     await expect(page.getByText('2 of 2 songs')).toBeVisible();
     await expect(suggestionList(page)).toBeHidden();
     await page.waitForTimeout(QUIET_MS);
-    expect(requests).toHaveLength(3);
+    expect(requests).toHaveLength(4);
   });
 
   test('R35: makes no request when online suggestions are off', async ({ page }) => {

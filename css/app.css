@@ -778,3 +778,15 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
 @media print {
   .setlist-actions, .merge-form, .setlist-empty { display: none !important; }
 }
+
+/* ---- Suggested genres, blank status, moving from Safari (R63, R64, R65) ---- */
+
+/* Genres MusicBrainz knows for the artist, one tap each, under the Genre field (R63). */
+.genre-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.genre-chips[hidden] { display: none; }
+.genre-chips .chip { padding: 8px 14px; border-radius: 999px; }
+
+/* The fresh-install card on an empty Songs list (R65) is a card, not a row. */
+.list li.starting-fresh { margin-top: 16px; padding: 12px 16px; border-bottom: 0; }
+.list li.starting-fresh p { margin: 0; }
+@media print { .starting-fresh { display: none !important; } }

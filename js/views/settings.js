@@ -293,7 +293,7 @@ export async function renderSettings() {
         }),
         el('button', { class: 'btn', type: 'button', text: 'Download songs as CSV', onclick: downloadCsv }),
         exportMsg.node),
-      el('div', { class: 'card stack' },
+      el('div', { class: 'card stack', id: 'backup-card' },
         el('strong', { text: 'Backup' }),
         el('p', {
           class: 'muted',

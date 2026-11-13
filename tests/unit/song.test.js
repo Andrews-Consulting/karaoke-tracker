@@ -48,7 +48,7 @@ describe('makeSong', () => {
       key: '',
       notes: '',
       rating: null,
-      status: 'go-to',
+      status: '', // not set (R64)
       tags: [],
       createdAt: '2026-11-11T12:00:00.000Z',
     });
@@ -70,7 +70,7 @@ describe('makeSong', () => {
     expect(makeSong({ rating: 7 }).rating).toBeNull();
     expect(makeSong({ rating: 0 }).rating).toBeNull();
     expect(makeSong({ rating: 'x' }).rating).toBeNull();
-    expect(makeSong({ status: 'banger' }).status).toBe('go-to');
+    expect(makeSong({ status: 'banger' }).status).toBe(''); // not set (R64)
     expect(SONG_STATUSES).toContain('want-to-try');
   });
 
@@ -96,10 +96,10 @@ describe('statusLabel (R7)', () => {
     expect(Object.keys(STATUS_LABELS)).toEqual(SONG_STATUSES);
   });
 
-  it('reads unknown or missing statuses as the default, like makeSong', () => {
-    expect(statusLabel('banger')).toBe('Go-to');
-    expect(statusLabel(undefined)).toBe('Go-to');
-    expect(statusLabel('')).toBe('Go-to');
+  it('reads unknown or missing statuses as not set, like makeSong (R64)', () => {
+    expect(statusLabel('banger')).toBe('');
+    expect(statusLabel(undefined)).toBe('');
+    expect(statusLabel('')).toBe('');
   });
 });
 

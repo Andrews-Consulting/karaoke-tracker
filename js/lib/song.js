@@ -11,9 +11,12 @@ export const STATUS_LABELS = { 'go-to': 'Go-to', 'want-to-try': 'Want to try', r
 
 export const RATINGS = [1, 2, 3, 4, 5];
 
-// Label for a stored status; unknown values read as the default, like makeSong().
+// Shown for a status that is not set (R64): a new song starts with none.
+export const NO_STATUS_LABEL = 'Not set';
+
+// Label for a stored status; blank or unknown values read as not set, like makeSong().
 export function statusLabel(status) {
-  return STATUS_LABELS[status] || STATUS_LABELS['go-to'];
+  return STATUS_LABELS[status] || '';
 }
 
 // Returns a whole rating 1..5 (R4) from a number or form string, or null when
@@ -65,7 +68,7 @@ export function normalizeTags(tags) {
 // assigns it on add.
 export function makeSong(fields = {}, now = new Date()) {
   const text = (v) => (v === null || v === undefined ? '' : String(v).trim());
-  const status = SONG_STATUSES.includes(fields.status) ? fields.status : 'go-to';
+  const status = SONG_STATUSES.includes(fields.status) ? fields.status : ''; // '' = not set (R64)
   return {
     title: text(fields.title),
     artist: text(fields.artist),

@@ -141,12 +141,13 @@ export async function openAddForm(page) {
 }
 
 // A recording as the MusicBrainz search answers it, trimmed to what the app reads.
-export function mbRecording(title, artist) {
+export function mbRecording(title, artist, extra = {}) {
   return {
     id: `test-${title}-${artist}`,
     score: 100,
     title,
     'artist-credit': [{ name: artist, joinphrase: '', artist: { id: `test-${artist}`, name: artist } }],
+    ...extra, // e.g. { 'first-release-date': '1975-05-01' } (R63)
   };
 }
 
