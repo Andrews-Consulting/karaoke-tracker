@@ -11,7 +11,8 @@
 // Two screens in one tab: the setlist list and one setlist. renderSetlists()
 // always shows the list, so tapping the Setlists tab is a way back as well.
 import { db, request } from '../db.js';
-import { el, viewEl, confirmAction, openScreen, closeScreen } from '../ui.js';
+import { el, viewEl, confirmAction, openScreen, closeScreen, renderingBack } from '../ui.js';
+import { dragToReorder as dragToReorderRow } from '../drag.js';
 import { plural, sortVenues } from '../lib/stats.js';
 import {
   setlistNameError, sortSetlists, venueValue, venueIdFromValue, venueOptions, venueLabel,
@@ -25,6 +26,12 @@ import { showSetInFind } from './songs.js';
 
 // Bumped on every screen change, so a slow load never paints over a newer screen.
 let screen = 0;
+
+// The setlist last open and when (R60): coming back to the tab within
+// HOLD_MS reopens it; later, or after an explicit "All setlists", the tab
+// starts at the list.
+const HOLD_MS = 5 * 60 * 1000;
+let lastOpen = null; // { id, at } or null
 
 // True while a load started with `token` should still be shown: no newer
 // setlist screen has started and the Setlists tab is still the selected one.
@@ -60,10 +67,18 @@ function venueSelect(venues, venueId) {
 
 export async function renderSetlists() {
   const token = ++screen;
+  // Arriving by the tab (not by going back) within HOLD_MS of leaving a setlist
+  // reopens it on top of the list, so the back gesture still reaches the list (R60).
+  const held = !renderingBack() && lastOpen && Date.now() - lastOpen.at < HOLD_MS ? lastOpen.id : null;
+  lastOpen = null;
   const [setlistRecords, venueRecords, songs] = await Promise.all([
     db.getAll('setlists'), db.getAll('venues'), db.getAll('songs'),
   ]);
   if (!stillCurrent(token)) return;
+  if (held != null && setlistRecords.some((s) => s.id === held)) {
+    openScreen(() => renderSetlist(held));
+    return;
+  }
   const setlists = sortSetlists(setlistRecords);
   const venues = sortVenues(venueRecords);
   const songsById = new Map(songs.map((s) => [s.id, s]));
@@ -166,11 +181,6 @@ export async function renderSetlists() {
 }
 
 // The vertical middle of a list row on screen, for working out where a drag is.
-function middleOf(node) {
-  const box = node.getBoundingClientRect();
-  return box.top + box.height / 2;
-}
-
 const sameOrder = (a, b) => a.length === b.length && a.every((id, i) => id === b[i]);
 
 // Merges one setlist into another in one transaction (R59), from what is
@@ -202,6 +212,7 @@ async function renderSetlist(id, message = '') {
     closeScreen(() => renderSetlists());
     return;
   }
+  lastOpen = { id, at: Date.now() }; // refreshed on every redraw of this screen (R60)
 
   // The latest state, updated before each save so quick taps build on each other.
   let setlist = found;
@@ -377,53 +388,14 @@ async function renderSetlist(id, message = '') {
   // goes, and its touch-action: none (app.css) stops the page scrolling. The
   // dragged row is never taken out of the list, since that would drop the
   // capture; its neighbours are moved past it instead.
+  // Drag to reorder (R16): shared with List mode on the Songs tab (js/drag.js).
   function dragToReorder(li, handle, song) {
-    let drag = null; // { pointerId, grabY, shift } while dragging
-
-    handle.addEventListener('pointerdown', (e) => {
-      if (drag || !e.isPrimary || e.button !== 0) return;
-      try {
-        handle.setPointerCapture(e.pointerId);
-      } catch {
-        return; // the pointer is already gone
-      }
-      e.preventDefault(); // no text selection while dragging
-      drag = { pointerId: e.pointerId, grabY: e.clientY - li.getBoundingClientRect().top, shift: 0 };
-      li.classList.add('dragging');
+    dragToReorderRow({
+      list, li, handle,
+      onDrop: (index, hadFocus) =>
+        reorder(moveSongId(setlist, song.id, index, songsById), hadFocus ? { songId: song.id, which: 'handle' } : null),
+      onCancel: drawSongs,
     });
-
-    handle.addEventListener('pointermove', (e) => {
-      if (!drag || e.pointerId !== drag.pointerId) return;
-      const y = e.clientY;
-      // Past the middle of the row below (or above), that row moves to the other side.
-      for (let guard = list.children.length; guard > 0; guard -= 1) {
-        const next = li.nextElementSibling;
-        const prev = li.previousElementSibling;
-        if (next && y > middleOf(next)) list.insertBefore(next, li);
-        else if (prev && y < middleOf(prev)) list.insertBefore(prev, li.nextElementSibling);
-        else break;
-      }
-      // The lifted row follows the pointer from wherever it now sits in the list.
-      const top = li.getBoundingClientRect().top - drag.shift;
-      drag.shift = e.clientY - drag.grabY - top;
-      li.style.transform = `translateY(${drag.shift}px)`;
-    });
-
-    // Dropping saves the new order at once; a cancelled drag puts the rows back.
-    function end(e, drop) {
-      if (!drag || e.pointerId !== drag.pointerId) return;
-      drag = null;
-      li.classList.remove('dragging');
-      li.style.transform = '';
-      const index = [...list.children].indexOf(li);
-      if (drop && index !== -1) {
-        const refocus = document.activeElement === handle ? { songId: song.id, which: 'handle' } : null;
-        reorder(moveSongId(setlist, song.id, index, songsById), refocus);
-      } else drawSongs();
-    }
-    handle.addEventListener('pointerup', (e) => end(e, true));
-    handle.addEventListener('pointercancel', (e) => end(e, false));
-    handle.addEventListener('lostpointercapture', (e) => end(e, false));
   }
 
   function drawSongs() {
@@ -519,7 +491,13 @@ async function renderSetlist(id, message = '') {
 
   show(
     el('button', {
-      class: 'btn back', type: 'button', text: '‹ All setlists', onclick: () => closeScreen(() => renderSetlists()),
+      class: 'btn back',
+      type: 'button',
+      text: '‹ All setlists',
+      onclick: () => {
+        lastOpen = null; // chosen on purpose: the tab starts at the list next time (R60)
+        closeScreen(() => renderSetlists());
+      },
     }),
     el('h2', { text: setlist.name }),
     el('p', { class: 'muted venue-line', text: venueLabel(setlist, venues) }),

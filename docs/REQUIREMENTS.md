@@ -106,6 +106,9 @@ Added 2026-11-12 after using v1. The Songs tab's job is finding the next song to
 | R58 | Drop the title bar; the bottom tabs carry the selection, with the selected tab larger and filled with the accent | Must | Done | The page title stays as a visually hidden h1 for screen readers and prints at the top of a printout. A background strip sits under the see-through status bar on a notched phone; needs a look on the iPhone. e2e: "R58: there is no title bar; the selected tab is filled with the accent and larger" |
 | R59 | Merge a setlist into another: pick any other setlist; every song not already there is appended to its end; the source is left empty | Must | Done | "Merge into…" on the setlist screen; confirms with the counts, including how many are already there; ids of deleted songs are dropped. The remembered-set and Next time roles are not affected. e2e: "R59: merging moves every song not already there to the end of the other list and empties the source" |
 
+| R60 | The Setlists tab holds its place: coming back within a few minutes reopens the setlist I was on; later it starts at the list | Must | Done | Five minutes. The back gesture still reaches the list, and leaving through "All setlists" means the tab starts at the list next time. e2e: "R60: coming back to the Setlists tab within minutes reopens the setlist; later it starts at the list" |
+| R61 | List mode on the Songs tab has the same drag handle as the setlist screen | Must | Done | One shared drag module (js/drag.js); arrow keys on the handle move the song too. e2e: "R61: List mode has a drag handle that reorders the set, like the setlist screen" |
+
 R17 Tonight mode on the Setlists tab is superseded by R49 and is removed when R49 lands. R45 Suggest songs and R44 Mix stay on the Setlists tab, which is for building and tidying lists.
 
 ## Out of scope

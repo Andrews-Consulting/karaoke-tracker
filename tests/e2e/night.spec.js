@@ -422,7 +422,7 @@ test.describe('Night out', () => {
     await showMode(page, 'List');
     await expect(button(page, 'Move Valerie up')).toBeDisabled();
     await expect(button(page, 'Move Mr. Brightside down')).toBeDisabled();
-    await expect(button(page, 'Move Valerie')).toHaveCount(0); // no drag handle here
+    await expect(button(page, 'Move Valerie')).toBeVisible(); // the drag handle (R61)
 
     await button(page, 'Move Mr. Brightside up').click();
     await expect(setTitles(page)).toHaveText(['Valerie', 'Mr. Brightside', 'Dancing Queen']);
