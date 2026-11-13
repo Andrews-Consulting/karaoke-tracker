@@ -58,8 +58,17 @@ async function seed(page) {
   const song = Object.fromEntries(SONGS.map((s, i) => [s.title, songIds[i]]));
   const venue = Object.fromEntries(VENUES.map((n, i) => [n, venueIds[i]]));
   await put(page, 'sings', SINGS.map(([t, v, date]) => ({ songId: song[t], venueId: venue[v], date })));
-  await put(page, 'setlists', SETLISTS.map((s) => ({ name: s.name, venueId: s.venue ? venue[s.venue] : null, songIds: s.songs.map((t) => song[t]) })));
-  await put(page, 'meta', [{ key: 'findVenueId', value: venue.Viking }]);
+  const setlistIds = await put(page, 'setlists', SETLISTS.map((s) => ({ name: s.name, venueId: s.venue ? venue[s.venue] : null, songIds: s.songs.map((t) => song[t]) })));
+  // Open at Viking with "Friday at Viking" as the set, and one sing logged today for Sung mode.
+  const pad = (n) => String(n).padStart(2, '0');
+  const d = new Date();
+  const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  await put(page, 'sings', [{ songId: song['I Sang Dixie'], venueId: venue.Viking, date: today }]);
+  await put(page, 'meta', [
+    { key: 'findVenueId', value: venue.Viking },
+    { key: `currentSetlist:${venue.Viking}`, value: setlistIds[0] },
+    { key: 'lastBackupAt', value: d.toISOString() }, // no reminder banner over the screens
+  ]);
 }
 
 function put(page, store, records) {
@@ -99,10 +108,20 @@ const SCREENS = [
     await page.getByText('Add a song', { exact: true }).click();
     await page.getByRole('form', { name: 'Add a song' }).getByLabel('Title').fill('Sweet Caroline');
   }],
-  ['song', async (page) => {
-    await page.reload(); // drops the "never sung" filter set above
+  ['list-mode', async (page) => {
+    await page.reload(); // drops the "never sung" filter and closes the Add form
     await page.getByText(/of \d+ songs/).waitFor();
-    await page.getByRole('listitem').filter({ hasText: 'Come and Get Your Love' }).getByRole('button').click();
+    await page.getByRole('tab', { name: /^List/ }).click();
+    await page.getByRole('button', { name: /^Sang / }).first().waitFor();
+  }],
+  ['sung-mode', async (page) => {
+    await page.getByRole('tab', { name: 'Sung' }).click();
+    await page.getByRole('button', { name: /^Undo / }).first().waitFor();
+  }],
+  ['song', async (page) => {
+    await page.reload(); // back to Find mode
+    await page.getByText(/of \d+ songs/).waitFor();
+    await page.getByRole('listitem').filter({ hasText: 'Come and Get Your Love' }).locator('button.song-row').click();
     await heading(page, 'Come and Get Your Love', 2);
   }],
   ['song-edit', async (page) => { await page.getByRole('button', { name: 'Edit' }).click(); await page.getByRole('button', { name: 'Save' }).waitFor(); }],

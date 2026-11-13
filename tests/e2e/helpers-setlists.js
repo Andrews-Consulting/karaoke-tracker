@@ -148,27 +148,6 @@ export async function suggest(page, howMany, expected) {
   await expect(form.getByRole('status')).toHaveText(expected);
 }
 
-// The Tonight toggle on the open setlist.
-export function tonightButton(page) {
-  return page.getByRole('button', { name: 'Tonight', exact: true });
-}
-
-// Turns Tonight mode on or off and waits until the rows have changed over.
-export async function setTonight(page, on) {
-  const button = tonightButton(page);
-  if ((await button.getAttribute('aria-pressed')) !== String(on)) await button.click();
-  await expect(button).toHaveAttribute('aria-pressed', String(on));
-  const songs = page.getByRole('list', { name: 'Songs in this setlist' });
-  if (on) await expect(songs.getByRole('button', { name: /^Remove / })).toHaveCount(0);
-  else await expect(songs.getByRole('checkbox')).toHaveCount(0);
-}
-
-// A song's "Sang <title>" checkbox in Tonight mode.
-export function sangBox(page, title) {
-  return page.getByRole('list', { name: 'Songs in this setlist' })
-    .getByRole('checkbox', { name: `Sang ${title}`, exact: true });
-}
-
 // Today in the page's own time zone, 'YYYY-MM-DD', as the app dates a sing.
 export function pageToday(page) {
   return page.evaluate(() => {

@@ -94,7 +94,7 @@ export async function renderSettings() {
   }
 
   // The answer to the last tap, so the tap visibly did something (R19).
-  const askResult = el('p', { class: 'muted', role: 'status' });
+  const askResult = el('p', { class: 'muted', 'aria-live': 'polite' });
   const ask = el('button', {
     class: 'btn', type: 'button', text: 'Ask for persistent storage',
     onclick: async () => {

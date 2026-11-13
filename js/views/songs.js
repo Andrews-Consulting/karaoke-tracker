@@ -1,12 +1,16 @@
-// Songs view: the list with add and search (R1, R10), find by venue, sings,
-// tag, status, rating, genre and decade with times sung per song (R37, R41,
-// R11, R42, R8), sorted by any of the R42 and R12 orders, and one song's
-// detail with a video search link (R38), edit form and delete (R2, R3, R36;
-// the edit form also holds tags, key, status and rating). Stays quick with
-// 1,000 songs (R34): rows are built once and at most PAGE_SIZE are drawn at a time.
-// The add form suggests titles and artists from MusicBrainz (R35) and warns
-// about a song already in the library (R9); "Pick for me" opens a random song
-// from those shown (R13).
+// Songs view, built around a night out. Pinned at the top: the venue (R37)
+// and the set open there (R47), then three modes of one screen:
+//   Find (R48): search (R10), filters by sings, tag, status, rating, genre and
+//     decade with times sung per song (R41, R11, R42, R8), the R42 and R12
+//     sort orders, "Pick for me" (R13), a + on each row that adds the song to
+//     the set, and "Add a song" at the bottom (R1), with suggestions from
+//     MusicBrainz (R35) and a warning about a song already there (R9). Stays
+//     quick with 1,000 songs (R34): rows are built once and at most PAGE_SIZE
+//     are drawn at a time.
+//   List (R49): the set in order, with move up and down, "Sang it" and "Next time".
+//   Sung (R50): what was sung at the venue by date, with Undo for today.
+// One song's detail has a video search link (R38), an edit form and delete
+// (R2, R3, R36; the edit form also holds tags, key, status and rating).
 import { db, request } from '../db.js';
 import { el, viewEl, confirmAction, openScreen, closeScreen } from '../ui.js';
 import {
@@ -15,11 +19,19 @@ import {
 } from '../lib/song.js';
 import { pickRandom } from '../lib/pick.js';
 import { createSuggester } from '../musicbrainz.js';
-import { singStats, sortVenues } from '../lib/stats.js';
+import { singStats, sortVenues, todayLocalISO } from '../lib/stats.js';
+import { filterSongs } from '../lib/search.js';
 import {
   SUNG_NOT_SINCE, SORT_MENU, MIN_RATING_OPTIONS, defaultFilters, decadeLabel, filterChoices, sungOptions,
   countActiveFilters, applyFind, sungParts, titleOrder,
 } from '../lib/find.js';
+import {
+  makeSetlist, addSongId, removeSongId, moveSongIdBy, setlistSongs, sungFlags, tonightSing,
+} from '../lib/setlist.js';
+import {
+  currentSetlistKey, nextSetlistKey, tonightListName, uniqueSetlistName, venueSetlists, currentSetlistFor,
+  nextSetlistFor, putBackOnTop, groupSingsByDate,
+} from '../lib/night.js';
 
 // The meta record that remembers the list's venue across visits and reloads (R37).
 const VENUE_KEY = 'findVenueId';
@@ -27,6 +39,106 @@ const VENUE_KEY = 'findVenueId';
 // How many rows the list draws at first, and adds with each "Show more" (R34).
 // The count line always gives the full number that match.
 const PAGE_SIZE = 200;
+
+// The Set menu's last option, which starts a new list for tonight (R47).
+const NEW_LIST = 'new';
+
+// The three modes (R47). The one showing is kept while the app is open and
+// is Find on a fresh load; switching modes is not a new screen, so it adds no
+// history entry.
+const MODES = [['find', 'Find'], ['list', 'List'], ['sung', 'Sung']];
+let mode = 'find';
+
+// Bumped on every screen change, so a slow load never paints over a newer screen.
+let screen = 0;
+
+// True while a load started with `token` should still be shown: no newer
+// Songs screen has started and the Songs tab is still the selected one.
+function stillCurrent(token) {
+  const tab = document.querySelector('.tabs button[data-view="songs"]');
+  return token === screen && (!tab || tab.getAttribute('aria-current') === 'page');
+}
+
+const sameOrder = (a, b) => a.length === b.length && a.every((id, i) => id === b[i]);
+
+// ---------- Sets at a venue (R47, R49, R50), each change in one transaction ----------
+
+// The venue's current set: the remembered one, else its first by name, else a
+// new one named after the venue (R47). Read and written in one transaction, so
+// two quick visits never create two. Resolves with { set, setlists }, where
+// setlists is every setlist as stored afterwards. Skips the transaction when
+// `setlists` and `meta` (key -> value) already hold the remembered set.
+function openCurrentSet(venue, setlists, meta) {
+  const key = currentSetlistKey(venue.id);
+  const known = currentSetlistFor(setlists, venue.id, meta.get(key));
+  if (known && known.id === meta.get(key)) return Promise.resolve({ set: known, setlists });
+  return db.transaction(['setlists', 'meta'], 'readwrite', async (stores) => {
+    const all = await request(stores.setlists.getAll());
+    const saved = await request(stores.meta.get(key));
+    let set = currentSetlistFor(all, venue.id, saved ? saved.value : undefined);
+    let stored = all;
+    if (!set) {
+      const fresh = makeSetlist(uniqueSetlistName(venue.name, all), venue.id);
+      set = { ...fresh, id: await request(stores.setlists.add(fresh)) };
+      stored = [...all, set];
+    }
+    if (!saved || saved.value !== set.id) stores.meta.put({ key, value: set.id });
+    return { set, setlists: stored };
+  });
+}
+
+// "New list for tonight" (R47): a list named for today, made unique, which
+// becomes the venue's current set. Resolves with { set, setlists }.
+function startTonightList(venue) {
+  return db.transaction(['setlists', 'meta'], 'readwrite', async (stores) => {
+    const all = await request(stores.setlists.getAll());
+    const fresh = makeSetlist(uniqueSetlistName(tonightListName(new Date()), all), venue.id);
+    const set = { ...fresh, id: await request(stores.setlists.add(fresh)) };
+    stores.meta.put({ key: currentSetlistKey(venue.id), value: set.id });
+    return { set, setlists: [...all, set] };
+  });
+}
+
+// "Next time" (R49): saves `from` (the set without the song) and appends the
+// song to the venue's Next time list, creating that list on first use or when
+// the remembered one is gone. Resolves with { target, setlists }.
+function moveToNextTime(venue, from, songId) {
+  return db.transaction(['setlists', 'meta'], 'readwrite', async (stores) => {
+    const all = await request(stores.setlists.getAll());
+    const key = nextSetlistKey(venue.id);
+    const saved = await request(stores.meta.get(key));
+    let target = nextSetlistFor(all, venue.id, saved ? saved.value : undefined);
+    if (target && target.id === from.id) throw new Error('this set is the Next time list');
+    if (!target) {
+      const fresh = makeSetlist(uniqueSetlistName('Next time', all), venue.id);
+      target = { ...fresh, id: await request(stores.setlists.add(fresh)) };
+      stores.meta.put({ key, value: target.id });
+    }
+    target = addSongId(target, songId);
+    stores.setlists.put(target);
+    stores.setlists.put(from);
+    const others = all.filter((s) => s.id !== target.id && s.id !== from.id);
+    return { target, setlists: [...others, target, from] };
+  });
+}
+
+// "Sang it" (R49): logs the sing and saves the set without the song, together.
+// Resolves with the sing as stored, id included.
+function logSing(sing, set) {
+  return db.transaction(['sings', 'setlists'], 'readwrite', async (stores) => {
+    const id = await request(stores.sings.add(sing));
+    stores.setlists.put(set);
+    return { ...sing, id };
+  });
+}
+
+// Undo (R50): deletes the sing and saves the set with the song back on top, together.
+function undoSing(singId, set) {
+  return db.transaction(['sings', 'setlists'], 'readwrite', async (stores) => {
+    stores.sings.delete(singId);
+    stores.setlists.put(set);
+  });
+}
 
 // A video search for the song, opened by the owner in a new tab (R38).
 function videoSearchUrl(song) {
@@ -82,6 +194,13 @@ function findField(labelText, control) {
   return el('div', { class: 'find-field' }, el('label', { for: control.id, text: labelText }), control);
 }
 
+// A Venue or Set menu in the pinned bar (R47): the label sits inside the box,
+// before the value, so the bar stays one row high.
+function pickerField(labelText, control) {
+  control.id = `find-${control.name}`;
+  return el('div', { class: 'night-picker' }, el('label', { for: control.id, text: labelText }), control);
+}
+
 // Makes `items` the children of `parent`, in order. Rows that stay are left
 // where they are, so the browser keeps their style and layout and only the
 // rows that come or go cost anything as the search narrows or widens (R34).
@@ -107,36 +226,69 @@ function sungLine(parts) {
   return el('span', { class: 'sung' }, ...children);
 }
 
-// The list. Coming back from a song passes back what the list showed, so it
-// is restored: the search (`query`), the venue (`venueId`; undefined means the
-// one remembered in meta), the filters and sort (`filters`) and whether the
-// filters were open (`filtersOpen`). Also the song to scroll to (`focusId`)
-// and an optional status line (`message`).
+// The Songs tab. Coming back from a song passes back what the screen showed,
+// so it is restored: the search (`query`), the venue (`venueId`; undefined
+// means the one remembered in meta), the filters and sort (`filters`) and
+// whether the filters were open (`filtersOpen`). Also the song to scroll to
+// (`focusId`) and an optional status line (`message`). The set comes from
+// meta and the mode from module state, so both come back too.
 export async function renderSongs({
   query = '', venueId, filters = defaultFilters(), filtersOpen = false, focusId = null, message = '',
 } = {}) {
-  const [songRecords, venueRecords, sings, saved] = await Promise.all([
+  const token = ++screen;
+  const [songRecords, venueRecords, singRecords, setlistRecords, metaRecords] = await Promise.all([
     db.getAll('songs'),
     db.getAll('venues'),
     db.getAll('sings'),
-    venueId === undefined ? db.get('meta', VENUE_KEY) : null,
+    db.getAll('setlists'),
+    db.getAll('meta'),
   ]);
+  if (!stillCurrent(token)) return;
   const songs = titleOrder(songRecords);
+  const songsById = new Map(songs.map((s) => [s.id, s]));
   const venues = sortVenues(venueRecords);
+  const meta = new Map(metaRecords.map((r) => [r.key, r.value])); // kept in step with what is saved
+  // Kept in step with every sing and setlist this screen saves.
+  let sings = singRecords;
+  let setlists = setlistRecords;
 
   // A remembered venue that has since been deleted falls back to Overall.
-  const wanted = venueId === undefined ? (saved ? saved.value : null) : venueId;
+  const wanted = venueId === undefined ? (meta.has(VENUE_KEY) ? meta.get(VENUE_KEY) : null) : venueId;
   const state = {
     query,
     venueId: venues.some((v) => v.id === wanted) ? wanted : null,
     filters: { ...defaultFilters(), ...filters },
+    set: null, // the set open at the venue (R47); null for Overall, which has none
   };
+  const currentVenue = () => venues.find((v) => v.id === state.venueId) || null;
+  if (state.venueId != null) {
+    const opened = await openCurrentSet(currentVenue(), setlists, meta);
+    if (!stillCurrent(token)) return;
+    ({ set: state.set, setlists } = opened);
+    meta.set(currentSetlistKey(state.venueId), state.set.id);
+  } else mode = 'find'; // List and Sung need a venue
+  let inSet = new Set(state.set ? state.set.songIds : []);
   let stats = singStats(sings, state.venueId);
 
   // What to restore when coming back from a song.
   const backState = () => ({
     query: state.query, venueId: state.venueId, filters: { ...state.filters }, filtersOpen: filtersBox.open,
   });
+
+  // Opens a song; Back returns to this screen as it is now (R31).
+  function openSong(songId) {
+    const back = backState();
+    openScreen(() => renderSong(songId, back));
+  }
+
+  // The line under the bar that says what a tap did, or why it failed.
+  const status = el('p', { class: 'notice night-status', role: 'status', text: message });
+  const say = (text) => { status.textContent = text; };
+
+  // A save that failed leaves the screen out of step, so it is drawn again from what is stored.
+  function failed(err) {
+    renderSongs({ ...backState(), message: `Could not save: ${err.message}` });
+  }
 
   const count = el('p', { class: 'count' });
   const list = el('ul', { class: 'list' });
@@ -147,19 +299,20 @@ export async function renderSongs({
     type: 'button', class: 'btn pick', text: 'Pick for me',
     onclick: () => {
       const song = pickRandom(shown);
-      if (!song) return;
-      const back = backState();
-      openScreen(() => renderSong(song.id, back));
+      if (song) openSong(song.id);
     },
   });
   const pickNote = el('p', { class: 'muted pick-note', text: 'Nothing to pick from.', hidden: '' });
 
   // What the search, filters and sort give (`shown`), how many of those rows
   // are drawn (`limit`), and each song's row, built the first time it is
-  // drawn and reused until the venue changes its sing line.
+  // drawn and reused until its sing line changes (a new venue or a new sing).
+  // At a venue each row has a + that adds the song to the set (R48); those
+  // are kept by song id so they follow the set as it changes.
   let shown = [];
   let limit = PAGE_SIZE;
   const rows = new Map();
+  const toggles = new Map();
 
   function rowFor(s) {
     let item = rows.get(s.id);
@@ -170,6 +323,12 @@ export async function renderSongs({
     return item;
   }
 
+  // Rows are built again the next time they are drawn.
+  function forgetRows() {
+    rows.clear();
+    toggles.clear();
+  }
+
   const moreButton = el('button', {
     type: 'button', class: 'btn more', hidden: '',
     onclick: () => {
@@ -178,7 +337,7 @@ export async function renderSongs({
       list.append(...added);
       showMoreButton();
       // Focus moves to the first new row, where the button was.
-      added[0]?.querySelector('button').focus({ preventScroll: true });
+      added[0]?.querySelector('.song-row').focus({ preventScroll: true });
     },
   });
 
@@ -191,17 +350,45 @@ export async function renderSongs({
   function songItem(s) {
     const details = [s.artist, s.genre, s.year].filter(Boolean).join(' · ');
     return el('li', { class: 'song-item', 'data-song-id': s.id },
-      el('button', {
-        type: 'button', class: 'song-row',
-        onclick: () => {
-          const back = backState();
-          openScreen(() => renderSong(s.id, back));
-        },
-      },
+      el('button', { type: 'button', class: 'song-row', onclick: () => openSong(s.id) },
         el('span', { class: 'title', text: s.title }),
         el('span', { class: 'sub', text: details }),
-        sungLine(sungParts(stats.get(s.id), state.venueId != null))));
+        sungLine(sungParts(stats.get(s.id), state.venueId != null))),
+      state.set ? toggleFor(s) : null);
   }
+
+  // + adds the song to the end of the set; ✓ shows it is there, and takes it out (R48).
+  function toggleFor(song) {
+    const button = el('button', { type: 'button', class: 'btn set-toggle', onclick: () => toggleInSet(song) });
+    toggles.set(song.id, button);
+    drawToggle(button, song);
+    return button;
+  }
+
+  function drawToggle(button, song) {
+    const has = inSet.has(song.id);
+    const label = has ? `Remove ${song.title} from the set` : `Add ${song.title} to the set`;
+    if (button.getAttribute('aria-label') === label) return;
+    button.textContent = has ? '✓' : '+';
+    button.setAttribute('aria-label', label);
+    button.classList.toggle('in-set', has);
+  }
+
+  async function toggleInSet(song) {
+    if (!state.set) return;
+    const next = inSet.has(song.id) ? removeSongId(state.set, song.id) : addSongId(state.set, song.id);
+    changeSet(next);
+    try {
+      await db.put('setlists', next);
+    } catch (err) {
+      failed(err);
+    }
+  }
+
+  // Inline, where the list would be, when nothing in the library matches the search (R48).
+  const noMatchText = el('p', { class: 'muted' });
+  const addFromSearchButton = el('button', { type: 'button', class: 'btn', onclick: addFromSearch });
+  const noMatch = el('li', { class: 'no-match' }, noMatchText, addFromSearchButton);
 
   // Runs the search, filters and sort again and draws the first page of rows.
   function draw() {
@@ -216,30 +403,350 @@ export async function renderSongs({
   function drawRows(n) {
     limit = n;
     const items = shown.slice(0, limit).map(rowFor);
-    if (songs.length === 0) {
-      items.push(el('li', { class: 'muted', text: 'No songs yet. Add your first one above.' }));
-    } else if (shown.length === 0) {
-      items.push(el('li', { class: 'muted', text: 'No songs match the search and filters.' }));
+    if (shown.length === 0) {
+      const text = state.query.trim();
+      if (text && filterSongs(songs, text).length === 0) {
+        noMatchText.textContent = `No match for “${text}”.`;
+        addFromSearchButton.textContent = `Add “${text}”`;
+        items.push(noMatch);
+      } else if (songs.length === 0) {
+        items.push(el('li', { class: 'muted', text: 'No songs yet. Add your first one below.' }));
+      } else {
+        items.push(el('li', { class: 'muted', text: 'No songs match the search and filters.' }));
+      }
     }
     setChildren(list, items);
     showMoreButton();
   }
 
-  // ---- Venue (R37) ----
+  // ---- Venue (R37) and set (R47) ----
 
   const venueSelect = fillSelect(el('select', { name: 'venue' }),
     [['', 'Overall'], ...venues.map((v) => [String(v.id), v.name])],
     state.venueId == null ? '' : String(state.venueId));
-  venueSelect.addEventListener('change', () => {
-    const venue = venues.find((v) => String(v.id) === venueSelect.value);
+  let venueChange = 0; // the newest venue choice, so a slow one never wins
+  venueSelect.addEventListener('change', async () => {
+    const ticket = ++venueChange;
+    const venue = venues.find((v) => String(v.id) === venueSelect.value) || null;
     state.venueId = venue ? venue.id : null;
-    stats = singStats(sings, state.venueId);
-    rows.clear(); // every row's sing line is for the old venue
     db.put('meta', { key: VENUE_KEY, value: state.venueId })
       .catch((err) => console.warn('Could not remember the venue:', err));
+    let set = null;
+    if (venue) {
+      try {
+        ({ set, setlists } = await openCurrentSet(venue, setlists, meta));
+      } catch (err) {
+        failed(err);
+        return;
+      }
+      if (ticket !== venueChange || !root.isConnected) return;
+      meta.set(currentSetlistKey(venue.id), set.id);
+    } else mode = 'find';
+    state.set = set;
+    inSet = new Set(set ? set.songIds : []);
+    stats = singStats(sings, state.venueId);
+    forgetRows(); // every row's sing line is for the old venue
+    say('');
     syncFilters();
-    draw(); // also re-sorts, for the last-sung orders (R12)
+    fillSetSelect();
+    syncModes();
+    showMode(); // in Find, also re-sorts for the last-sung orders (R12)
   });
+
+  // The Set menu: the venue's setlists by name, then "New list for tonight…".
+  // Overall has no set, so the menu only says to pick a venue.
+  const setSelect = el('select', { name: 'set' });
+  function fillSetSelect() {
+    if (!state.set) {
+      fillSelect(setSelect, [['', 'Pick a venue to work a list']], '');
+      setSelect.disabled = true;
+      return;
+    }
+    fillSelect(setSelect, [
+      ...venueSetlists(setlists, state.venueId).map((s) => [String(s.id), s.name]),
+      [NEW_LIST, 'New list for tonight…'],
+    ], String(state.set.id));
+    setSelect.disabled = false;
+  }
+
+  setSelect.addEventListener('change', async () => {
+    const venue = currentVenue();
+    if (!venue || !state.set) return;
+    if (setSelect.value === NEW_LIST) {
+      setSelect.disabled = true; // one new list per choice
+      let made;
+      try {
+        made = await startTonightList(venue);
+      } catch (err) {
+        failed(err);
+        return;
+      }
+      if (state.venueId !== venue.id || !root.isConnected) return;
+      setlists = made.setlists;
+      chooseSet(made.set);
+      say(`Started “${made.set.name}”.`);
+      return;
+    }
+    const chosen = setlists.find((s) => String(s.id) === setSelect.value);
+    if (!chosen) return;
+    chooseSet(chosen);
+    say('');
+    db.put('meta', { key: currentSetlistKey(venue.id), value: chosen.id })
+      .catch((err) => console.warn('Could not remember the set:', err));
+  });
+
+  // Opens another set at the same venue.
+  function chooseSet(set) {
+    state.set = set;
+    inSet = new Set(set.songIds);
+    meta.set(currentSetlistKey(state.venueId), set.id);
+    fillSetSelect();
+    syncSet();
+    if (mode === 'list') drawList();
+  }
+
+  // The current set with new contents, before it is saved.
+  function changeSet(next) {
+    state.set = next;
+    setlists = setlists.map((s) => (s.id === next.id ? next : s));
+    inSet = new Set(next.songIds);
+    syncSet();
+  }
+
+  // What shows the set outside List mode: the List (N) count and every + in Find.
+  function syncSet() {
+    syncModes();
+    for (const [songId, button] of toggles) drawToggle(button, songsById.get(songId));
+  }
+
+  // ---- Modes (R47) ----
+
+  const modeButtons = new Map(MODES.map(([key, label]) => [key, el('button', {
+    type: 'button', class: 'mode', role: 'tab', id: `mode-${key}`, text: label, onclick: () => switchMode(key),
+  })]));
+  const modes = el('div', { class: 'modes', role: 'tablist', 'aria-label': 'Songs tab' }, ...modeButtons.values());
+  // Arrow keys move between the modes, as in any tab list.
+  modes.addEventListener('keydown', (e) => {
+    const step = { ArrowLeft: -1, ArrowRight: 1 }[e.key];
+    if (!step) return;
+    const keys = MODES.map(([key]) => key).filter((key) => !modeButtons.get(key).disabled);
+    const next = keys[(keys.indexOf(mode) + step + keys.length) % keys.length];
+    e.preventDefault();
+    switchMode(next);
+    modeButtons.get(next).focus();
+  });
+  // Says why List and Sung are greyed out; the Set menu's own text is cut short on a phone.
+  const overallNote = el('p', { class: 'muted night-note', text: 'Pick a venue to use List and Sung.' });
+
+  function syncModes() {
+    const overall = !state.set;
+    for (const [key, button] of modeButtons) {
+      button.setAttribute('aria-selected', String(key === mode));
+      button.tabIndex = key === mode ? 0 : -1;
+      button.disabled = overall && key !== 'find';
+    }
+    const n = overall ? 0 : setlistSongs(state.set, songsById).length;
+    const listLabel = overall ? 'List' : `List (${n})`;
+    if (modeButtons.get('list').textContent !== listLabel) modeButtons.get('list').textContent = listLabel;
+    overallNote.hidden = !overall;
+  }
+
+  function switchMode(key) {
+    if (key === mode || (!state.set && key !== 'find')) return;
+    mode = key;
+    say('');
+    syncModes();
+    showMode();
+    viewEl.scrollTop = 0;
+  }
+
+  // Draws the mode that is showing into the panel under the bar.
+  function showMode() {
+    if (mode === 'list') {
+      panel.replaceChildren(listPanel);
+      drawList();
+    } else if (mode === 'sung') {
+      panel.replaceChildren(sungPanel);
+      drawSung();
+    } else {
+      panel.replaceChildren(findPanel);
+      draw();
+    }
+  }
+
+  // Sings changed: the Find rows' sing lines and the filters on them are out of date.
+  function singsChanged() {
+    stats = singStats(sings, state.venueId);
+    forgetRows();
+  }
+
+  // ---- List mode (R49) ----
+
+  const setList = el('ol', { class: 'list night-list', 'aria-label': 'Songs in the set' });
+  const setEmpty = el('div', { class: 'night-empty' },
+    el('p', { class: 'muted', text: 'Nothing in this set yet. Find songs and tap + to add them.' }),
+    el('button', { type: 'button', class: 'btn primary', text: 'Find songs', onclick: () => switchMode('find') }));
+  const listPanel = el('div', { class: 'stack', role: 'tabpanel', 'aria-labelledby': 'mode-list' }, setList, setEmpty);
+  const moves = new Map(); // each row's ↑ and ↓ by song id, so focus can follow a moved song
+
+  // The venue's Next time list, when it has one (R49).
+  function nextTimeList() {
+    return nextSetlistFor(setlists, state.venueId, meta.get(nextSetlistKey(state.venueId)));
+  }
+
+  function drawList() {
+    const inList = setlistSongs(state.set, songsById);
+    const flags = sungFlags(state.set, sings);
+    const next = nextTimeList();
+    const isNextTime = !!next && next.id === state.set.id; // never move a song onto itself
+    moves.clear();
+    setList.replaceChildren(...inList.map((song, i) => setRow(song, flags.get(song.id), i, inList.length, !isNextTime)));
+    setList.hidden = inList.length === 0;
+    setEmpty.hidden = inList.length > 0;
+  }
+
+  // A song in the set: title, artist and its sung flag (R43), which open the
+  // song, then ↑ ↓, "Sang it" and "Next time".
+  function setRow(song, lastSung, index, total, canMoveOn) {
+    // True when the tapped control had focus (a keyboard, or a desktop click),
+    // so focus follows the song; phones do not focus buttons on a tap.
+    const focused = (e) => document.activeElement === e.currentTarget;
+    const up = el('button', {
+      type: 'button', class: 'btn move', text: '↑', 'aria-label': `Move ${song.title} up`,
+      onclick: (e) => moveInSet(song, -1, focused(e) ? 'up' : null),
+    });
+    const down = el('button', {
+      type: 'button', class: 'btn move', text: '↓', 'aria-label': `Move ${song.title} down`,
+      onclick: (e) => moveInSet(song, 1, focused(e) ? 'down' : null),
+    });
+    up.disabled = index === 0;
+    down.disabled = index === total - 1;
+    moves.set(song.id, { up, down });
+    return el('li', { class: 'night-song', 'data-song-id': song.id },
+      el('button', { type: 'button', class: 'night-open', onclick: () => openSong(song.id) },
+        el('span', { class: 'title', text: song.title }),
+        el('span', { class: 'sub', text: song.artist }),
+        lastSung ? el('span', { class: 'flag' }, 'Sung here · last ', el('span', { class: 'nowrap', text: lastSung })) : null),
+      el('div', { class: 'night-actions' },
+        up,
+        down,
+        el('button', {
+          type: 'button', class: 'btn sang', text: 'Sang it', 'aria-label': `Sang ${song.title}`,
+          onclick: () => sangIt(song),
+        }),
+        canMoveOn
+          ? el('button', {
+            type: 'button', class: 'btn', text: 'Next time', 'aria-label': `${song.title} next time`,
+            onclick: () => nextTime(song),
+          })
+          : null));
+  }
+
+  // ↑ (-1) or ↓ (1): drawn at once, then saved.
+  async function moveInSet(song, delta, which) {
+    const next = moveSongIdBy(state.set, song.id, delta, songsById);
+    if (sameOrder(next.songIds, state.set.songIds)) return;
+    changeSet(next);
+    drawList();
+    if (which) {
+      const row = moves.get(song.id);
+      const order = which === 'up' ? ['up', 'down'] : ['down', 'up'];
+      const name = order.find((key) => !row[key].disabled);
+      if (name) row[name].focus();
+    }
+    try {
+      await db.put('setlists', next);
+    } catch (err) {
+      failed(err);
+    }
+  }
+
+  // Logs a sing here today and takes the song out of the set, with no
+  // confirmation: Undo is under Sung (R49, R50).
+  async function sangIt(song) {
+    const venue = currentVenue();
+    if (!venue || !inSet.has(song.id)) return; // a second tap finds it gone
+    const next = removeSongId(state.set, song.id);
+    const sing = tonightSing(song.id, venue.id, todayLocalISO());
+    changeSet(next);
+    try {
+      sings = [...sings, await logSing(sing, next)];
+    } catch (err) {
+      failed(err);
+      return;
+    }
+    singsChanged();
+    say(`Sang “${song.title}”. Undo is under Sung.`);
+    if (mode === 'list') drawList();
+  }
+
+  // Moves the song from the set to the end of the venue's Next time list (R49).
+  async function nextTime(song) {
+    const venue = currentVenue();
+    if (!venue || !inSet.has(song.id)) return;
+    const from = removeSongId(state.set, song.id);
+    changeSet(from);
+    try {
+      const moved = await moveToNextTime(venue, from, song.id);
+      setlists = moved.setlists;
+      meta.set(nextSetlistKey(venue.id), moved.target.id);
+    } catch (err) {
+      failed(err);
+      return;
+    }
+    fillSetSelect(); // a Next time list made just now joins the Set menu
+    say(`Moved “${song.title}” to Next time.`);
+    if (mode === 'list') drawList();
+  }
+
+  // ---- Sung mode (R50) ----
+
+  const sungList = el('div', { class: 'stack night-sung' });
+  const sungPanel = el('div', { role: 'tabpanel', 'aria-labelledby': 'mode-sung' }, sungList);
+
+  function drawSung() {
+    const today = todayLocalISO();
+    const groups = groupSingsByDate(sings, songsById, state.venueId, today);
+    if (!groups.length) {
+      sungList.replaceChildren(el('p', { class: 'muted', text: 'Nothing sung here yet.' }));
+      return;
+    }
+    sungList.replaceChildren(...groups.map((group) => el('section', { class: 'night-day', 'aria-label': group.label },
+      el('h3', { text: group.label }),
+      el('ul', { class: 'list' }, ...group.entries.map(({ sing, song }) => sungRow(sing, song, group.date === today))))));
+  }
+
+  // A sing: the song, which opens it, and for today's sings an Undo.
+  function sungRow(sing, song, today) {
+    return el('li', { class: 'night-song', 'data-song-id': song.id, 'data-sing-id': sing.id },
+      el('button', { type: 'button', class: 'night-open', onclick: () => openSong(song.id) },
+        el('span', { class: 'title', text: song.title }),
+        el('span', { class: 'sub', text: song.artist })),
+      today
+        ? el('div', { class: 'night-actions' },
+          el('button', {
+            type: 'button', class: 'btn', text: 'Undo', 'aria-label': `Undo ${song.title}`,
+            onclick: () => undo(sing, song),
+          }))
+        : null);
+  }
+
+  // Deletes the sing and puts the song back at the top of the set, with no confirmation (R50).
+  async function undo(sing, song) {
+    if (!state.set || !sings.some((s) => s.id === sing.id)) return; // a second tap finds it gone
+    sings = sings.filter((s) => s.id !== sing.id);
+    const next = putBackOnTop(state.set, song.id);
+    changeSet(next);
+    try {
+      await undoSing(sing.id, next);
+    } catch (err) {
+      failed(err);
+      return;
+    }
+    singsChanged();
+    say(`Put “${song.title}” back at the top of the set.`);
+    if (mode === 'sung') drawSung();
+  }
 
   const search = el('input', {
     type: 'search',
@@ -368,10 +875,17 @@ export async function renderSongs({
   }
 
   function openDuplicate() {
-    if (!duplicate) return;
-    const song = duplicate;
-    const back = backState();
-    openScreen(() => renderSong(song.id, back));
+    if (duplicate) openSong(duplicate.id);
+  }
+
+  // "Add “xyz”" under a search that found nothing: the form opens with the
+  // search as the title, ready for the artist (R48).
+  function addFromSearch() {
+    addCard.open = true;
+    titleInput.value = state.query.trim();
+    suggester.update(titleInput.value, artistInput.value);
+    checkDuplicate();
+    artistInput.focus();
   }
 
   // R35: suggestions under the title; taking one fills title and artist.
@@ -419,23 +933,40 @@ export async function renderSongs({
     renderSongs({ venueId: state.venueId });
   });
 
-  viewEl.replaceChildren(
-    el('div', { class: 'stack' },
-      el('details', { class: 'card' }, el('summary', { text: 'Add a song' }), form),
-      message ? el('p', { class: 'notice', role: 'status', text: message }) : null,
-      findField('Venue', venueSelect),
-      search,
-      filtersBox,
-      el('div', { class: 'pick-row' }, count, pickButton, pickNote),
-      list,
-      moreButton));
-  draw();
+  // Adding a song is occasional, so it waits at the bottom of the list (R48).
+  const addCard = el('details', { class: 'card add-song' }, el('summary', { text: 'Add a song' }), form);
+
+  const findPanel = el('div', { class: 'stack', role: 'tabpanel', 'aria-labelledby': 'mode-find' },
+    search,
+    filtersBox,
+    el('div', { class: 'pick-row' }, count, pickButton, pickNote),
+    list,
+    moreButton,
+    addCard);
+
+  // The venue, the set and the modes stay pinned at the top while the rest scrolls (R47).
+  const bar = el('div', { class: 'night-bar' },
+    el('div', { class: 'night-pickers' }, pickerField('Venue', venueSelect), pickerField('Set', setSelect)),
+    modes,
+    overallNote);
+  const panel = el('div', { class: 'night-panel' });
+  const root = el('div', { class: 'stack songs-view' }, bar, status, panel);
+
+  viewEl.replaceChildren(root);
+  fillSetSelect();
+  syncModes();
+  showMode();
 
   if (focusId != null) {
-    // Coming back from a song further down than the first page draws enough pages to reach it.
-    const index = shown.findIndex((s) => s.id === focusId);
-    if (index >= limit) drawRows(Math.ceil((index + 1) / PAGE_SIZE) * PAGE_SIZE);
-    const row = list.querySelector(`[data-song-id="${focusId}"] button`);
+    let row = null;
+    if (mode === 'find') {
+      // Coming back from a song further down than the first page draws enough pages to reach it.
+      const index = shown.findIndex((s) => s.id === focusId);
+      if (index >= limit) drawRows(Math.ceil((index + 1) / PAGE_SIZE) * PAGE_SIZE);
+      row = list.querySelector(`[data-song-id="${focusId}"] .song-row`);
+    } else {
+      row = panel.querySelector(`[data-song-id="${focusId}"] .night-open`);
+    }
     if (row) {
       row.scrollIntoView({ block: 'center' });
       row.focus({ preventScroll: true });
@@ -447,7 +978,9 @@ export async function renderSongs({
 // with Edit and Delete at the bottom within thumb reach. `back` is the list's
 // state (search, venue, filters) to restore on the way back.
 async function renderSong(id, back) {
+  const token = ++screen;
   const song = await db.get('songs', id);
+  if (!stillCurrent(token)) return;
   if (!song) {
     closeScreen(() => renderSongs({ ...back, message: 'That song is no longer in your library.' }));
     return;

@@ -2,20 +2,20 @@
 // venue (R14, R39); add and remove songs (R15); flag songs already sung at the
 // setlist's venue, with the date last sung there (R43); reorder songs by
 // dragging or with Up and Down buttons (R16); show the mix by genre and decade (R44);
-// suggest songs never sung at the venue, spread across genres and decades (R45);
-// Tonight mode, where checking off a song logs a sing (R17).
+// suggest songs never sung at the venue, spread across genres and decades (R45).
+// This tab is for building and tidying lists; working one through the night
+// is the Songs tab's List mode (R49), which replaced Tonight mode (R17).
 //
 // Two screens in one tab: the setlist list and one setlist. renderSetlists()
 // always shows the list, so tapping the Setlists tab is a way back as well.
 import { db } from '../db.js';
 import { el, viewEl, confirmAction, openScreen, closeScreen } from '../ui.js';
-import { plural, sortVenues, todayLocalISO } from '../lib/stats.js';
+import { plural, sortVenues } from '../lib/stats.js';
 import {
   setlistNameError, sortSetlists, venueValue, venueIdFromValue, venueOptions, venueLabel, venueLine,
   makeSetlist, updateSetlist, describeSetlistDelete, addSongId, removeSongId, setlistSongs,
   pickableSongs, sungFlags, moveSongId, moveSongIdBy, mixByGenre, mixByDecade, formatMix,
   SUGGEST_MIN, SUGGEST_MAX, SUGGEST_DEFAULT, suggestCount, suggestSongs, describeSuggestion,
-  tonightSing, findTonightSing, sungOn,
 } from '../lib/setlist.js';
 
 // Most songs the picker lists at once; more than this asks to narrow the search.
@@ -171,12 +171,12 @@ function middleOf(node) {
 
 const sameOrder = (a, b) => a.length === b.length && a.every((id, i) => id === b[i]);
 
-// ---------- One setlist: songs (R15), sung flags (R43), order (R16), mix (R44),
-// suggest (R45) and Tonight (R17) ----------
+// ---------- One setlist: songs (R15), sung flags (R43), order (R16), mix (R44)
+// and suggest (R45) ----------
 
 async function renderSetlist(id) {
   const token = ++screen;
-  const [found, venues, songs, singRecords] = await Promise.all([
+  const [found, venues, songs, sings] = await Promise.all([
     db.get('setlists', id), db.getAll('venues'), db.getAll('songs'), db.getAll('sings'),
   ]);
   if (!stillCurrent(token)) return;
@@ -188,9 +188,6 @@ async function renderSetlist(id) {
   // The latest state, updated before each save so quick taps build on each other.
   let setlist = found;
   const songsById = new Map(songs.map((s) => [s.id, s]));
-  // Every sing, kept in step with the ones Tonight mode logs and removes, so
-  // the sung flags (R43) and suggestions (R45) see them straight away.
-  let sings = singRecords;
 
   const count = el('p', { class: 'count' });
   const list = el('ol', { class: 'list setlist-songs', 'aria-label': 'Songs in this setlist' });
@@ -239,59 +236,15 @@ async function renderSetlist(id) {
     suggestStatus);
   let suggesting = false; // stops a double tap from adding two batches
 
-  // Tonight mode (R17): off whenever the screen opens, and never saved.
-  let tonight = false;
-  let tonightDate = null; // the day sings are logged on, fixed when Tonight is turned on
-  let pickedVenueId = null; // a general setlist's venue for tonight, kept while the screen is open
-  const pending = new Set(); // songs whose check or uncheck is still saving
-  const checks = new Map(); // each row's checkbox by song id, so focus can go back after a redraw
-  const sortedVenues = sortVenues(venues);
-  // A setlist whose venue is gone (only a hand-edited backup could do that) asks like a general one.
-  const ownVenueId = venues.some((v) => v.id === setlist.venueId) ? setlist.venueId : null;
-  const tonightVenueId = () => ownVenueId ?? pickedVenueId;
-
-  const tonightButton = el('button', {
-    class: 'btn tonight-toggle', type: 'button', text: 'Tonight', 'aria-pressed': 'false', onclick: toggleTonight,
-  });
-  // A label beside the select, not around it, so its name is just "Venue".
-  const tonightVenue = el('select', {
-    id: 'tonight-venue', name: 'tonight-venue', required: '',
-    onchange: () => {
-      pickedVenueId = venueIdFromValue(tonightVenue.value);
-      drawTonight();
-      drawSongs();
-    },
-  },
-  el('option', { value: '', text: 'Choose a venue' }),
-  ...sortedVenues.map((v) => el('option', { value: venueValue(v.id), text: v.name })));
-  const tonightVenueField = el('div', { class: 'tonight-venue' },
-    el('label', { for: 'tonight-venue', text: 'Venue' }), tonightVenue);
-  const tonightLine = el('p', { class: 'muted tonight-line' });
-  const tonightBar = el('div', { class: 'tonight-bar' }, tonightButton, tonightVenueField, tonightLine);
-
-  // The song's title and artist, its sung flag (R43) when it has been sung at
-  // the setlist's venue, and in Tonight mode a mark once it is sung tonight (R17).
-  function songText(song, lastSung, sangTonight = false) {
+  // The song's title and artist, and its sung flag (R43) when it has been
+  // sung at the setlist's venue.
+  function songText(song, lastSung) {
     return el('div', { class: 'text' },
       el('span', { class: 'title', text: song.title }),
       el('span', { class: 'sub', text: song.artist }),
       lastSung
         ? el('span', { class: 'flag' }, 'Sung here · last ', el('span', { class: 'nowrap', text: lastSung }))
-        : null,
-      sangTonight ? el('span', { class: 'tonight-mark', text: 'Sang tonight' }) : null);
-  }
-
-  // A row in Tonight mode (R17): a checkbox that logs tonight's sing or takes
-  // it back, then the song. No handle, Up, Down or Remove while singing.
-  function tonightRow(song, lastSung, sang, canCheck) {
-    const check = el('button', {
-      class: 'btn check', type: 'button', role: 'checkbox', 'aria-checked': String(sang),
-      'aria-label': `Sang ${song.title}`, text: sang ? '✓' : '',
-      onclick: (e) => toggleSung(song, document.activeElement === e.currentTarget),
-    });
-    check.disabled = !canCheck;
-    checks.set(song.id, check);
-    return el('li', { class: 'setlist-song tonight', 'data-song-id': song.id }, check, songText(song, lastSung, sang));
+        : null);
   }
 
   // A song row: drag handle, the song, then Up, Down and Remove. `index` is its
@@ -393,63 +346,11 @@ async function renderSetlist(id) {
   function drawSongs() {
     const inList = setlistSongs(setlist, songsById);
     const flags = sungFlags(setlist, sings); // empty for a general setlist
-    const venueId = tonight ? tonightVenueId() : null;
-    const sang = venueId == null ? new Set() : sungOn(sings, venueId, tonightDate);
     count.textContent = plural(inList.length, 'song', 'songs');
-    if (venueId != null) count.textContent += ` · ${inList.filter((s) => sang.has(s.id)).length} sung tonight`;
     controls.clear();
-    checks.clear();
-    list.replaceChildren(...inList.map((song, i) => (tonight
-      ? tonightRow(song, flags.get(song.id), sang.has(song.id), venueId != null)
-      : songRow(song, flags.get(song.id), i, inList.length))));
+    list.replaceChildren(...inList.map((song, i) => songRow(song, flags.get(song.id), i, inList.length)));
     empty.hidden = inList.length > 0;
     drawMix(inList);
-  }
-
-  // The Tonight button and, while it is on, the venue sings are logged at:
-  // the setlist's own, or one picked here for a general setlist (R17).
-  function drawTonight() {
-    tonightButton.setAttribute('aria-pressed', String(tonight));
-    tonightVenueField.hidden = !tonight || ownVenueId != null;
-    tonightLine.hidden = !tonight;
-    const venue = sortedVenues.find((v) => v.id === tonightVenueId());
-    if (!tonight) tonightLine.textContent = '';
-    else if (!venue) {
-      tonightLine.textContent = venues.length ? 'Pick a venue first.' : 'Add a venue in the Venues tab first.';
-    } else {
-      tonightLine.replaceChildren(`Check off each song as you sing it. Logged: ${venue.name}, `,
-        el('span', { class: 'nowrap', text: tonightDate }), '.');
-    }
-  }
-
-  function toggleTonight() {
-    tonight = !tonight;
-    if (tonight) tonightDate = todayLocalISO();
-    drawTonight();
-    drawSongs();
-  }
-
-  // Checking a song logs a sing at tonight's venue; unchecking removes that
-  // sing again without asking, since it is easy to log again (R17).
-  async function toggleSung(song, refocus) {
-    const venueId = tonightVenueId();
-    if (!tonight || venueId == null || pending.has(song.id)) return;
-    pending.add(song.id);
-    try {
-      const logged = findTonightSing(sings, song.id, venueId, tonightDate);
-      if (logged) {
-        await db.delete('sings', logged.id);
-        sings = sings.filter((s) => s.id !== logged.id);
-      } else {
-        const sing = tonightSing(song.id, venueId, tonightDate);
-        const singId = await db.add('sings', sing);
-        sings = [...sings, { ...sing, id: singId }];
-      }
-    } finally {
-      pending.delete(song.id);
-    }
-    drawSongs();
-    if (refocus) checks.get(song.id)?.focus();
   }
 
   function drawMix(inList) {
@@ -568,14 +469,12 @@ async function renderSetlist(id) {
     el('p', { class: 'muted venue-line', text: venueLine(setlist, venues) }),
     count,
     mix,
-    tonightBar,
     list,
     empty,
     suggestForm,
     el('section', { class: 'card stack', 'aria-label': 'Add songs' },
       el('h3', { text: 'Add songs' }),
       search, pickCount, picks, status));
-  drawTonight();
   drawSongs();
   drawPicks();
 }

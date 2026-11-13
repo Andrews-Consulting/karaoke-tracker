@@ -47,7 +47,7 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 | R16 | Reorder songs in a setlist by dragging | Should | Done | Drag handle (pointer events, works with touch) plus Up and Down buttons and arrow keys on the handle. No auto-scroll while dragging; use the buttons for long moves. Real-finger drag needs a check on the phone. e2e: "R16: moves a song up and down with the buttons and the order survives a reload", "R16: drags a song to a new position" |
 | R44 | Show a setlist's mix by genre and decade | Should | Done | A collapsible "Mix" card on the setlist: counts per genre (most first) and per decade (oldest first); "No genre" and "No year" last. e2e: "R44: shows the mix by genre and decade and updates when a song is removed" |
 | R45 | Suggest a set: N songs not yet sung at the venue, spread across genres and decades | Could | Done | "Suggest songs" card on the setlist: adds N (1 to 50, default 10) never-sung, non-Retired songs to the end, round-robin across genres then decades, in random order. e2e: "R45: suggests never-sung songs spread across genres and decades", "R45: says so when fewer songs are left than asked for" |
-| R17 | Tonight mode: check off songs as I sing them, which logs them | Could | Done | "Tonight" toggle on the setlist: each song becomes a checkbox that logs a sing at the venue for the night's date; unchecking removes it without confirmation. A general setlist asks for the venue first. e2e: "R17: checking off a song in Tonight mode logs a sing today, and unchecking removes it", "R17: a general setlist asks for a venue before logging" |
+| R17 | Tonight mode: check off songs as I sing them, which logs them | Could | Superseded | Built in Wave 4, then replaced by List mode on the Songs tab (R49) on 2026-11-12: "Sang it" logs the sing and takes the song off the set, and Sung mode (R50) has Undo |
 
 ## Data
 
@@ -69,7 +69,7 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 |---|---|---|---|---|
 | R26 | Web app manifest so it installs to the home screen | Must | Done | Name, icons, standalone display, theme color. e2e: "R26: has an installable web app manifest"; real install only checkable on a phone |
 | R27 | Service worker caches the app so it works fully offline | Must | Done | e2e: "R27: loads offline after the service worker is installed" |
-| R28 | Served over HTTPS from a static host | Must | Ready to deploy | Steps for GitHub Pages, Netlify and Cloudflare Pages are in README "Deploy". The app needs no build and uses relative paths, so a sub-folder works. Done once it is live at an https URL |
+| R28 | Served over HTTPS from a static host | Must | Done | Live at https://micjaunt.app on GitHub Pages from `main`, HTTPS enforced, since 2026-11-12. Steps in README "Deploy" |
 | R29 | iPhone home-screen icon and status-bar settings | Should | Done | apple-touch-icon (180 px) and the apple-mobile-web-app meta tags in index.html. e2e: "R29: has iPhone home-screen icon and status-bar meta tags" |
 | R30 | Detect a new version and offer to reload | Should | Done | When a new service worker takes control, a banner above the tabs offers Reload or Later; the app also checks for updates when it returns to the foreground. e2e: "R30: offers to reload when a new version is installed" |
 
@@ -83,6 +83,19 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 | R33 | Works at desktop widths too | Should | Done | Content stays at a readable 720 px, centred; tabs stay together in the middle. e2e: "R33: works at a desktop width with readable line lengths and no sideways scroll" |
 | R34 | Opens in under 2 seconds; search feels instant with 1,000 songs | Should | Done | The list draws 200 rows at a time with a "Show N more" button; rows are built once and reused. Measured in emulation: open in 0.7–1.3 s, each keystroke under 170 ms in the page. Needs a check on the phone. e2e: "R34: opens with 1,000 songs in under 2 seconds and searches instantly" |
 | R35 | Suggest title and artist from MusicBrainz when online | Should | Done | Free API, no key; the only network call in the app. After 3 characters of title, 400 ms after the last keystroke, up to 5 suggestions; a Settings switch turns it off. Tests never reach the real site. e2e: "R35: suggests titles and artists from MusicBrainz and fills the form on tap", "R35: makes no request when online suggestions are off", "R35: shows nothing when MusicBrainz fails" |
+
+## Night out (v2 of the Songs tab)
+
+Added 2026-11-12 after using v1. The Songs tab's job is finding the next song to sing and working a list through the night; adding songs is occasional.
+
+| ID | Requirement | Priority | Status | Notes |
+|---|---|---|---|---|
+| R47 | The Songs tab starts with the venue and the current set, pinned at the top; there is always a set open | Must | Done | A Set menu lists the venue's setlists and "New list for tonight…" (named like "Fri 14 Nov"). The first visit to a venue creates a list named after it; the choice is remembered per venue. Under "Overall" there is no set and List and Sung are disabled. e2e: "R47: picking a venue opens its list, creating one on first visit, and remembers it", "R47: New list for tonight creates a dated list and selects it", "R47: Overall has no set and List and Sung are disabled" |
+| R48 | Find mode: search, filters and the song list, with one tap to add a song to the current set | Must | Done | Each row has a + that becomes ✓ when the song is in the set (tap again to remove). "Add a song" sits at the bottom of the list; a search that matches nothing offers "Add “xyz”" with the title prefilled. e2e: "R48: + adds a song to the set from Find mode and ✓ removes it", "R48: Add a song sits at the bottom and a search with no match offers to add it" |
+| R49 | List mode: the current set in order, with move up/down, "Sang it" and "Next time" | Must | Done | "Sang it" logs a sing at the venue today and removes the song from the set. "Next time" moves it to the venue's Next time list, an ordinary setlist created on first use (rename it on the Setlists tab; the link survives). Setlist names are unique, so a second venue's list is "Next time (2)". e2e: "R49: Sang it logs a sing today and removes the song from the set", "R49: Next time moves the song to the venue's Next time list, which can be renamed", "R49: moves songs up and down in List mode" |
+| R50 | Sung mode: what I have sung at this venue, newest first, grouped by date, with Undo for today | Must | Done | Undo deletes the sing and puts the song back at the top of the set. e2e: "R50: Sung mode lists sings newest first by date and Undo puts the song back on top" |
+
+R17 Tonight mode on the Setlists tab is superseded by R49 and is removed when R49 lands. R45 Suggest songs and R44 Mix stay on the Setlists tab, which is for building and tidying lists.
 
 ## Out of scope
 

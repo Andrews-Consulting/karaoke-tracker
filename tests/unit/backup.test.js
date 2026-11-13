@@ -182,7 +182,7 @@ describe('backup reminder (R25)', () => {
   it('reminds after 30 days and not before', () => {
     expect(BACKUP_REMINDER_DAYS).toBe(30);
     expect(backupReminder({ lastBackupAt: daysAgo(29), songCount: 3 }, now)).toBeNull();
-    expect(backupReminder({ lastBackupAt: daysAgo(30), songCount: 3 }, now)).toBe('Your last backup was 30 days ago. Download a fresh one to be safe.');
+    expect(backupReminder({ lastBackupAt: daysAgo(30), songCount: 3 }, now)).toBe('Your last backup was 30 days ago.');
     expect(backupReminder({ lastBackupAt: daysAgo(45), songCount: 1 }, now)).toMatch(/45 days ago/);
   });
 
