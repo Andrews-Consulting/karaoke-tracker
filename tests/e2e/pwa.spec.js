@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, addSong, waitForServiceWorker } from './helpers.js';
+import { openApp, addSong, waitForServiceWorker, expectTab } from './helpers.js';
 
 test.describe('PWA', () => {
   test('R27: loads offline after the service worker is installed', async ({ page, context }) => {
@@ -10,13 +10,13 @@ test.describe('PWA', () => {
     await context.setOffline(true);
     try {
       await page.reload();
-      await expect(page.getByRole('heading', { name: 'Songs' })).toBeVisible();
+      await expectTab(page, 'Songs');
       await expect(page.getByText('1 of 1 songs')).toBeVisible();
       await expect(page.getByRole('listitem').filter({ hasText: 'Valerie' })).toBeVisible();
 
       // Other views come from the cache too.
       await page.getByRole('button', { name: 'Settings' }).click();
-      await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+      await expectTab(page, 'Settings');
     } finally {
       await context.setOffline(false);
     }

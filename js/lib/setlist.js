@@ -1,12 +1,12 @@
-// Setlist logic for the Setlists tab (R39, R14, R15, R43, R16, R44, R45, R17).
+// Setlist logic for the Setlists tab (R56, R14, R15, R43, R16, R44, R45, R59, R17).
 // Pure: no DOM, no IndexedDB.
 //
-// A setlist is { id, name, venueId|null, songIds[] } (see js/db.js). venueId null
-// is a general setlist (R39). songIds are in setlist order and never repeat
-// within one setlist; a song may appear in any number of setlists (R15).
+// A setlist is { id, name, venueId|null, songIds[] } (see js/db.js). venueId is
+// a label, not a binding (R56): "For The Crown", or null for any venue; any
+// setlist can be opened at any venue. songIds are in setlist order and never
+// repeat within one setlist; a song may appear in any number of setlists (R15).
 // Functions here never change their inputs; they return new objects.
 import { plural, singStats } from './stats.js';
-import { filterSongs, sortByTitle } from './search.js';
 import { decadeOf, decadeLabel } from './find.js';
 
 const byName = (a, b) => String(a.name).localeCompare(String(b.name), undefined, { sensitivity: 'base' });
@@ -20,7 +20,7 @@ function uniqueIds(ids) {
   return [...new Set(Array.isArray(ids) ? ids : [])];
 }
 
-// ---------- Names and venues (R14, R39) ----------
+// ---------- Names and venue labels (R14, R56) ----------
 
 // Checks a new or changed setlist name: trimmed, not empty, and not the name of
 // another setlist ignoring case. `exceptId` is the setlist being edited, so it
@@ -38,12 +38,12 @@ export function sortSetlists(setlists) {
   return [...setlists].sort((a, b) => byName(a, b) || (a.id ?? 0) - (b.id ?? 0));
 }
 
-// The venue <select> value for a venueId: '' for General, else the id as text.
+// The "For venue" <select> value for a venueId: '' for any venue, else the id as text.
 export function venueValue(venueId) {
   return venueId == null ? '' : String(venueId);
 }
 
-// Turns a venue <select> value back into a venueId: null for General ('').
+// Turns a "For venue" <select> value back into a venueId: null for any venue ('').
 // Venue ids are IndexedDB auto-increment numbers, so the result is a number.
 export function venueIdFromValue(value) {
   const text = String(value ?? '').trim();
@@ -52,11 +52,12 @@ export function venueIdFromValue(value) {
   return Number.isFinite(id) ? id : null;
 }
 
-// Options for the venue <select>: General first, then every venue by name.
-// When `currentVenueId` points to a venue that no longer exists, it is kept as
-// an "Unknown venue" option, so saving a rename does not quietly change it.
+// Options for the "For venue (optional)" <select>: "Any venue" first, then
+// every venue by name. When `currentVenueId` points to a venue that no longer
+// exists, it is kept as an "Unknown venue" option, so saving a rename does not
+// quietly change it.
 export function venueOptions(venues, currentVenueId = null) {
-  const options = [{ value: '', label: 'General' }];
+  const options = [{ value: '', label: 'Any venue' }];
   for (const venue of [...venues].sort(byName)) options.push({ value: venueValue(venue.id), label: venue.name });
   if (currentVenueId != null && !venues.some((v) => v.id === currentVenueId)) {
     options.push({ value: venueValue(currentVenueId), label: 'Unknown venue' });
@@ -64,19 +65,13 @@ export function venueOptions(venues, currentVenueId = null) {
   return options;
 }
 
-// "General" for a general setlist, else its venue's name ("Unknown venue" when
-// the venue is gone, which only a hand-edited backup could cause).
+// A setlist's label (R56), in its row and under its heading: "Any venue", or
+// "For The Crown" ("For an unknown venue" when the venue is gone, which only a
+// hand-edited backup could cause, since deleting a venue clears its labels).
 export function venueLabel(setlist, venues) {
-  if (setlist.venueId == null) return 'General';
+  if (setlist.venueId == null) return 'Any venue';
   const venue = venues.find((v) => v.id === setlist.venueId);
-  return venue ? venue.name : 'Unknown venue';
-}
-
-// The line under a setlist's heading: "General setlist" or "At The Crown".
-export function venueLine(setlist, venues) {
-  if (setlist.venueId == null) return 'General setlist';
-  const venue = venues.find((v) => v.id === setlist.venueId);
-  return venue ? `At ${venue.name}` : 'At a venue that no longer exists';
+  return venue ? `For ${venue.name}` : 'For an unknown venue';
 }
 
 // A new setlist record, ready for db.add() (which assigns the id).
@@ -119,12 +114,53 @@ export function setlistSongs(setlist, songsById) {
   return uniqueIds(setlist.songIds).filter((id) => byId.has(id)).map((id) => byId.get(id));
 }
 
-// Songs that can be added: matching the query, not already in the setlist, by
-// title. Returns { shown, total }: at most `limit` songs, and how many matched.
-export function pickableSongs(songs, setlist, query = '', limit = 20) {
-  const inList = new Set(setlist.songIds || []);
-  const matches = sortByTitle(filterSongs(songs, query)).filter((song) => !inList.has(song.id));
-  return { shown: matches.slice(0, limit), total: matches.length };
+// ---------- Merge into another setlist (R59) ----------
+
+// Merging `source` into `target`: every song of the source not already in the
+// target goes to the target's end, in the source's order, and the source is
+// left empty. With `songsById` (a Map or an array of songs), ids of songs that
+// no longer exist are dropped from the source and neither moved nor counted.
+// Returns { target, source, moved, skipped }: the two setlists as they are to
+// be saved, how many songs move and how many were already in the target.
+// Merging a setlist into itself changes nothing.
+export function mergePlan(source, target, songsById = null) {
+  if (source.id != null && source.id === target.id) {
+    const same = { ...target, songIds: uniqueIds(target.songIds) };
+    return { target: same, source: same, moved: 0, skipped: 0 };
+  }
+  const songIds = uniqueIds(target.songIds);
+  const there = new Set(songIds);
+  const incoming = songsById ? setlistSongs(source, songsById).map((s) => s.id) : uniqueIds(source.songIds);
+  let moved = 0;
+  let skipped = 0;
+  for (const id of incoming) {
+    if (there.has(id)) skipped += 1;
+    else {
+      songIds.push(id);
+      there.add(id);
+      moved += 1;
+    }
+  }
+  return { target: { ...target, songIds }, source: { ...source, songIds: [] }, moved, skipped };
+}
+
+// The confirmation before a merge (R59), from mergePlan()'s counts.
+export function describeMerge(source, target, { moved, skipped }) {
+  const from = `“${String(source.name).trim()}”`;
+  const to = `“${String(target.name).trim()}”`;
+  if (!moved) {
+    return `${skipped === 1 ? 'The song' : `All ${skipped} songs`} in ${from} ${skipped === 1 ? 'is' : 'are'} already in ${to}. `
+      + `Empty ${from}?`;
+  }
+  const already = skipped ? ` ${plural(skipped, 'song is', 'songs are')} already there.` : '';
+  return `Move ${plural(moved, 'song', 'songs')} from ${from} to the end of ${to}?${already} ${from} will be left empty.`;
+}
+
+// The line on the target's screen after a merge (R59).
+export function describeMerged(source, { moved, skipped }) {
+  const from = `“${String(source.name).trim()}”`;
+  const already = skipped ? ` ${plural(skipped, 'was', 'were')} already here.` : '';
+  return `Moved ${plural(moved, 'song', 'songs')} from ${from}.${already}`;
 }
 
 // ---------- Order (R16) ----------
@@ -212,9 +248,10 @@ export function formatMix(items) {
 
 // ---------- Already sung at the venue (R43) ----------
 
-// For a venue setlist: Map songId -> the last date ('YYYY-MM-DD') each of its
-// songs was sung at that venue, for songs sung there at least once. General
-// setlists have no venue, so they get an empty Map.
+// For a setlist labelled for a venue: Map songId -> the last date
+// ('YYYY-MM-DD') each of its songs was sung at that venue, for songs sung there
+// at least once. A setlist for any venue has no venue, so it gets an empty Map.
+// (The Songs tab's List mode passes the setlist with the venue it is open at.)
 export function sungFlags(setlist, sings) {
   const out = new Map();
   if (setlist.venueId == null) return out;
@@ -277,7 +314,7 @@ function groupBy(items, keyOf) {
 const genreKey = (song) => String(song?.genre ?? '').trim().toLowerCase();
 
 // Songs a suggestion can choose from: not in the setlist already, not Retired,
-// and never sung at its venue (for a general setlist, never sung anywhere).
+// and never sung at its label venue (for a setlist for any venue, never sung anywhere).
 export function suggestCandidates(songs, sings, setlist) {
   const inList = new Set(uniqueIds(setlist.songIds));
   const sung = singStats(Array.isArray(sings) ? sings : [], setlist.venueId ?? null);
@@ -310,7 +347,7 @@ export function suggestSongs(songs, sings, setlist, n, random = Math.random) {
 }
 
 // The line shown after a suggestion: `added` songs were added of `asked`.
-// `general` is true for a general setlist, whose songs count as sung when
+// `general` is true for a setlist for any venue, whose songs count as sung when
 // sung anywhere.
 export function describeSuggestion(added, asked, general = false) {
   const sung = general ? 'sung' : 'sung here';

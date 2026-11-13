@@ -1,12 +1,12 @@
 // Wave 3 H: CSV export (R23), printing (R24), new-version banner (R30) and the
 // iPhone home-screen tags (R29).
 import { test, expect } from '@playwright/test';
-import { openApp, putRecords, readStore, waitForServiceWorker } from './helpers.js';
+import { openApp, putRecords, readStore, waitForServiceWorker, expectTab } from './helpers.js';
 import {
   openSettings, openSongs, collectPageErrors, importCsv, restoreBackup, answerNextDialog,
   songRecord, backupFile, downloadSongsCsv,
 } from './helpers-data.js';
-import { openSetlists, openSetlist, setlistSongRows, setlistSongRow, addArea } from './helpers-setlists.js';
+import { openSetlists, openSetlist, setlistSongRows, setlistSongRow, suggestForm } from './helpers-setlists.js';
 import { openVenues, openVenue, historyRow } from './helpers-venues.js';
 
 // Every awkward value a CSV has to survive: commas, quotes, a line break,
@@ -87,7 +87,10 @@ test.describe('Printing', () => {
     await expect(page.locator('details.find-filters')).toBeHidden();
     await expect(page.getByLabel('Venue')).toBeHidden();
 
-    await expect(page.getByRole('heading', { level: 1, name: 'Songs' })).toBeVisible();
+    // Hidden on screen (R58), the page title prints as a real heading, not a 1 px clip.
+    const title = page.getByRole('heading', { level: 1, name: 'Songs' });
+    await expect(title).toBeVisible();
+    expect((await title.boundingBox()).height).toBeGreaterThan(10);
     await expect(page.getByText('5 of 5 songs')).toBeVisible();
     for (const song of SONGS) await expect(songItem(page, song.title)).toBeVisible();
     await expect(songItem(page, 'Valerie').locator('.sub')).toHaveText('Amy Winehouse · Soul · 2006');
@@ -122,10 +125,12 @@ test.describe('Printing', () => {
     await page.emulateMedia({ media: 'print' });
     await expect(tabBar(page)).toBeHidden();
     await expect(page.getByRole('button', { name: '‹ All setlists' })).toBeHidden();
-    await expect(addArea(page)).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Find songs', exact: true })).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Merge into…', exact: true })).toBeHidden();
+    await expect(suggestForm(page)).toBeHidden();
 
     await expect(page.getByRole('heading', { level: 2, name: 'Friday' })).toBeVisible();
-    await expect(page.getByText('At The Crown')).toBeVisible();
+    await expect(page.getByText('For The Crown', { exact: true })).toBeVisible();
     await expect(setlistSongRows(page)).toHaveCount(2);
     const valerie = setlistSongRow(page, 'Valerie');
     await expect(setlistSongRow(page, '"Heroes"')).toBeVisible();
@@ -223,7 +228,7 @@ test.describe('Updates', () => {
     await page.evaluate(() => { window.beforeReload = true; });
     await Promise.all([page.waitForEvent('load'), reload.click()]);
     expect(await page.evaluate(() => window.beforeReload)).toBeUndefined();
-    await expect(page.getByRole('heading', { level: 1, name: 'Songs' })).toBeVisible();
+    await expectTab(page, 'Songs');
     await waitForServiceWorker(page);
     await expect(banner).toHaveCount(0);
     expect(errors).toEqual([]);

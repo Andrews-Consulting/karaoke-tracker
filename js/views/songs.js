@@ -1,5 +1,6 @@
 // Songs view, built around a night out. Pinned at the top: the venue (R37)
-// and the set open there (R47), then three modes of one screen:
+// and the set open there (R47), any setlist whatever its venue label (R56),
+// then three modes of one screen:
 //   Find (R48): search (R10), filters by sings, tag, status, rating, genre and
 //     decade with times sung per song (R41, R11, R42, R8), the R42 and R12
 //     sort orders, "Pick for me" (R13), a + on each row that adds the song to
@@ -9,6 +10,9 @@
 //     are drawn at a time.
 //   List (R49): the set in order, with move up and down, "Sang it" and "Next time".
 //   Sung (R50): what was sung at the venue by date, with Undo for today.
+// Under Overall there is a set too (R56): + and List work, with Remove in
+// place of "Sang it" and "Next time"; Sung needs a venue.
+// "Find songs" on a setlist (R57) opens this tab in Find with that set.
 // One song's detail has a video search link (R38), an edit form and delete
 // (R2, R3, R36; the edit form also holds tags, key, status and rating).
 import { db, request } from '../db.js';
@@ -29,8 +33,8 @@ import {
   makeSetlist, addSongId, removeSongId, moveSongIdBy, setlistSongs, sungFlags, tonightSing,
 } from '../lib/setlist.js';
 import {
-  currentSetlistKey, nextSetlistKey, tonightListName, uniqueSetlistName, venueSetlists, currentSetlistFor,
-  nextSetlistFor, putBackOnTop, groupSingsByDate,
+  currentSetlistKey, nextSetlistKey, tonightListName, uniqueSetlistName, currentSetlistFor, setMenuGroups,
+  OVERALL_LIST_NAME, nextSetlistFor, putBackOnTop, groupSingsByDate,
 } from '../lib/night.js';
 
 // The meta record that remembers the list's venue across visits and reloads (R37).
@@ -42,6 +46,8 @@ const PAGE_SIZE = 200;
 
 // The Set menu's last option, which starts a new list for tonight (R47).
 const NEW_LIST = 'new';
+// The Set menu's value for Overall's list before it is first saved (R56).
+const UNSAVED = '';
 
 // The three modes (R47). The one showing is kept while the app is open and
 // is Find on a fresh load; switching modes is not a new screen, so it adds no
@@ -61,22 +67,33 @@ function stillCurrent(token) {
 
 const sameOrder = (a, b) => a.length === b.length && a.every((id, i) => id === b[i]);
 
-// ---------- Sets at a venue (R47, R49, R50), each change in one transaction ----------
+// ---------- Sets at a venue (R47, R49, R50, R56), each change in one transaction ----------
 
-// The venue's current set: the remembered one, else its first by name, else a
-// new one named after the venue (R47). Read and written in one transaction, so
-// two quick visits never create two. Resolves with { set, setlists }, where
-// setlists is every setlist as stored afterwards. Skips the transaction when
-// `setlists` and `meta` (key -> value) already hold the remembered set.
+// Overall's list before anything is in it (R56): shown, but saved only when
+// the first song goes in, so opening the app never creates a setlist.
+const unsavedOverallList = () => ({ id: null, ...makeSetlist(OVERALL_LIST_NAME, null) });
+
+// The current set at a venue, or under Overall when `venue` is null (R47,
+// R56): the remembered one, whatever its label; else the first by name
+// labelled for the venue, then the first for any venue (under Overall, the
+// first for any venue, then the first of all); else at a venue a new one
+// named after it, and under Overall an unsaved "My list". Read and written in
+// one transaction, so two quick visits never create two. Resolves with
+// { set, setlists }, where setlists is every setlist as stored afterwards.
+// Skips the transaction when `setlists` and `meta` (key -> value) already
+// hold the remembered set.
 function openCurrentSet(venue, setlists, meta) {
-  const key = currentSetlistKey(venue.id);
-  const known = currentSetlistFor(setlists, venue.id, meta.get(key));
+  const venueId = venue ? venue.id : null;
+  const key = currentSetlistKey(venueId);
+  const known = currentSetlistFor(setlists, venueId, meta.get(key));
   if (known && known.id === meta.get(key)) return Promise.resolve({ set: known, setlists });
+  if (!venue && !known) return Promise.resolve({ set: unsavedOverallList(), setlists });
   return db.transaction(['setlists', 'meta'], 'readwrite', async (stores) => {
     const all = await request(stores.setlists.getAll());
     const saved = await request(stores.meta.get(key));
-    let set = currentSetlistFor(all, venue.id, saved ? saved.value : undefined);
+    let set = currentSetlistFor(all, venueId, saved ? saved.value : undefined);
     let stored = all;
+    if (!set && !venue) return { set: unsavedOverallList(), setlists: all };
     if (!set) {
       const fresh = makeSetlist(uniqueSetlistName(venue.name, all), venue.id);
       set = { ...fresh, id: await request(stores.setlists.add(fresh)) };
@@ -87,16 +104,31 @@ function openCurrentSet(venue, setlists, meta) {
   });
 }
 
-// "New list for tonight" (R47): a list named for today, made unique, which
-// becomes the venue's current set. Resolves with { set, setlists }.
-function startTonightList(venue) {
+// A new list named `name`, made unique, which becomes the current set at the
+// venue (labelled for it), or under Overall when `venue` is null (for any
+// venue). "New list for tonight" (R47) names it for today; Overall's first
+// list is "My list" (R56). Resolves with { set, setlists }.
+function startList(venue, name) {
+  const venueId = venue ? venue.id : null;
   return db.transaction(['setlists', 'meta'], 'readwrite', async (stores) => {
     const all = await request(stores.setlists.getAll());
-    const fresh = makeSetlist(uniqueSetlistName(tonightListName(new Date()), all), venue.id);
+    const fresh = makeSetlist(uniqueSetlistName(name, all), venueId);
     const set = { ...fresh, id: await request(stores.setlists.add(fresh)) };
-    stores.meta.put({ key: currentSetlistKey(venue.id), value: set.id });
+    stores.meta.put({ key: currentSetlistKey(venueId), value: set.id });
     return { set, setlists: [...all, set] };
   });
+}
+
+// "Find songs" on a setlist (R57): makes it the current set at the venue the
+// Songs tab is on (or under Overall), then shows the Songs tab in Find mode.
+// The venue stays as it is.
+export async function showSetInFind(setlistId) {
+  const [saved, venues] = await Promise.all([db.get('meta', VENUE_KEY), db.getAll('venues')]);
+  const wanted = saved ? saved.value : null;
+  const venueId = venues.some((v) => v.id === wanted) ? wanted : null; // a deleted venue means Overall
+  await db.put('meta', { key: currentSetlistKey(venueId), value: setlistId });
+  mode = 'find';
+  document.querySelector('.tabs button[data-view="songs"]')?.click();
 }
 
 // "Next time" (R49): saves `from` (the set without the song) and appends the
@@ -287,17 +319,18 @@ export async function renderSongs({
     query,
     venueId: venues.some((v) => v.id === wanted) ? wanted : null,
     filters: { ...defaultFilters(), ...filters },
-    set: null, // the set open at the venue (R47); null for Overall, which has none
+    set: null, // the set open at the venue or under Overall (R47, R56); id null while Overall's is unsaved
   };
   rememberedQuery = state.query;
   const currentVenue = () => venues.find((v) => v.id === state.venueId) || null;
-  if (state.venueId != null) {
+  {
     const opened = await openCurrentSet(currentVenue(), setlists, meta);
     if (!stillCurrent(token)) return;
     ({ set: state.set, setlists } = opened);
-    meta.set(currentSetlistKey(state.venueId), state.set.id);
-  } else mode = 'find'; // List and Sung need a venue
-  let inSet = new Set(state.set ? state.set.songIds : []);
+    if (state.set.id != null) meta.set(currentSetlistKey(state.venueId), state.set.id);
+  }
+  if (state.venueId == null && mode === 'sung') mode = 'find'; // Sung needs a venue
+  let inSet = new Set(state.set.songIds);
   let stats = singStats(sings, state.venueId);
 
   // What to restore when coming back from a song.
@@ -337,8 +370,8 @@ export async function renderSongs({
   // What the search, filters and sort give (`shown`), how many of those rows
   // are drawn (`limit`), and each song's row, built the first time it is
   // drawn and reused until its sing line changes (a new venue or a new sing).
-  // At a venue each row has a + that adds the song to the set (R48); those
-  // are kept by song id so they follow the set as it changes.
+  // Each row has a + that adds the song to the set (R48, under Overall too,
+  // R56); those are kept by song id so they follow the set as it changes.
   let shown = [];
   let limit = PAGE_SIZE;
   const rows = new Map();
@@ -384,7 +417,7 @@ export async function renderSongs({
         el('span', { class: 'title', text: s.title }),
         el('span', { class: 'sub', text: details }),
         sungLine(sungParts(stats.get(s.id), state.venueId != null), !stats.get(s.id))),
-      state.set ? toggleFor(s) : null);
+      toggleFor(s));
   }
 
   // + adds the song to the end of the set; ✓ shows it is there, and takes it out (R48).
@@ -405,7 +438,10 @@ export async function renderSongs({
   }
 
   async function toggleInSet(song) {
-    if (!state.set) return;
+    if (state.set.id == null) {
+      const venueId = state.venueId;
+      if (!(await saveOverallList()) || state.venueId !== venueId) return;
+    }
     const next = inSet.has(song.id) ? removeSongId(state.set, song.id) : addSongId(state.set, song.id);
     changeSet(next);
     try {
@@ -413,6 +449,24 @@ export async function renderSongs({
     } catch (err) {
       failed(err);
     }
+  }
+
+  // Overall's unsaved "My list" is created by the first + (R56). Quick taps
+  // share one creation. Resolves true once the set has an id.
+  let savingOverall = null;
+  function saveOverallList() {
+    savingOverall ||= startList(null, OVERALL_LIST_NAME).then((made) => {
+      if (state.venueId == null && state.set.id == null && root.isConnected) {
+        setlists = made.setlists;
+        chooseSet(made.set);
+      }
+      return state.set.id != null;
+    }, (err) => {
+      savingOverall = null;
+      failed(err);
+      return false;
+    });
+    return savingOverall;
   }
 
   // Inline, where the list would be, when nothing in the library matches the search (R48).
@@ -464,19 +518,18 @@ export async function renderSongs({
     state.venueId = venue ? venue.id : null;
     db.put('meta', { key: VENUE_KEY, value: state.venueId })
       .catch((err) => console.warn('Could not remember the venue:', err));
-    let set = null;
-    if (venue) {
-      try {
-        ({ set, setlists } = await openCurrentSet(venue, setlists, meta));
-      } catch (err) {
-        failed(err);
-        return;
-      }
-      if (ticket !== venueChange || !root.isConnected) return;
-      meta.set(currentSetlistKey(venue.id), set.id);
-    } else mode = 'find';
+    let set;
+    try {
+      ({ set, setlists } = await openCurrentSet(venue, setlists, meta));
+    } catch (err) {
+      failed(err);
+      return;
+    }
+    if (ticket !== venueChange || !root.isConnected) return;
+    if (set.id != null) meta.set(currentSetlistKey(state.venueId), set.id);
+    if (!venue && mode === 'sung') mode = 'find'; // Sung needs a venue
     state.set = set;
-    inSet = new Set(set ? set.songIds : []);
+    inSet = new Set(set.songIds);
     stats = singStats(sings, state.venueId);
     forgetRows(); // every row's sing line is for the old venue
     say('');
@@ -486,35 +539,34 @@ export async function renderSongs({
     showMode(); // in Find, also re-sorts for the last-sung orders (R12)
   });
 
-  // The Set menu: the venue's setlists by name, then "New list for tonight…".
-  // Overall has no set, so the menu only says to pick a venue.
+  // The Set menu (R56): every setlist by name, grouped "For <venue>", "Any
+  // venue" and "Other venues" (under Overall: "Any venue" and "For a venue"),
+  // then "New list for tonight…" (under Overall "New list…", for any venue).
+  // Overall's unsaved "My list" shows first until its first song saves it.
   const setSelect = el('select', { name: 'set' });
   function fillSetSelect() {
-    if (!state.set) {
-      fillSelect(setSelect, [['', 'Pick a venue to work a list']], '');
-      setSelect.disabled = true;
-      return;
-    }
-    fillSelect(setSelect, [
-      ...venueSetlists(setlists, state.venueId).map((s) => [String(s.id), s.name]),
-      [NEW_LIST, 'New list for tonight…'],
-    ], String(state.set.id));
+    const options = setMenuGroups(setlists, venues, state.venueId).map((group) => el('optgroup', { label: group.label },
+      ...group.items.map((item) => el('option', { value: String(item.id), text: item.text }))));
+    if (state.set.id == null) options.unshift(el('option', { value: UNSAVED, text: state.set.name }));
+    options.push(el('option', { value: NEW_LIST, text: state.venueId == null ? 'New list…' : 'New list for tonight…' }));
+    setSelect.replaceChildren(...options);
+    setSelect.value = state.set.id == null ? UNSAVED : String(state.set.id);
     setSelect.disabled = false;
   }
 
   setSelect.addEventListener('change', async () => {
     const venue = currentVenue();
-    if (!venue || !state.set) return;
+    const venueId = state.venueId;
     if (setSelect.value === NEW_LIST) {
       setSelect.disabled = true; // one new list per choice
       let made;
       try {
-        made = await startTonightList(venue);
+        made = await startList(venue, tonightListName(new Date()));
       } catch (err) {
         failed(err);
         return;
       }
-      if (state.venueId !== venue.id || !root.isConnected) return;
+      if (state.venueId !== venueId || !root.isConnected) return;
       setlists = made.setlists;
       chooseSet(made.set);
       say(`Started “${made.set.name}”.`);
@@ -524,11 +576,11 @@ export async function renderSongs({
     if (!chosen) return;
     chooseSet(chosen);
     say('');
-    db.put('meta', { key: currentSetlistKey(venue.id), value: chosen.id })
+    db.put('meta', { key: currentSetlistKey(venueId), value: chosen.id })
       .catch((err) => console.warn('Could not remember the set:', err));
   });
 
-  // Opens another set at the same venue.
+  // Opens another set at the same venue (or under Overall).
   function chooseSet(set) {
     state.set = set;
     inSet = new Set(set.songIds);
@@ -568,24 +620,23 @@ export async function renderSongs({
     switchMode(next);
     modeButtons.get(next).focus();
   });
-  // Says why List and Sung are greyed out; the Set menu's own text is cut short on a phone.
-  const overallNote = el('p', { class: 'muted night-note', text: 'Pick a venue to use List and Sung.' });
+  // Under Overall, says why Sung is greyed out and List has no "Sang it" (R56).
+  const overallNote = el('p', { class: 'muted night-note', text: 'Pick a venue to log a sing or use Sung.' });
 
   function syncModes() {
-    const overall = !state.set;
+    const overall = state.venueId == null;
     for (const [key, button] of modeButtons) {
       button.setAttribute('aria-selected', String(key === mode));
       button.tabIndex = key === mode ? 0 : -1;
-      button.disabled = overall && key !== 'find';
+      button.disabled = overall && key === 'sung';
     }
-    const n = overall ? 0 : setlistSongs(state.set, songsById).length;
-    const listLabel = overall ? 'List' : `List (${n})`;
+    const listLabel = `List (${setlistSongs(state.set, songsById).length})`;
     if (modeButtons.get('list').textContent !== listLabel) modeButtons.get('list').textContent = listLabel;
     overallNote.hidden = !overall;
   }
 
   function switchMode(key) {
-    if (key === mode || (!state.set && key !== 'find')) return;
+    if (key === mode || (state.venueId == null && key === 'sung')) return;
     mode = key;
     say('');
     syncModes();
@@ -629,7 +680,8 @@ export async function renderSongs({
 
   function drawList() {
     const inList = setlistSongs(state.set, songsById);
-    const flags = sungFlags(state.set, sings);
+    // Flags say what was sung at the venue the set is open at, whatever its label (R56).
+    const flags = sungFlags({ ...state.set, venueId: state.venueId }, sings);
     const next = nextTimeList();
     const isNextTime = !!next && next.id === state.set.id; // never move a song onto itself
     moves.clear();
@@ -639,7 +691,8 @@ export async function renderSongs({
   }
 
   // A song in the set: title, artist and its sung flag (R43), which open the
-  // song, then ↑ ↓, "Sang it" and "Next time".
+  // song, then ↑ ↓, "Sang it" and "Next time"; under Overall, which has no
+  // venue to log a sing at, ↑ ↓ and "Remove" (R56).
   function setRow(song, lastSung, index, total, canMoveOn) {
     // True when the tapped control had focus (a keyboard, or a desktop click),
     // so focus follows the song; phones do not focus buttons on a tap.
@@ -670,16 +723,37 @@ export async function renderSongs({
       el('div', { class: 'night-actions' },
         up,
         down,
-        el('button', {
-          type: 'button', class: 'btn sang', text: 'Sang it', 'aria-label': `Sang ${song.title}`,
-          onclick: () => sangIt(song),
-        }),
-        canMoveOn
-          ? el('button', {
-            type: 'button', class: 'btn', text: 'Next time', 'aria-label': `${song.title} next time`,
-            onclick: () => nextTime(song),
-          })
-          : null));
+        ...(state.venueId == null
+          ? [el('button', {
+            type: 'button', class: 'btn', text: 'Remove', 'aria-label': `Remove ${song.title} from the set`,
+            onclick: () => removeFromList(song),
+          })]
+          : [
+            el('button', {
+              type: 'button', class: 'btn sang', text: 'Sang it', 'aria-label': `Sang ${song.title}`,
+              onclick: () => sangIt(song),
+            }),
+            canMoveOn
+              ? el('button', {
+                type: 'button', class: 'btn', text: 'Next time', 'aria-label': `${song.title} next time`,
+                onclick: () => nextTime(song),
+              })
+              : null,
+          ])));
+  }
+
+  // Takes a song off the set under Overall, with no confirmation: + puts it back (R56).
+  async function removeFromList(song) {
+    if (!inSet.has(song.id)) return; // a second tap finds it gone
+    const next = removeSongId(state.set, song.id);
+    changeSet(next);
+    say(`Removed “${song.title}” from the set.`);
+    if (mode === 'list') drawList();
+    try {
+      await db.put('setlists', next);
+    } catch (err) {
+      failed(err);
+    }
   }
 
   // ↑ (-1) or ↓ (1): drawn at once, then saved.

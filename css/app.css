@@ -51,24 +51,49 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-.top {
-  padding: calc(env(safe-area-inset-top) + 12px) 16px 12px;
-  border-bottom: 1px solid var(--border);
+/* There for screen readers, taking no space on screen (R58: the page title). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
-.top h1 { margin: 0 auto; max-width: 688px; font-size: 1.25rem; } /* lines up with <main> on a desktop (R33) */
+/* No title bar (R58), so the screen starts at the top and clears the notch
+   itself. The status bar is see-through (R29); this strip of background under
+   it keeps scrolled rows from showing behind the clock. Zero height on a
+   screen without a notch. */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  height: env(safe-area-inset-top);
+  background: var(--bg);
+}
 
 main {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: calc(env(safe-area-inset-top) + 16px) 16px 16px;
   width: 100%;
   max-width: 720px; /* keeps lines readable on desktop (R33) */
   margin: 0 auto;
   outline: none;
 }
 
-/* Bottom tabs: reachable with a thumb (R31) */
+/* Bottom tabs: reachable with a thumb (R31). With no title bar, the selected
+   tab says where you are (R58): a pill of the accent with a larger, bold label.
+   The whole 56 px button stays the tap target; its padding keeps the pill
+   inside the bar, as the background only fills the content box. */
 .tabs {
   display: flex;
   justify-content: center;
@@ -81,16 +106,21 @@ main {
   flex: 1;
   max-width: 180px; /* on a desktop the tabs stay together in the middle (R33) */
   min-height: 56px;
+  padding: 6px;
   border: 0;
+  border-radius: 999px;
   background: none;
+  background-clip: content-box;
   color: var(--muted);
   font: inherit;
   font-size: 0.875rem;
 }
 
 .tabs button[aria-current="page"] {
-  color: var(--accent);
-  font-weight: 600;
+  background-color: var(--accent);
+  color: var(--accent-text);
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 input, select, textarea, button {
@@ -430,8 +460,19 @@ label > textarea { margin-top: 4px; color: var(--text); resize: vertical; }
   .card:has(> form) { display: none !important; }
   .card:has(input[type="search"]) { display: none !important; }
 
-  .top { padding: 0 0 8pt; border: 0; }
-  .top h1 { font-size: 14pt; }
+  /* The page title, hidden on screen (R58), heads the printout: "Songs". */
+  #view-title {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0 0 8pt;
+    overflow: visible;
+    clip: auto;
+    clip-path: none;
+    white-space: normal;
+    font-size: 14pt;
+  }
+  body::before { display: none; }
   main { flex: none; overflow: visible; max-width: none; padding: 0; }
   h2 { font-size: 13pt; }
   .card, details.card { background: none; border: 0; border-radius: 0; padding: 0; }
@@ -581,7 +622,9 @@ label.check > input[type="checkbox"] {
 /* The venue, the set and the three modes, pinned to the top of the Songs tab
    while the rest scrolls under them (R47). It spans <main>'s padding, so the
    rows slide under a solid bar rather than showing at its sides or above it.
-   A sticky box stops at the scroller's padding, hence top: -16px. */
+   A sticky box stops at the scroller's padding, hence top: -16px; with no
+   title bar (R58) that puts it on the top edge, under the notch strip on a
+   phone that has one (main's padding adds the inset). */
 .night-bar {
   position: sticky;
   top: -16px;
@@ -699,9 +742,9 @@ label.check > input[type="checkbox"] {
 /* With a sung filter on, every row would read "never sung here" (R52). */
 .list.hide-never .sung.never { display: none; }
 
-/* The song full screen for the KJ (R54): header, tabs and banners go, the
+/* The song full screen for the KJ (R54): page title, tabs and banners go, the
    title takes the biggest type that fits the width, portrait or landscape. */
-body[data-screen="kj"] .top,
+body[data-screen="kj"] #view-title,
 body[data-screen="kj"] .tabs,
 body[data-screen="kj"] .update-banner { display: none; }
 body[data-screen="kj"] main { padding: 0; max-width: none; }
@@ -721,3 +764,17 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
 .kj-key { font-size: clamp(1.25rem, 5vmin, 3rem); color: var(--accent); font-weight: 600; }
 .kj-actions { margin-top: 16px; }
 .kj-button { width: 100%; }
+
+/* ---- Setlist labels, Find songs and merge (R56, R57, R59) ---- */
+
+/* Under the label line: Find songs and Merge into…, with why merging is off. */
+.setlist-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.setlist-actions .merge-note { flex-basis: 100%; margin: 0; font-size: 0.875rem; }
+.setlist-actions .merge-note:empty { display: none; }
+.merge-form .hint { margin: 0; font-size: 0.875rem; }
+.merge-field > label + select { margin-top: 4px; }
+.setlist-empty > p { margin: 0 0 8px; }
+
+@media print {
+  .setlist-actions, .merge-form, .setlist-empty { display: none !important; }
+}

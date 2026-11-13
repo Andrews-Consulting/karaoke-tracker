@@ -90,17 +90,18 @@ async function expectAllTapTargets(page, screen) {
 test.describe('Night out', () => {
   test('R47: picking a venue opens its list, creating one on first visit, and remembers it', async ({ page }) => {
     const { songs } = bigLibrary(30, 0); // enough to scroll
+    // No list for any venue here: Viking would open that rather than make its own (R56).
     const { venueIds } = await start(page, {
       songs: [...SONGS, ...songs],
       setlists: [
         { name: 'Crown Friday', venue: 'The Crown' },
         { name: 'Another', venue: 'The Crown' },
-        { name: 'Anywhere', venue: null },
       ],
     });
     const viking = venueIds.Viking;
     const crown = venueIds['The Crown'];
-    await expect(setSelect(page)).toBeDisabled();
+    // Overall opens the first list of all when none is for any venue (R56).
+    await expect(shownSet(page)).toHaveText('Another · The Crown');
 
     // Venue first, then Set, above the modes and the search.
     const venueBox = await venueSelect(page).boundingBox();
@@ -117,16 +118,19 @@ test.describe('Night out', () => {
     await venueSelect(page).selectOption({ label: 'Viking' });
     await expect(shownSet(page)).toHaveText('Viking');
     await expect(setSelect(page)).toBeEnabled();
-    await expect(setSelect(page).locator('option')).toHaveText(['Viking', 'New list for tonight…']);
+    // Every list is offered (R56): this venue's first, then other venues' with their venue.
+    await expect(setSelect(page).locator('option'))
+      .toHaveText(['Viking', 'Another · The Crown', 'Crown Friday · The Crown', 'New list for tonight…']);
     await expect(tab(page, 'List')).toHaveText('List (0)');
     const [vikingList] = await setlistsNamed(page, 'Viking');
     expect(vikingList).toEqual({ id: expect.any(Number), name: 'Viking', venueId: viking, songIds: [] });
     expect(await metaValue(page, `currentSetlist:${viking}`)).toBe(vikingList.id);
 
-    // A venue with lists opens its first by name and creates nothing; general lists are not offered.
+    // A venue with lists labelled for it opens its first by name and creates nothing.
     await venueSelect(page).selectOption({ label: 'The Crown' });
     await expect(shownSet(page)).toHaveText('Another');
-    await expect(setSelect(page).locator('option')).toHaveText(['Another', 'Crown Friday', 'New list for tonight…']);
+    await expect(setSelect(page).locator('option'))
+      .toHaveText(['Another', 'Crown Friday', 'Viking · Viking', 'New list for tonight…']);
     await setSelect(page).selectOption({ label: 'Crown Friday' });
     const crownFriday = (await setlistsNamed(page, 'Crown Friday'))[0].id;
     await expect.poll(() => metaValue(page, `currentSetlist:${crown}`)).toBe(crownFriday);
@@ -139,7 +143,7 @@ test.describe('Night out', () => {
     await reloadList(page, 34);
     await expect(venueSelect(page)).toHaveValue(String(crown));
     await expect(shownSet(page)).toHaveText('Crown Friday');
-    expect(await readStore(page, 'setlists')).toHaveLength(4); // nothing created twice
+    expect(await readStore(page, 'setlists')).toHaveLength(3); // nothing created twice
 
     // The bar stays at the top while the list scrolls under it.
     await page.locator('main').evaluate((main) => { main.scrollTop = main.scrollHeight; });
@@ -182,8 +186,9 @@ test.describe('Night out', () => {
     // Another one the same night is (3); the menu lists them by name.
     await setSelect(page).selectOption({ label: 'New list for tonight…' });
     await expect(shownSet(page)).toHaveText(`${name} (3)`);
-    await expect(setSelect(page).locator('option'))
-      .toHaveText([...byName([`${name} (2)`, `${name} (3)`, 'Viking']), 'New list for tonight…']);
+    await expect(setSelect(page).locator('option')).toHaveText([
+      ...byName([`${name} (2)`, `${name} (3)`, 'Viking']), `${name.toUpperCase()} · The Crown`, 'New list for tonight…',
+    ]);
     expect(await readStore(page, 'setlists')).toHaveLength(4);
 
     // It stays open after a reload.
@@ -195,7 +200,8 @@ test.describe('Night out', () => {
 
   test('R48: + adds a song to the set from Find mode and ✓ removes it', async ({ page }) => {
     const { songIds, venueIds } = await start(page);
-    await expect(page.getByRole('button', { name: / to the set$/ })).toHaveCount(0); // Overall has no set
+    await expect(page.getByRole('button', { name: / to the set$/ })).toHaveCount(4); // Overall has a set too (R56)
+    expect(await readStore(page, 'setlists')).toEqual([]); // saved only once a song goes in
 
     await venueSelect(page).selectOption({ label: 'Viking' });
     await expect(shownSet(page)).toHaveText('Viking');
@@ -359,7 +365,8 @@ test.describe('Night out', () => {
     expect(next).toEqual({ id: expect.any(Number), name: 'Next time (2)', venueId: viking, songIds: [songIds.Valerie] });
     expect(await metaValue(page, `nextTimeSetlist:${viking}`)).toBe(next.id);
     await expect(shownSet(page)).toHaveText('Friday');
-    await expect(setSelect(page).locator('option')).toHaveText(['Friday', 'Next time (2)', 'New list for tonight…']);
+    await expect(setSelect(page).locator('option'))
+      .toHaveText(['Friday', 'Next time (2)', 'Next time · The Crown', 'New list for tonight…']);
 
     await button(page, 'Mr. Brightside next time').click();
     await expect(statusLine(page)).toHaveText('Moved “Mr. Brightside” to Next time.');
@@ -512,41 +519,7 @@ test.describe('Night out', () => {
     await expect(page.getByText('Nothing sung here yet.')).toBeVisible();
   });
 
-  test('R47: Overall has no set and List and Sung are disabled', async ({ page }) => {
-    await start(page, { setlists: [{ name: 'Friday', venue: 'Viking', titles: ['Valerie'] }] });
-
-    await expect(venueSelect(page)).toHaveValue('');
-    await expect(setSelect(page)).toBeDisabled();
-    await expect(setSelect(page).locator('option')).toHaveText(['Pick a venue to work a list']);
-    await expect(tab(page, 'Find')).toHaveAttribute('aria-selected', 'true');
-    await expect(tab(page, 'List')).toBeDisabled();
-    await expect(tab(page, 'List')).toHaveText('List');
-    await expect(tab(page, 'Sung')).toBeDisabled();
-    await expect(page.getByText('Pick a venue to use List and Sung.')).toBeVisible();
-    await expect(page.getByRole('button', { name: / the set$/ })).toHaveCount(0);
-    for (const name of ['Find', 'List', 'Sung']) await expectTapTarget(tab(page, name));
-    await expectAllTapTargets(page, 'Find, Overall');
-
-    // Still browsable as before.
-    await expect(page.getByText('4 of 4 songs')).toBeVisible();
-    await openSong(page, 'Valerie');
-    await page.getByRole('button', { name: 'Back to list' }).click();
-    await expect(page.getByText('4 of 4 songs')).toBeVisible();
-    expect(await readStore(page, 'setlists')).toHaveLength(1); // browsing Overall creates no set
-
-    // Picking Overall from List mode goes back to Find.
-    await venueSelect(page).selectOption({ label: 'Viking' });
-    await expect(shownSet(page)).toHaveText('Friday');
-    await expect(page.getByText('Pick a venue to use List and Sung.')).toBeHidden();
-    await showMode(page, 'List');
-    await expect(setTitles(page)).toHaveText(['Valerie']);
-    await venueSelect(page).selectOption({ label: 'Overall' });
-    await expect(tab(page, 'Find')).toHaveAttribute('aria-selected', 'true');
-    await expect(search(page)).toBeVisible();
-    await expect(tab(page, 'List')).toBeDisabled();
-    await expect(setSelect(page)).toBeDisabled();
-    await expect(page.getByRole('button', { name: / the set$/ })).toHaveCount(0);
-    await tab(page, 'Sung').click({ force: true }); // a disabled tab does nothing
-    await expect(tab(page, 'Find')).toHaveAttribute('aria-selected', 'true');
-  });
+  // "R47: Overall has no set and List and Sung are disabled" was here until R56
+  // gave Overall a set; see "R56: under Overall a list can be built and
+  // ordered but not sung" in setlist-labels.spec.js.
 });

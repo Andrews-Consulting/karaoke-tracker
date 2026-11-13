@@ -155,8 +155,9 @@ test.describe('Setlists polish', () => {
     await expect(mixLine(page, 'Genres')).toHaveText('Rock 2 · Pop 1 · Soul 1 · No genre 1');
     await expect(mixLine(page, 'Decades')).toHaveText('1970s 2 · 2000s 2 · No year 1');
 
-    // Adding a song updates it too; reordering changes no count.
-    await addToSetlist(page, { title: 'Back to Black', artist: 'Amy Winehouse' });
+    // Adding a song (with Find songs, R57) updates it too; reordering changes no count.
+    await addToSetlist(page, 'Friday', { title: 'Back to Black', artist: 'Amy Winehouse' });
+    await openMix(page);
     await expect(mixLine(page, 'Genres')).toHaveText('Rock 2 · Soul 2 · Pop 1 · No genre 1');
     await expect(mixLine(page, 'Decades')).toHaveText('1970s 2 · 2000s 3 · No year 1');
     await moveButton(page, 'Back to Black', 'up').click();

@@ -117,7 +117,7 @@ test.describe('Venues', () => {
     const row = venueRow(page, 'The Crown');
     await row.getByRole('button', { name: 'Delete The Crown' }).click();
     await expect(row.getByRole('alert')).toHaveText(
-      'Can\'t delete “The Crown”: 2 sing log entries and 0 setlists still use it. Remove those first.');
+      'Can\'t delete “The Crown”: 2 sing log entries still use it. Remove those first.');
     expect(dialogs.messages).toEqual([]);
 
     await page.reload();
@@ -141,34 +141,6 @@ test.describe('Venues', () => {
     expect(await readStore(page, 'venues')).toEqual([]);
   });
 
-  test('R40: refuses to delete a venue that has setlists', async ({ page }) => {
-    const dialogs = answerDialogs(page);
-    await openApp(page);
-    await openVenues(page);
-    await addVenue(page, 'The Crown');
-    await addVenue(page, 'Anchor');
-
-    // Setlists have no UI yet (R39, R14), so store them directly.
-    const crownId = Number(await venueRow(page, 'The Crown').getAttribute('data-venue-id'));
-    await addRecords(page, 'setlists', [
-      { name: 'Friday', venueId: crownId, songIds: [] },
-      { name: 'Anywhere', venueId: null, songIds: [] },
-    ]);
-    await openVenues(page);
-
-    await venueRow(page, 'The Crown').getByRole('button', { name: 'Delete The Crown' }).click();
-    await expect(venueRow(page, 'The Crown').getByRole('alert')).toHaveText(
-      'Can\'t delete “The Crown”: 0 sing log entries and 1 setlist still use it. Remove those first.');
-    expect(dialogs.messages).toEqual([]);
-    await expect(venueRows(page)).toHaveCount(2);
-
-    // A general setlist does not hold up an unrelated venue.
-    dialogs.accept = true;
-    await venueRow(page, 'Anchor').getByRole('button', { name: 'Delete Anchor' }).click();
-    await expect(venueRows(page)).toHaveCount(1);
-    expect(dialogs.messages).toHaveLength(1);
-  });
-
   test('R8: logs a sing with date and venue and shows times sung and last sung at that venue', async ({ page }) => {
     await openApp(page);
     await addSong(page, VALERIE);
@@ -185,7 +157,9 @@ test.describe('Venues', () => {
     });
     const form = page.getByRole('form', { name: 'Log a sing' });
     await expect(form.getByLabel('Date', { exact: true })).toHaveValue(today);
-    await expect(form.getByText('3 songs', { exact: true })).toBeVisible();
+    // A blank search lists nothing, just a hint with the library size.
+    await expect(form.getByText('Type to find one of 3 songs.', { exact: true })).toBeVisible();
+    await expect(form.getByRole('list', { name: 'Matching songs' }).getByRole('button')).toHaveCount(0);
     await expect(page.getByText('Nothing sung here yet.')).toBeVisible();
 
     // Searching narrows the picker as I type.
@@ -348,10 +322,13 @@ test.describe('Venues', () => {
 
     const form = page.getByRole('form', { name: 'Log a sing' });
     const picks = form.getByRole('list', { name: 'Matching songs' }).getByRole('button');
-    await expect(form.getByText('Showing 20 of 500 songs. Type more to narrow the search.')).toBeVisible();
-    await expect(picks).toHaveCount(20);
+    await expect(form.getByText('Type to find one of 500 songs.', { exact: true })).toBeVisible();
+    await expect(picks).toHaveCount(0);
 
     const search = form.getByRole('searchbox', { name: 'Find a song to log' });
+    await search.fill('track'); // every song: capped at 20
+    await expect(form.getByText('Showing 20 of 500 matches. Type more to narrow the search.')).toBeVisible();
+    await expect(picks).toHaveCount(20);
     await search.fill('track 49'); // Track 490 to Track 499
     await expect(form.getByText('10 matches', { exact: true })).toBeVisible();
     await expect(picks).toHaveCount(10);

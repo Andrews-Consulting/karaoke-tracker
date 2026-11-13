@@ -3,7 +3,7 @@
 // for me" (R13). Every test answers MusicBrainz itself (mockMusicBrainz), so
 // none reaches the real site.
 import { test, expect } from '@playwright/test';
-import { openApp } from './helpers.js';
+import { openApp, expectTab } from './helpers.js';
 import {
   seed, openFilters, choose, filter, shownTitles, expectTapTarget,
   openAddForm, mbRecording, mockMusicBrainz, suggestionList, suggestionsSwitch,
@@ -25,7 +25,7 @@ const search = (page) => page.getByRole('searchbox', { name: 'Search songs' });
 
 async function showTab(page, name) {
   await page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name }).click();
-  await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
+  await expectTab(page, name);
 }
 
 async function backToList(page) {
