@@ -4,13 +4,14 @@
 // Three screens in one tab: the venue list, one venue (log a sing and its
 // history) and "Overall" (history across every venue). renderVenues() always
 // shows the list, so tapping the Venues tab is a way back as well.
-import { db } from '../db.js';
+import { db, request } from '../db.js';
 import { el, viewEl, confirmAction, openScreen, closeScreen } from '../ui.js';
 import { filterSongs, sortByTitle } from '../lib/search.js';
 import {
   plural, todayLocalISO, isISODate, singStats, venueStats, totals, statsRows, singsBySong,
-  sortVenues, venueNameError, venueInUseMessage,
+  sortVenues, venueNameError, venueInUseMessage, describeVenueDelete,
 } from '../lib/stats.js';
+import { currentSetlistKey, nextSetlistKey } from '../lib/night.js';
 
 // Most songs the picker lists at once; more than this asks to narrow the search.
 const MAX_PICKS = 20;
@@ -41,6 +42,23 @@ function subLine(parts) {
 function backButton() {
   return el('button', {
     class: 'btn back', type: 'button', text: '‹ All venues', onclick: () => closeScreen(() => renderVenues()),
+  });
+}
+
+// Deletes a venue in one transaction (R40, R56): setlists labelled for it
+// become Any venue, and the Songs tab's memory of its current set and its
+// Next time list goes. Refuses, without changing anything, when a sing still
+// uses the venue (one could have been logged since the check before confirming).
+function deleteVenue(venueId) {
+  return db.transaction(['venues', 'sings', 'setlists', 'meta'], 'readwrite', async (stores) => {
+    const sings = await request(stores.sings.index('venueId').count(venueId));
+    if (sings) throw new Error('a sing was logged there meanwhile');
+    for (const setlist of await request(stores.setlists.index('venueId').getAll(venueId))) {
+      stores.setlists.put({ ...setlist, venueId: null });
+    }
+    stores.meta.delete(currentSetlistKey(venueId));
+    stores.meta.delete(nextSetlistKey(venueId));
+    stores.venues.delete(venueId);
   });
 }
 
@@ -121,20 +139,26 @@ export async function renderVenues() {
       input.focus();
     }
 
-    // Hard delete, and only when no sing or setlist uses the venue (owner's decision).
+    // Hard delete, and only when no sing uses the venue (owner's decision).
+    // Setlists labelled for it become Any venue (R56).
     async function remove() {
       message.textContent = '';
-      const [venueSings, venueSetlists] = await Promise.all([
+      const [venueSings, labelled] = await Promise.all([
         db.getAllByIndex('sings', 'venueId', venue.id),
         db.getAllByIndex('setlists', 'venueId', venue.id),
       ]);
-      const inUse = venueInUseMessage(venue.name, venueSings.length, venueSetlists.length);
+      const inUse = venueInUseMessage(venue.name, venueSings.length);
       if (inUse) {
         message.textContent = inUse;
         return;
       }
-      if (!confirmAction(`Delete the venue “${venue.name}”?`)) return;
-      await db.delete('venues', venue.id);
+      if (!confirmAction(describeVenueDelete(venue.name, labelled.length))) return;
+      try {
+        await deleteVenue(venue.id);
+      } catch (err) {
+        message.textContent = `Could not delete “${venue.name}”: ${err.message}.`;
+        return;
+      }
       renderVenues();
     }
 

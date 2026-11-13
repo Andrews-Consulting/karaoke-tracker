@@ -7,18 +7,18 @@
 //   venues    { id, name }                              name trimmed, non-empty
 //   sings     { id, songId, venueId, date }             one row per time a song is sung (R8)
 //               date is a local calendar day 'YYYY-MM-DD' (what the user picked, no time zone shifts)
-//   setlists  { id, name, venueId|null, songIds[] }     venueId null = general setlist (R39);
+//   setlists  { id, name, venueId|null, songIds[] }     venueId is a label (R56), null = any venue;
 //               songIds in setlist order, no duplicates within one setlist
 //   meta      { key, value }                            e.g. { key: 'lastBackupAt', value: ISO } (R25)
 //
 // Indexes: songs.artist, songs.genre, songs.year, sings.songId, sings.venueId,
-// setlists.venueId (general setlists have null venueId and so are not in it).
+// setlists.venueId (setlists for any venue have null venueId and so are not in it).
 // At this app's scale (hundreds of songs, thousands of sings) reading a whole
 // store with getAll() and working in memory is fine and keeps views simple.
 //
 // Referential integrity is the caller's job: deleting a song must also delete its
 // sings and remove it from every setlist; deleting a venue must deal with its sings
-// and setlists. Use db.transaction() so those writes land atomically.
+// and clear its label on setlists. Use db.transaction() so those writes land atomically.
 //
 // To change the schema: bump DB_VERSION and add a new `if (oldVersion < N)` block.
 // Never edit an existing block, or installed copies will not be migrated.
