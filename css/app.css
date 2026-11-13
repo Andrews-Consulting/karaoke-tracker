@@ -500,3 +500,109 @@ a.btn {
 }
 
 a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---- Setlists: suggest and Tonight (Wave 4 J) ---- */
+
+/* Suggest songs (R45): "How many" beside the button, both 44 px tall. */
+.suggest .hint { margin: 0; font-size: 0.875rem; }
+.suggest-row { display: flex; align-items: flex-end; gap: 8px; }
+.suggest-row label { flex: 0 0 7rem; }
+.suggest-row .btn { flex: 1; }
+
+/* Tonight mode (R17): the toggle above the song list, lit while on; for a
+   general setlist, the venue to log at and a note until one is picked. */
+.tonight-bar > * + * { margin-top: 8px; }
+.tonight-bar [hidden] { display: none; }
+.tonight-bar .tonight-line { margin: 0; font-size: 0.875rem; }
+.tonight-venue > select { margin-top: 4px; }
+.tonight-toggle[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+/* A song's checkbox in Tonight mode: an empty box, ticked once sung tonight. */
+.setlist-song .check {
+  flex: none;
+  width: var(--tap);
+  min-width: var(--tap);
+  padding: 0;
+  border-width: 2px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.setlist-song .check[aria-checked="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+.setlist-song .check:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.setlists-view .tonight-mark {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+/* Space after the sung flag rather than before the mark, so a mark that wraps lines up on the left. */
+.setlist-song.tonight .flag { margin-right: 6px; }
+
+@media print {
+  .tonight-bar { display: none !important; }
+}
+
+/* ---- Songs tab: suggestions, duplicates, pick (Wave 4 I) ---- */
+
+/* MusicBrainz suggestions right under the Title field (R35). */
+.stack > .suggestions { margin-top: 6px; }
+.suggestions { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.suggestions[hidden] { display: none; }
+.suggestion {
+  display: block;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.suggestion .by { color: var(--muted); }
+
+/* "Already in your library" with Open it, above the submit button (R9). */
+.duplicate { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.duplicate[hidden] { display: none; }
+.duplicate > p { flex: 1 1 12em; margin: 0; color: var(--accent); overflow-wrap: anywhere; }
+.duplicate > .btn { flex: none; }
+
+/* The count line with "Pick for me" beside it (R13). */
+.pick-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; }
+.pick-row > .count { margin: 0; }
+.pick-row > .pick { flex: none; }
+.pick-row > .pick-note { flex-basis: 100%; margin: 0; font-size: 0.875rem; }
+.pick-row > .pick-note[hidden] { display: none; }
+.pick-row > .pick:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* A checkbox with its label beside it, the box a full tap target (Settings, R35). */
+label.check { display: flex; align-items: center; gap: 12px; color: var(--text); font-size: 1rem; }
+label.check > input[type="checkbox"] {
+  flex: none;
+  width: var(--tap);
+  height: var(--tap);
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+@media print {
+  .pick-note { display: none !important; }
+}

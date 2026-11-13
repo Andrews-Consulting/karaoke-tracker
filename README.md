@@ -1,6 +1,8 @@
-# Karaoke Tracker
+# Mic Jaunt
 
-A personal, local-only PWA for tracking a karaoke repertoire: songs, venues, what was sung where, and setlists that avoid repeats and mix genres and decades.
+A personal, local-only PWA for tracking a karaoke repertoire: songs, venues, what was sung where, and setlists that avoid repeats and mix genres and decades. Lives at <https://micjaunt.app>.
+
+The internal id is `mic-jaunt` too: the IndexedDB name, the cache prefix, the backup format's `app` field and the download file names. Backup files from before the rename (`app: "karaoke-tracker"`) still restore.
 
 No build step, no dependencies, no server. Plain HTML, CSS and JavaScript modules.
 
@@ -31,6 +33,7 @@ Then open <http://localhost:8000>. The VS Code "Live Server" extension works too
 | `manifest.webmanifest` | Install settings (name, icons, colors) |
 | `icons/` | App icons; regenerate with `python3 tools/make_icons.py` |
 | `tools/serve.js` | Zero-dependency static server used by Playwright and `npm run serve` |
+| `tools/screenshots.js` | Phone screenshots of every screen for design review (`npm run screenshots`) |
 | `tests/unit/` | Vitest tests for `js/lib/` |
 | `tests/e2e/` | Playwright tests, named by requirement ID |
 | `docs/REQUIREMENTS.md` | Requirements and their status |
@@ -52,14 +55,18 @@ npm run test:e2e    # Playwright, tests/e2e/, mobile Chromium + mobile WebKit
 - Every test gets a fresh browser context, so IndexedDB starts empty.
 - E2E test names carry the requirement ID they prove, e.g. `R10: searches by title or artist as I type`.
 
+## Screenshots
+
+`npm run screenshots` writes a PNG of every screen to `screenshots/<device>/<theme>/`, for an iPhone 14 (WebKit) and a Pixel 7 (Chromium) in dark and light, from a fixed sample library. `DEVICE=iphone THEME=dark npm run screenshots` does one set. It uses port 8004 and is for design review; the folder is not committed.
+
 ## What works today
 
 - Installable shell with offline cache (R26, R27, R29)
-- Songs: add, search, open, edit every field (notes, genre, year, key, tags, status, rating), delete with confirmation (R1, R10, R2, R3, R36, R4–R7)
+- Songs: add, search, open, edit every field (notes, genre, year, key, tags, status, rating), delete with confirmation (R1, R10, R2, R3, R36, R4–R7); title and artist suggestions from MusicBrainz while typing, with an off switch in Settings (R35); a warning when the song is already there (R9); "Pick for me" (R13)
 - Find, on the Songs tab: pick a venue or "Overall" to see times sung and last sung per song, then filter by never sung here / not since a date, tag, status, rating, genre and decade, and sort by title, artist, rating, last sung, date added, genre or decade (R37, R41, R11, R42, R12). Fast with 1,000 songs (R34); each song has a video search link (R38)
-- Setlists: general or tied to a venue; create, edit, delete; add, remove and reorder songs; songs already sung at the setlist's venue are flagged with the last date; a Mix card counts genres and decades (R39, R14, R15, R43, R16, R44)
+- Setlists: general or tied to a venue; create, edit, delete; add, remove and reorder songs; songs already sung at the setlist's venue are flagged with the last date; a Mix card counts genres and decades; "Suggest songs" fills a set with never-sung songs spread across genres and decades; Tonight mode checks songs off and logs them (R39, R14, R15, R43, R16, R44, R45, R17)
 - Settings: CSV import of songs and, via a venue column, sings; CSV export; JSON backup and restore (R22, R46, R23, R20, R21)
-- Print-friendly song list, setlist and venue history from the browser's print menu (R24); new-version banner with Reload (R30); iPhone icon and status-bar tags (R29)
+- Print-friendly song list, setlist and venue history from the browser's print menu (R24); new-version banner with Reload (R30); iPhone icon and status-bar tags (R29); a reminder when the last backup is over 30 days old (R25)
 - Venues: add, rename, delete when unused; log a sing with date and venue; times sung and last sung per venue and overall (R40, R8)
 - Data stored in IndexedDB, with a persistent-storage request (R18, R19)
 
@@ -68,7 +75,7 @@ npm run test:e2e    # Playwright, tests/e2e/, mobile Chromium + mobile WebKit
 
 ## Still to build
 
-Every Must and Should requirement is built except R35 (MusicBrainz suggestions, the only network call). R28 (hosting) is yours to do; see Deploy below. Could items are listed in [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
+Every requirement is built except R28 (hosting, which is yours to do; see Deploy below). See [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
 
 ## Two things to remember
 
@@ -86,6 +93,8 @@ Only the app files matter to the host: `index.html`, `manifest.webmanifest`, `sw
 1. Push the repo to GitHub.
 2. Repo **Settings → Pages → Build and deployment**: Source "Deploy from a branch", branch `main`, folder `/ (root)`. Save.
 3. After a minute the site is at `https://<user>.github.io/<repo>/`. The sub-folder is fine: every path in the app is relative and the manifest's `start_url` and `scope` are `.`.
+
+**Custom domain (micjaunt.app):** the `CNAME` file at the repo root holds the domain, so GitHub Pages picks it up when it deploys. At the registrar, point the apex at GitHub Pages with four A records (`185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`) and, optionally, `www` as a CNAME to `<user>.github.io`. Then in **Settings → Pages** confirm the custom domain and tick **Enforce HTTPS** once the certificate check passes (minutes to an hour). `.app` domains are HTTPS-only by browser policy, so the site will not load at all until that certificate exists. If you also own `micjaunt.com`, forward it to `https://micjaunt.app` at the registrar rather than adding it to Pages.
 
 **Netlify or Cloudflare Pages:** connect the repo (or drag the folder onto Netlify Drop). Build command: none. Publish directory: the repo root.
 

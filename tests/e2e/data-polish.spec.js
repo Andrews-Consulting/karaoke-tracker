@@ -41,7 +41,7 @@ test.describe('CSV export', () => {
     await openSettings(page);
 
     const { filename, text } = await downloadSongsCsv(page);
-    expect(filename).toMatch(/^karaoke-songs-\d{4}-\d{2}-\d{2}\.csv$/);
+    expect(filename).toMatch(/^mic-jaunt-songs-\d{4}-\d{2}-\d{2}\.csv$/);
     await expect(page.getByText(`Created ${filename} with 5 songs.`)).toBeVisible();
     // BOM, header, rows by title ignoring case (punctuation first), RFC 4180 quoting, CRLF.
     expect(text).toBe('﻿'
@@ -236,7 +236,7 @@ test.describe('iPhone home screen', () => {
     const meta = (name) => page.locator(`meta[name="${name}"]`);
     await expect(meta('apple-mobile-web-app-capable')).toHaveAttribute('content', 'yes');
     await expect(meta('mobile-web-app-capable')).toHaveAttribute('content', 'yes');
-    await expect(meta('apple-mobile-web-app-title')).toHaveAttribute('content', 'Karaoke');
+    await expect(meta('apple-mobile-web-app-title')).toHaveAttribute('content', 'Mic Jaunt');
     await expect(meta('apple-mobile-web-app-status-bar-style')).toHaveAttribute('content', 'black-translucent');
     // black-translucent draws the app under the status bar; viewport-fit=cover lets
     // the header's safe-area padding keep the title clear of it.

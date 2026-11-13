@@ -92,8 +92,8 @@ test.describe('Backup and restore', () => {
     await openSettings(page);
 
     const { filename, json } = await downloadBackup(page);
-    expect(filename).toMatch(/^karaoke-backup-\d{4}-\d{2}-\d{2}\.json$/);
-    expect(json).toMatchObject({ app: 'karaoke-tracker', format: 1, dbVersion: 1 });
+    expect(filename).toMatch(/^mic-jaunt-backup-\d{4}-\d{2}-\d{2}\.json$/);
+    expect(json).toMatchObject({ app: 'mic-jaunt', format: 1, dbVersion: 1 });
     expect(Number.isNaN(Date.parse(json.exportedAt))).toBe(false);
     expect(Object.keys(json.data).sort()).toEqual(['meta', 'setlists', 'sings', 'songs', 'venues']);
     expect(json.data.songs.map((s) => s.title).sort()).toEqual(['Dancing Queen', 'Valerie']);
@@ -210,7 +210,7 @@ test.describe('Backup and restore', () => {
 
     await restoreBackup(page, { name: 'something else' }, 'other.json');
     await expect(page.getByText('other.json cannot be restored. Nothing was changed.')).toBeVisible();
-    await expect(page.getByText('This file is not a Karaoke Tracker backup.')).toBeVisible();
+    await expect(page.getByText('This file is not a Mic Jaunt backup.')).toBeVisible();
 
     const broken = backupFile({ songs: [songRecord(1, 'Waterloo', 'ABBA')] }, { format: 2 });
     delete broken.data.sings;

@@ -1,13 +1,14 @@
 {
-  "name": "karaoke-tracker",
+  "name": "mic-jaunt",
   "version": "0.2.0",
   "private": true,
-  "description": "Personal, local-only karaoke tracker PWA. No build step, no runtime dependencies.",
+  "description": "Mic Jaunt: a personal, local-only karaoke tracker PWA. No build step, no runtime dependencies.",
   "type": "module",
   "scripts": {
     "serve": "node tools/serve.js",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
+    "screenshots": "node tools/screenshots.js",
     "test": "npm run test:unit && npm run test:e2e"
   },
   "devDependencies": {

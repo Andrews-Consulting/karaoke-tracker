@@ -8,6 +8,8 @@ import {
 import { songKey } from '../lib/song.js';
 import { THEME_CHOICES } from '../lib/theme.js';
 import { savedThemeChoice, applyThemeChoice } from '../theme.js';
+import { recordBackup } from '../reminder.js';
+import { suggestionsEnabled, setSuggestionsEnabled } from '../musicbrainz.js';
 import {
   buildBackup, backupFileName, validateBackup, countRecords, formatCounts, restoreMessage,
 } from '../lib/backup.js';
@@ -63,6 +65,19 @@ export async function renderSettings() {
     el('strong', { text: 'Appearance' }),
     el('label', { for: 'setting-theme', text: 'Theme' }),
     themeSelect);
+
+  // ---- R35: online suggestions, the app's only network call ----
+  const suggestBox = el('input', { type: 'checkbox', name: 'musicbrainz' });
+  suggestBox.checked = suggestionsEnabled();
+  suggestBox.addEventListener('change', () => setSuggestionsEnabled(suggestBox.checked));
+  const onlineSuggestions = el('div', { class: 'card stack' },
+    el('strong', { text: 'Online suggestions' }),
+    el('label', { class: 'check' }, suggestBox,
+      el('span', { text: 'Suggest titles and artists from MusicBrainz while typing (sends what you type to musicbrainz.org)' })),
+    el('p', {
+      class: 'muted',
+      text: 'Only the title and artist typed in the Add a song form are sent. Everything else stays on this device.',
+    }));
 
   const status = el('p', { class: 'muted' });
 
@@ -141,6 +156,7 @@ export async function renderSettings() {
       const backup = buildBackup(await db.exportAll(), now);
       const name = backupFileName(now);
       saveFile(name, JSON.stringify(backup, null, 2), 'application/json');
+      await recordBackup(now); // R25: the reminder counts from here
       backupMsg.show(`Created ${name} with ${formatCounts(countRecords(backup.data))}.`);
     } catch (err) {
       backupMsg.show(`Could not create a backup. ${errorText(err)}`, { error: true });
@@ -182,6 +198,7 @@ export async function renderSettings() {
   viewEl.replaceChildren(
     el('div', { class: 'stack' },
       appearance,
+      onlineSuggestions,
       el('div', { class: 'card stack' }, el('strong', { text: 'Storage' }), status, ask),
       el('div', { class: 'card stack' },
         el('strong', { text: 'Import songs' }),

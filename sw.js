@@ -4,8 +4,8 @@
 // add every new app file to APP_SHELL. Otherwise installed copies keep serving
 // the old files, or fail offline when a module is missing from the cache.
 
-const CACHE_VERSION = 'v13';
-const CACHE_NAME = `karaoke-tracker-${CACHE_VERSION}`;
+const CACHE_VERSION = 'v18';
+const CACHE_NAME = `mic-jaunt-${CACHE_VERSION}`;
 
 // Paths are relative so the app also works from a sub-folder (e.g. GitHub Pages).
 const APP_SHELL = [
@@ -18,7 +18,11 @@ const APP_SHELL = [
   'js/ui.js',
   'js/update.js',
   'js/theme.js',
+  'js/musicbrainz.js',
+  'js/reminder.js',
   'js/lib/theme.js',
+  'js/lib/musicbrainz.js',
+  'js/lib/pick.js',
   'js/lib/search.js',
   'js/lib/song.js',
   'js/lib/csv.js',
@@ -48,7 +52,7 @@ self.addEventListener('activate', (event) => {
     caches.keys()
       .then((names) => Promise.all(
         names
-          .filter((name) => name.startsWith('karaoke-tracker-') && name !== CACHE_NAME)
+          .filter((name) => (name.startsWith('mic-jaunt-') || name.startsWith('karaoke-tracker-')) && name !== CACHE_NAME)
           .map((name) => caches.delete(name))
       ))
       .then(() => self.clients.claim())

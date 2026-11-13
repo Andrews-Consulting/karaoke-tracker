@@ -1,7 +1,7 @@
 // Steps for the Find e2e tests (Wave 2 D). openApp, putRecords and readStore live in helpers.js.
 import { expect } from '@playwright/test';
 import { makeSong } from '../../js/lib/song.js';
-import { putRecords, readStore } from './helpers.js';
+import { putRecords, readStore, mockedMusicBrainz } from './helpers.js';
 
 // Reloads and waits for the Songs list to show all `total` songs.
 export async function reloadList(page, total) {
@@ -128,4 +128,63 @@ export async function seedBigLibrary(page, n = 1000, singCount = 500) {
   const [venueId] = await putRecords(page, 'venues', [{ name: 'The Crown' }]);
   await putRecords(page, 'sings', sings.map(({ index, date }) => ({ songId: songIds[index], venueId, date })));
   return { songs, venueId };
+}
+
+// ---------- Songs tab polish (R35, R9, R13, Wave 4 I) ----------
+
+// Opens the "Add a song" card and resolves with its form.
+export async function openAddForm(page) {
+  const form = page.getByRole('form', { name: 'Add a song' });
+  if (!(await form.isVisible())) await page.getByText('Add a song', { exact: true }).click();
+  await expect(form).toBeVisible();
+  return form;
+}
+
+// A recording as the MusicBrainz search answers it, trimmed to what the app reads.
+export function mbRecording(title, artist) {
+  return {
+    id: `test-${title}-${artist}`,
+    score: 100,
+    title,
+    'artist-credit': [{ name: artist, joinphrase: '', artist: { id: `test-${artist}`, name: artist } }],
+  };
+}
+
+// Answers every request to musicbrainz.org in the test, so no test reaches the
+// real site. `answer(url)` gives { status, json } or { abort: true }; the
+// default is a search with no recordings. Call before openApp(); the route
+// stays through reloads. Resolves with a live list of the requests made,
+// each { url, accept }.
+export async function mockMusicBrainz(page, answer = () => ({ json: { recordings: [] } })) {
+  const requests = [];
+  mockedMusicBrainz.add(page); // openApp() then lets requests through to this route
+  await page.route('https://musicbrainz.org/**', async (route) => {
+    const request = route.request();
+    const headers = await request.allHeaders();
+    requests.push({ url: request.url(), accept: headers.accept });
+    const { status = 200, json = {}, abort = false } = await answer(new URL(request.url()));
+    if (abort) {
+      await route.abort('internetdisconnected');
+      return;
+    }
+    await route.fulfill({
+      status,
+      contentType: 'application/json',
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: typeof json === 'string' ? json : JSON.stringify(json),
+    });
+  });
+  return requests;
+}
+
+// The suggestion list under the Add form's Title field.
+export function suggestionList(page) {
+  return page.getByRole('form', { name: 'Add a song' }).getByRole('list', { name: 'Suggestions from MusicBrainz' });
+}
+
+// The Settings switch for R35.
+export function suggestionsSwitch(page) {
+  return page.getByRole('checkbox', {
+    name: 'Suggest titles and artists from MusicBrainz while typing (sends what you type to musicbrainz.org)',
+  });
 }

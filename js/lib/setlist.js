@@ -1,5 +1,5 @@
-// Setlist logic for the Setlists tab (R39, R14, R15, R43, R16, R44). Pure: no
-// DOM, no IndexedDB.
+// Setlist logic for the Setlists tab (R39, R14, R15, R43, R16, R44, R45, R17).
+// Pure: no DOM, no IndexedDB.
 //
 // A setlist is { id, name, venueId|null, songIds[] } (see js/db.js). venueId null
 // is a general setlist (R39). songIds are in setlist order and never repeat
@@ -221,6 +221,128 @@ export function sungFlags(setlist, sings) {
   const stats = singStats(sings, setlist.venueId);
   for (const id of uniqueIds(setlist.songIds)) {
     if (stats.has(id)) out.set(id, stats.get(id).lastSung);
+  }
+  return out;
+}
+
+// ---------- Suggest a set (R45) ----------
+
+export const SUGGEST_MIN = 1;
+export const SUGGEST_MAX = 50;
+export const SUGGEST_DEFAULT = 10;
+
+// The "How many" box's value as a whole number from SUGGEST_MIN to
+// SUGGEST_MAX, or null when it is empty, not a whole number or out of range.
+export function suggestCount(value) {
+  const text = String(value ?? '').trim();
+  const n = Number(text);
+  return text && Number.isInteger(n) && n >= SUGGEST_MIN && n <= SUGGEST_MAX ? n : null;
+}
+
+// Interleaves lists: the first item of each, then the second of each, and so
+// on; a list that runs out drops out. [[a1, a2, a3], [b1], [c1, c2]] gives
+// [a1, b1, c1, a2, c2, a3].
+export function roundRobin(groups) {
+  const lists = (Array.isArray(groups) ? groups : []).filter((g) => Array.isArray(g) && g.length);
+  const longest = Math.max(0, ...lists.map((g) => g.length));
+  const out = [];
+  for (let i = 0; i < longest; i += 1) {
+    for (const list of lists) if (i < list.length) out.push(list[i]);
+  }
+  return out;
+}
+
+// A shuffled copy (Fisher-Yates). `random` returns a number in [0, 1), as Math.random does.
+function shuffled(items, random) {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i -= 1) {
+    const j = Math.min(i, Math.max(0, Math.floor(random() * (i + 1))));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+// Map key -> items with that key, keys in the order first seen.
+function groupBy(items, keyOf) {
+  const out = new Map();
+  for (const item of items) {
+    const key = keyOf(item);
+    if (!out.has(key)) out.set(key, []);
+    out.get(key).push(item);
+  }
+  return out;
+}
+
+// Genre ignoring case and spaces; '' is the "No genre" group.
+const genreKey = (song) => String(song?.genre ?? '').trim().toLowerCase();
+
+// Songs a suggestion can choose from: not in the setlist already, not Retired,
+// and never sung at its venue (for a general setlist, never sung anywhere).
+export function suggestCandidates(songs, sings, setlist) {
+  const inList = new Set(uniqueIds(setlist.songIds));
+  const sung = singStats(Array.isArray(sings) ? sings : [], setlist.venueId ?? null);
+  const seen = new Set();
+  return (Array.isArray(songs) ? songs : []).filter((song) => {
+    if (!song || song.status === 'retired') return false;
+    if (inList.has(song.id) || sung.has(song.id) || seen.has(song.id)) return false;
+    seen.add(song.id);
+    return true;
+  });
+}
+
+// Up to `n` songs to add to a setlist (R45), in the order to add them. Chosen
+// from suggestCandidates() and spread across genres and decades: the songs are
+// grouped by genre (ignoring case; no genre is a group of its own) and, within
+// a genre, by decade (no year is a group too). The pick takes one song from
+// each genre in turn, and each genre takes its songs from each of its decades
+// in turn, so every genre comes up once before any comes up twice. The order
+// of the genres, of the decades within a genre and of the songs within a
+// decade is random; pass `random` (like Math.random) to make it repeatable.
+export function suggestSongs(songs, sings, setlist, n, random = Math.random) {
+  const count = Math.trunc(Number(n));
+  if (!(count > 0)) return [];
+  const byGenre = groupBy(suggestCandidates(songs, sings, setlist), genreKey);
+  const perGenre = [...byGenre.values()].map((genreSongs) => {
+    const byDecade = [...groupBy(genreSongs, (song) => decadeOf(song.year)).values()];
+    return roundRobin(shuffled(byDecade, random).map((decadeSongs) => shuffled(decadeSongs, random)));
+  });
+  return roundRobin(shuffled(perGenre, random)).slice(0, count);
+}
+
+// The line shown after a suggestion: `added` songs were added of `asked`.
+// `general` is true for a general setlist, whose songs count as sung when
+// sung anywhere.
+export function describeSuggestion(added, asked, general = false) {
+  const sung = general ? 'sung' : 'sung here';
+  if (!added) return `Every song has been ${sung} already, or is in this setlist.`;
+  if (added < asked) return `Added ${plural(added, 'song', 'songs')} (only ${added} never ${sung} ${added === 1 ? 'was' : 'were'} left).`;
+  return `Added ${plural(added, 'song', 'songs')}.`;
+}
+
+// ---------- Tonight (R17) ----------
+
+// The sing Tonight mode logs when a song is checked off: that song, at that
+// venue, on `date` ('YYYY-MM-DD'). Ready for db.add('sings', ...).
+export function tonightSing(songId, venueId, date) {
+  return { songId, venueId, date };
+}
+
+// The sing unchecking removes: the song's sing at that venue on `date`, the
+// most recently logged when there are several. null when there is none.
+export function findTonightSing(sings, songId, venueId, date) {
+  let found = null;
+  for (const sing of Array.isArray(sings) ? sings : []) {
+    if (sing.songId !== songId || sing.venueId !== venueId || sing.date !== date) continue;
+    if (!found || (sing.id ?? 0) > (found.id ?? 0)) found = sing;
+  }
+  return found;
+}
+
+// Ids of the songs sung at a venue on `date`: those Tonight mode shows checked.
+export function sungOn(sings, venueId, date) {
+  const out = new Set();
+  for (const sing of Array.isArray(sings) ? sings : []) {
+    if (sing.venueId === venueId && sing.date === date) out.add(sing.songId);
   }
   return out;
 }

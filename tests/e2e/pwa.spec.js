@@ -30,7 +30,8 @@ test.describe('PWA', () => {
     const res = await request.get(new URL(href, page.url()).toString());
     expect(res.ok()).toBe(true);
     const manifest = await res.json();
-    expect(manifest.name).toBe('Karaoke Tracker');
+    expect(manifest.name).toBe('Mic Jaunt');
+    expect(manifest.short_name.length).toBeLessThanOrEqual(12); // fits under an iOS icon
     expect(manifest.display).toBe('standalone');
     expect(manifest.theme_color).toMatch(/^#/);
     expect(manifest.icons.some((i) => i.sizes === '192x192')).toBe(true);

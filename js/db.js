@@ -23,7 +23,7 @@
 // To change the schema: bump DB_VERSION and add a new `if (oldVersion < N)` block.
 // Never edit an existing block, or installed copies will not be migrated.
 
-const DB_NAME = 'karaoke-tracker';
+const DB_NAME = 'mic-jaunt';
 export const DB_VERSION = 1;
 
 export const STORES = ['songs', 'venues', 'sings', 'setlists', 'meta'];

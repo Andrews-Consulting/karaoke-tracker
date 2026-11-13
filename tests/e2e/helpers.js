@@ -2,8 +2,16 @@
 // so IndexedDB is empty when it starts.
 import { expect } from '@playwright/test';
 
-// Opens the app and waits until the Songs view has rendered.
+// Pages whose test answers MusicBrainz itself (see mockMusicBrainz in
+// helpers-find.js). openApp() lets those requests through to that mock.
+export const mockedMusicBrainz = new WeakSet();
+
+// Opens the app and waits until the Songs view has rendered. No test may reach
+// the real MusicBrainz (R35): every lookup is refused here, unless the test
+// registered its own answer with mockMusicBrainz(), which then gets it.
 export async function openApp(page) {
+  await page.route('https://musicbrainz.org/**', (route) =>
+    (mockedMusicBrainz.has(page) ? route.fallback() : route.abort('internetdisconnected')));
   await page.goto('./');
   await expect(page.getByRole('heading', { name: 'Songs' })).toBeVisible();
   await expect(page.getByText(/of \d+ songs/)).toBeVisible();
@@ -33,7 +41,7 @@ export async function openSong(page, title) {
 export async function putRecords(page, store, records) {
   return page.evaluate(async ({ store, records }) => {
     const conn = await new Promise((resolve, reject) => {
-      const req = indexedDB.open('karaoke-tracker');
+      const req = indexedDB.open('mic-jaunt');
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
     });
@@ -55,7 +63,7 @@ export async function putRecords(page, store, records) {
 export async function readStore(page, store) {
   return page.evaluate(async (store) => {
     const conn = await new Promise((resolve, reject) => {
-      const req = indexedDB.open('karaoke-tracker');
+      const req = indexedDB.open('mic-jaunt');
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
     });

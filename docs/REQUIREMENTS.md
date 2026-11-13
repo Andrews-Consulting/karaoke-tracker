@@ -1,4 +1,4 @@
-# Karaoke Tracker: requirements
+# Mic Jaunt: requirements
 
 A personal, local-only PWA for tracking a karaoke repertoire of 500+ songs.
 
@@ -22,7 +22,7 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 | R6 | Store my key change for each song | Should | Done | E.g. -2 or +1, as set on the karaoke machine. Same e2e test as R5 |
 | R7 | Mark each song as Go-to, Want to try or Retired | Should | Done | Same e2e test as R5 |
 | R4 | Rate each song 1-5 for how well I sing it | Could | Done | Same e2e test as R5 |
-| R9 | Warn when adding a song that is already in the library | Could | Not started | Match on title + artist, ignoring case |
+| R9 | Warn when adding a song that is already in the library | Could | Done | Matches title + artist ignoring case while typing; shows "Already in your library" with Open it, and the button reads "Add anyway". e2e: "R9: warns when the song is already in the library and still allows adding" |
 
 ## Find
 
@@ -34,7 +34,7 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 | R11 | Filter by tag, rating and status | Must | Done | Filters combine, with each other and with the search. Rating is a minimum (4+). e2e: "R11: tag, status and rating filters combine" |
 | R42 | Filter and sort by genre and decade | Must | Done | Sort by title, genre, decade or decade newest first; songs without a genre or year sort last. e2e: "R42: filters by genre and decade and sorts by decade" |
 | R12 | Sort by title, artist, rating, last sung or date added | Should | Done | In the Sort by menu with the R42 orders. Last sung uses the selected venue; "longest ago first" puts never-sung songs first. e2e: "R12: sorts by artist, rating and date added", "R12: sorts by last sung at the selected venue" |
-| R13 | "Pick for me": a random song from the current filter | Could | Not started | |
+| R13 | "Pick for me": a random song from the current filter | Could | Done | Button beside the count line; picks from everything the venue, search and filters leave, and opens it. e2e: "R13: picks a random song from the current filter and opens it" |
 
 ## Setlists
 
@@ -46,8 +46,8 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 | R43 | Flag songs in a setlist that I have already sung at its venue | Must | Done | Shows the date last sung there; general setlists show no flag. e2e: "R43: flags songs already sung at the setlist's venue with the last date", "R43: a general setlist shows no sung flags" |
 | R16 | Reorder songs in a setlist by dragging | Should | Done | Drag handle (pointer events, works with touch) plus Up and Down buttons and arrow keys on the handle. No auto-scroll while dragging; use the buttons for long moves. Real-finger drag needs a check on the phone. e2e: "R16: moves a song up and down with the buttons and the order survives a reload", "R16: drags a song to a new position" |
 | R44 | Show a setlist's mix by genre and decade | Should | Done | A collapsible "Mix" card on the setlist: counts per genre (most first) and per decade (oldest first); "No genre" and "No year" last. e2e: "R44: shows the mix by genre and decade and updates when a song is removed" |
-| R45 | Suggest a set: N songs not yet sung at the venue, spread across genres and decades | Could | Not started | A starting point I can edit |
-| R17 | Tonight mode: check off songs as I sing them, which logs them | Could | Not started | Depends on R8 |
+| R45 | Suggest a set: N songs not yet sung at the venue, spread across genres and decades | Could | Done | "Suggest songs" card on the setlist: adds N (1 to 50, default 10) never-sung, non-Retired songs to the end, round-robin across genres then decades, in random order. e2e: "R45: suggests never-sung songs spread across genres and decades", "R45: says so when fewer songs are left than asked for" |
+| R17 | Tonight mode: check off songs as I sing them, which logs them | Could | Done | "Tonight" toggle on the setlist: each song becomes a checkbox that logs a sing at the venue for the night's date; unchecking removes it without confirmation. A general setlist asks for the venue first. e2e: "R17: checking off a song in Tonight mode logs a sing today, and unchecking removes it", "R17: a general setlist asks for a venue before logging" |
 
 ## Data
 
@@ -61,7 +61,7 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 | R46 | CSV import logs sings: a venue column logs one sing per row, dated by a date column or the import day | Should | Done | Venues are created as needed; sings are logged for songs already in the library too; a sing already logged (same song, venue, date) is skipped. Dates: YYYY-MM-DD, YYYY-MM, YYYY or M/D/YYYY. e2e: "R46: a venue column logs a sing per row, dated by the date column or today", "R46: an unreadable date skips the sing but keeps the song" |
 | R23 | Export songs as a CSV file | Should | Done | Settings → "Download songs as CSV": title, artist, genre, year, key, tags, status, rating, notes; imports back as duplicates only. e2e: "R23: downloads a CSV of all songs that imports back without duplicates" |
 | R24 | Print-friendly song list and setlist | Should | Done | Print stylesheet only; print from the browser's share or print menu. Hides tabs, forms and buttons; black on white. e2e: "R24: prints the song list without the tabs and forms", "R24: prints a setlist's songs", "R24: prints a venue's history with every date" |
-| R25 | Remind me to back up when the last export is over 30 days old | Could | Not started | |
+| R25 | Remind me to back up when the last export is over 30 days old | Could | Done | Banner above the tabs at startup once there are songs and no backup in 30 days; "Back up now" opens Settings, "Later" hides it for a week. The download records `lastBackupAt` in the meta store. e2e: "R25: reminds once there are songs and no backup, and goes quiet after a backup", "R25: reminds when the last backup is over 30 days old, and Later hides it for a week" |
 
 ## PWA
 
@@ -82,7 +82,7 @@ Priority: **Must** = needed for a usable first version, **Should** = next, **Cou
 | R32 | Dark theme by default, with a light option | Should | Done | Settings → Appearance: Dark (default), Light, or Match the phone. Saved on the device; applied before the first paint. e2e: "R32: is dark by default and a light option survives a reload", "R32: \"Match the phone\" follows the phone's setting" |
 | R33 | Works at desktop widths too | Should | Done | Content stays at a readable 720 px, centred; tabs stay together in the middle. e2e: "R33: works at a desktop width with readable line lengths and no sideways scroll" |
 | R34 | Opens in under 2 seconds; search feels instant with 1,000 songs | Should | Done | The list draws 200 rows at a time with a "Show N more" button; rows are built once and reused. Measured in emulation: open in 0.7–1.3 s, each keystroke under 170 ms in the page. Needs a check on the phone. e2e: "R34: opens with 1,000 songs in under 2 seconds and searches instantly" |
-| R35 | Suggest title and artist from MusicBrainz when online | Should | Not started | Free API, no key; the only network call in the app |
+| R35 | Suggest title and artist from MusicBrainz when online | Should | Done | Free API, no key; the only network call in the app. After 3 characters of title, 400 ms after the last keystroke, up to 5 suggestions; a Settings switch turns it off. Tests never reach the real site. e2e: "R35: suggests titles and artists from MusicBrainz and fills the form on tap", "R35: makes no request when online suggestions are off", "R35: shows nothing when MusicBrainz fails" |
 
 ## Out of scope
 

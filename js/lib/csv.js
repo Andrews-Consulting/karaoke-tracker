@@ -259,7 +259,7 @@ export function songsToCsv(songs = []) {
   return `﻿${row(EXPORT_COLUMNS)}${lines.join('')}`;
 }
 
-// karaoke-songs-YYYY-MM-DD.csv, using the local calendar day.
+// mic-jaunt-songs-YYYY-MM-DD.csv, using the local calendar day.
 export function csvFileName(now = new Date()) {
-  return `karaoke-songs-${todayLocalISO(now)}.csv`;
+  return `mic-jaunt-songs-${todayLocalISO(now)}.csv`;
 }

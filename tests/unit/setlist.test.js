@@ -5,6 +5,10 @@ import {
   pickableSongs, sungFlags,
 } from '../../js/lib/setlist.js';
 import { moveSongId, moveSongIdBy, mixByGenre, mixByDecade, formatMix } from '../../js/lib/setlist.js';
+import {
+  suggestCount, roundRobin, suggestCandidates, suggestSongs, describeSuggestion,
+  tonightSing, findTonightSing, sungOn,
+} from '../../js/lib/setlist.js';
 
 const CROWN = 1;
 const ANCHOR = 2;
@@ -466,5 +470,253 @@ describe('R44 mix by genre and decade', () => {
     mixByGenre(mixSongs);
     mixByDecade(mixSongs);
     expect(mixSongs).toEqual(copy);
+  });
+});
+
+// ---------- Suggest a set (R45), Wave 4 J ----------
+
+// Swaps nothing in a Fisher-Yates shuffle, so groups and songs keep the order first seen.
+const NO_SHUFFLE = () => 0.9999;
+
+// A small seeded generator (mulberry32), so shuffled results repeat run to run.
+function seeded(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const SEEDS = [1, 2, 3, 7, 42, 99, 1234, 2026];
+
+// Four genres (one of them none) over several decades; spellings of a genre vary.
+const pool = [
+  { id: 101, title: 'Rock 70s a', genre: 'Rock', year: 1975 },
+  { id: 102, title: 'Rock 70s b', genre: 'rock', year: 1972 },
+  { id: 103, title: 'Rock 00s a', genre: ' Rock ', year: 2004 },
+  { id: 104, title: 'Rock 00s b', genre: 'ROCK', year: 2001 },
+  { id: 201, title: 'Pop 70s', genre: 'Pop', year: 1976 },
+  { id: 202, title: 'Pop 80s a', genre: 'Pop', year: 1984 },
+  { id: 203, title: 'Pop 80s b', genre: 'pop', year: 1989 },
+  { id: 301, title: 'Soul 00s', genre: 'Soul', year: 2006 },
+  { id: 302, title: 'Soul 60s', genre: 'Soul', year: 1966 },
+  { id: 303, title: 'Soul no year', genre: 'Soul', year: null },
+  { id: 401, title: 'No genre a', genre: '', year: 1999 },
+  { id: 402, title: 'No genre b', year: 1995 },
+];
+const genreOf = (id) => String(pool.find((s) => s.id === id).genre ?? '').trim().toLowerCase();
+const ids = (songs) => songs.map((s) => s.id);
+const emptyAt = (venueId) => ({ id: 9, name: 'Tonight', venueId, songIds: [] });
+
+describe('R45 suggestCount', () => {
+  it('accepts whole numbers from 1 to 50', () => {
+    expect(suggestCount('1')).toBe(1);
+    expect(suggestCount(' 10 ')).toBe(10);
+    expect(suggestCount(50)).toBe(50);
+  });
+
+  it('refuses empty, fractional and out-of-range values', () => {
+    for (const value of ['', '  ', null, undefined, '0', '-3', '51', '2.5', 'ten', 'NaN']) {
+      expect(suggestCount(value)).toBeNull();
+    }
+  });
+});
+
+describe('R45 roundRobin', () => {
+  it('takes one from each list in turn, dropping lists that run out', () => {
+    expect(roundRobin([['a1', 'a2', 'a3'], ['b1'], ['c1', 'c2']])).toEqual(['a1', 'b1', 'c1', 'a2', 'c2', 'a3']);
+  });
+
+  it('is empty for no lists and skips empty ones', () => {
+    expect(roundRobin([])).toEqual([]);
+    expect(roundRobin(undefined)).toEqual([]);
+    expect(roundRobin([[], ['x'], null])).toEqual(['x']);
+  });
+});
+
+describe('R45 suggestCandidates', () => {
+  const sings = [
+    { id: 1, songId: 102, venueId: CROWN, date: '2026-10-01' },
+    { id: 2, songId: 301, venueId: ANCHOR, date: '2026-10-02' },
+  ];
+
+  it('leaves out songs in the setlist and songs sung at its venue, not at other venues', () => {
+    const setlist = { ...emptyAt(CROWN), songIds: [101, 201] };
+    const out = ids(suggestCandidates(pool, sings, setlist));
+    expect(out).not.toContain(101);
+    expect(out).not.toContain(201);
+    expect(out).not.toContain(102);
+    expect(out).toContain(301); // sung, but at Anchor
+    expect(out).toHaveLength(pool.length - 3);
+  });
+
+  it('for a general setlist leaves out songs sung anywhere', () => {
+    const out = ids(suggestCandidates(pool, sings, { ...emptyAt(null), songIds: [101] }));
+    expect(out).not.toContain(101);
+    expect(out).not.toContain(102);
+    expect(out).not.toContain(301);
+    expect(out).toHaveLength(pool.length - 3);
+  });
+
+  it('leaves out Retired songs, since they are not to be sung', () => {
+    const withRetired = pool.map((song) => (song.id === 401 ? { ...song, status: 'retired' } : song));
+    const out = ids(suggestCandidates(withRetired, [], emptyAt(CROWN)));
+    expect(out).not.toContain(401);
+    expect(out).toHaveLength(pool.length - 1);
+    expect(ids(suggestCandidates(pool, [], emptyAt(CROWN)))).toContain(401);
+  });
+});
+
+describe('R45 suggestSongs', () => {
+  const sings = [
+    { id: 1, songId: 102, venueId: CROWN, date: '2026-10-01' },
+    { id: 2, songId: 202, venueId: CROWN, date: '2026-09-01' },
+    { id: 3, songId: 301, venueId: ANCHOR, date: '2026-10-02' },
+  ];
+
+  it('never suggests a song in the setlist or one sung at its venue', () => {
+    const setlist = { ...emptyAt(CROWN), songIds: [101, 401] };
+    for (const seed of SEEDS) {
+      const out = ids(suggestSongs(pool, sings, setlist, 50, seeded(seed)));
+      expect(out).toHaveLength(pool.length - 4);
+      for (const id of [101, 401, 102, 202]) expect(out).not.toContain(id);
+      expect(out).toContain(301); // sung only at Anchor
+    }
+  });
+
+  it('for a general setlist never suggests a song sung anywhere', () => {
+    for (const seed of SEEDS) {
+      const out = ids(suggestSongs(pool, sings, emptyAt(null), 50, seeded(seed)));
+      expect(out).toHaveLength(pool.length - 3);
+      for (const id of [102, 202, 301]) expect(out).not.toContain(id);
+    }
+  });
+
+  it('spreads 6 songs from 3 genres 2 per genre, the first three from three different genres', () => {
+    const three = pool.filter((s) => [101, 102, 103, 104, 201, 202, 203, 301, 302, 303].includes(s.id));
+    for (const seed of SEEDS) {
+      const out = ids(suggestSongs(three, [], emptyAt(CROWN), 6, seeded(seed)));
+      expect(out).toHaveLength(6);
+      const genres = out.map(genreOf);
+      expect(new Set(genres.slice(0, 3)).size).toBe(3);
+      expect(new Set(genres.slice(3, 6)).size).toBe(3);
+      for (const genre of ['rock', 'pop', 'soul']) expect(genres.filter((g) => g === genre)).toHaveLength(2);
+    }
+  });
+
+  it('takes a genre\'s songs from each of its decades before repeating one', () => {
+    for (const seed of SEEDS) {
+      const out = suggestSongs(pool, [], emptyAt(CROWN), 50, seeded(seed));
+      const decadesOf = (genre) => out.filter((s) => genreOf(s.id) === genre).map((s) => (s.year == null ? null : Math.floor(s.year / 10)));
+      // Rock: two decades, two songs each, so the first two differ and the last two differ.
+      const rock = decadesOf('rock');
+      expect(rock[0]).not.toBe(rock[1]);
+      expect(rock[2]).not.toBe(rock[3]);
+      // Soul: three decades (one is "no year"), one song each.
+      expect(new Set(decadesOf('soul')).size).toBe(3);
+    }
+  });
+
+  it('cycles genres, and decades within each genre, in the order first seen when nothing is shuffled', () => {
+    expect(ids(suggestSongs(pool, [], emptyAt(CROWN), 50, NO_SHUFFLE))).toEqual([
+      101, 201, 301, 401, // rock 70s, pop 70s, soul 00s, no genre 90s
+      103, 202, 302, 402, // rock 00s, pop 80s, soul 60s, no genre 90s
+      102, 203, 303, // rock 70s, pop 80s, soul no year
+      104, // rock 00s
+    ]);
+    expect(ids(suggestSongs(pool, [], emptyAt(CROWN), 5, NO_SHUFFLE))).toEqual([101, 201, 301, 401, 103]);
+  });
+
+  it('gives every candidate once when fewer are left than asked for', () => {
+    const setlist = { ...emptyAt(CROWN), songIds: pool.slice(3).map((s) => s.id) };
+    for (const seed of SEEDS) {
+      const out = ids(suggestSongs(pool, [], setlist, 10, seeded(seed)));
+      expect([...out].sort()).toEqual([101, 102, 103]);
+    }
+    expect(suggestSongs(pool, [], { ...setlist, songIds: ids(pool) }, 10, seeded(1))).toEqual([]);
+  });
+
+  it('gives nothing for n of 0 or less, or not a number, and drops a fraction', () => {
+    for (const n of [0, -1, NaN, undefined, null, '', 'ten']) {
+      expect(suggestSongs(pool, [], emptyAt(CROWN), n, seeded(1))).toEqual([]);
+    }
+    expect(suggestSongs(pool, [], emptyAt(CROWN), 2.7, seeded(1))).toHaveLength(2);
+    expect(suggestSongs(pool, [], emptyAt(CROWN), '3', seeded(1))).toHaveLength(3);
+  });
+
+  it('never suggests a song twice, even when the library lists it twice', () => {
+    const doubled = [...pool, ...pool.map((s) => ({ ...s }))];
+    for (const seed of SEEDS) {
+      const out = ids(suggestSongs(doubled, [], emptyAt(CROWN), 50, seeded(seed)));
+      expect(out).toHaveLength(pool.length);
+      expect(new Set(out).size).toBe(out.length);
+    }
+  });
+
+  it('works with Math.random by default and does not change its inputs', () => {
+    const setlist = { ...emptyAt(CROWN), songIds: [101] };
+    const copies = structuredClone({ pool, sings, setlist });
+    const out = suggestSongs(pool, sings, setlist, 4);
+    expect(out).toHaveLength(4);
+    expect(new Set(ids(out).map(genreOf)).size).toBe(4);
+    expect({ pool, sings, setlist }).toEqual(copies);
+  });
+});
+
+describe('R45 describeSuggestion', () => {
+  it('says how many were added', () => {
+    expect(describeSuggestion(10, 10)).toBe('Added 10 songs.');
+    expect(describeSuggestion(1, 1)).toBe('Added 1 song.');
+  });
+
+  it('says so when fewer were left than asked for', () => {
+    expect(describeSuggestion(7, 10)).toBe('Added 7 songs (only 7 never sung here were left).');
+    expect(describeSuggestion(1, 5)).toBe('Added 1 song (only 1 never sung here was left).');
+    expect(describeSuggestion(3, 10, true)).toBe('Added 3 songs (only 3 never sung were left).');
+  });
+
+  it('says so when none were left', () => {
+    expect(describeSuggestion(0, 10)).toBe('Every song has been sung here already, or is in this setlist.');
+    expect(describeSuggestion(0, 10, true)).toBe('Every song has been sung already, or is in this setlist.');
+  });
+});
+
+// ---------- Tonight (R17), Wave 4 J ----------
+
+describe('R17 Tonight sings', () => {
+  const today = '2026-11-12';
+  const sings = [
+    { id: 1, songId: 10, venueId: CROWN, date: today },
+    { id: 2, songId: 10, venueId: CROWN, date: '2026-11-11' },
+    { id: 3, songId: 11, venueId: ANCHOR, date: today },
+    { id: 4, songId: 12, venueId: CROWN, date: today },
+    { id: 5, songId: 12, venueId: CROWN, date: today },
+  ];
+
+  it('builds the sing a check logs', () => {
+    expect(tonightSing(10, CROWN, today)).toEqual({ songId: 10, venueId: CROWN, date: today });
+  });
+
+  it('finds the sing an uncheck removes: same song, venue and day', () => {
+    expect(findTonightSing(sings, 10, CROWN, today)).toEqual(sings[0]);
+    expect(findTonightSing(sings, 10, CROWN, '2026-11-10')).toBeNull();
+    expect(findTonightSing(sings, 11, CROWN, today)).toBeNull(); // sung today, but at Anchor
+    expect(findTonightSing(sings, 13, CROWN, today)).toBeNull();
+    expect(findTonightSing([], 10, CROWN, today)).toBeNull();
+  });
+
+  it('removes the most recently logged when a song was logged twice that day', () => {
+    expect(findTonightSing(sings, 12, CROWN, today).id).toBe(5);
+    expect(findTonightSing([...sings].reverse(), 12, CROWN, today).id).toBe(5);
+  });
+
+  it('lists the songs sung at a venue on a day', () => {
+    expect(sungOn(sings, CROWN, today)).toEqual(new Set([10, 12]));
+    expect(sungOn(sings, ANCHOR, today)).toEqual(new Set([11]));
+    expect(sungOn(sings, CROWN, '2026-01-01')).toEqual(new Set());
+    expect(sungOn(undefined, CROWN, today)).toEqual(new Set());
   });
 });
