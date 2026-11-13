@@ -115,6 +115,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   font-weight: 600;
 }
 
+/* A tap visibly presses the button; without this iOS gives no feedback at all (R31). */
+.btn:active, .song-row:active, .tabs button:active, summary:active { opacity: 0.6; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+
 .stack > * + * { margin-top: 12px; }
 
 .row { display: flex; gap: 8px; }
