@@ -104,7 +104,27 @@ export function formatCounts({ songs, venues, sings, setlists }) {
     + `${plural(sings, 'sing log entry', 'sing log entries')} and ${plural(setlists, 'setlist')}`;
 }
 
-// The confirmation shown before a restore replaces everything on the device.
+// ---------- Checking a backup file (R62) ----------
+
+// What a backup file holds and how it compares with this device, without
+// restoring: "mic-jaunt-backup-2026-11-13.json is a Mic Jaunt backup made
+// 2026-11-13 20:04 with 169 songs, …. Same counts as this phone." `exportedAt`
+// is the file's ISO time; `incoming` and `current` come from countRecords().
+export function backupCheckMessage(name, exportedAt, incoming, current) {
+  const made = Date.parse(exportedAt);
+  const when = Number.isNaN(made) ? 'at an unknown time' : `${new Date(made).toLocaleString()}`;
+  const diffs = [];
+  for (const [key, label] of [['songs', 'song'], ['venues', 'venue'], ['sings', 'sing log entr'], ['setlists', 'setlist']]) {
+    const gap = (current[key] || 0) - (incoming[key] || 0);
+    if (gap === 0) continue;
+    const n = Math.abs(gap);
+    const noun = key === 'sings' ? (n === 1 ? 'sing log entry' : 'sing log entries') : `${label}${n === 1 ? '' : 's'}`;
+    diffs.push(`${n} ${gap > 0 ? 'more' : 'fewer'} ${noun}`);
+  }
+  const compare = diffs.length ? `This phone has ${diffs.join(', ')} than the file.` : 'Same counts as this phone.';
+  return `${name} is a Mic Jaunt backup made ${when} with ${formatCounts(incoming)}. ${compare}`;
+}
+
 // ---------- Backup reminder (R25) ----------
 
 export const BACKUP_REMINDER_DAYS = 30;

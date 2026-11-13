@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildBackup, backupFileName, validateBackup, countRecords, formatCounts, restoreMessage,
-  daysSince, backupReminder, snoozeUntil, BACKUP_REMINDER_DAYS, BACKUP_SNOOZE_DAYS,
+  daysSince, backupReminder, snoozeUntil, BACKUP_REMINDER_DAYS, BACKUP_SNOOZE_DAYS, backupCheckMessage,
 } from '../../js/lib/backup.js';
 import { DB_VERSION } from '../../js/db.js';
 import { makeSong } from '../../js/lib/song.js';
@@ -154,6 +154,27 @@ describe('restore messages (R21)', () => {
   it('only mentions the backup when the device is empty', () => {
     expect(restoreMessage({ songs: 0, venues: 0, sings: 0, setlists: 0 }, { songs: 2, venues: 1, sings: 1, setlists: 1 }))
       .toBe('Restore 2 songs, 1 venue, 1 sing log entry and 1 setlist from the backup?');
+  });
+});
+
+describe('backupCheckMessage (R62)', () => {
+  const counts = (songs, venues, sings, setlists) => ({ songs, venues, sings, setlists });
+
+  it('says what the file holds and that it matches the phone', () => {
+    const text = backupCheckMessage('mic-jaunt-backup-2026-11-13.json', '2026-11-13T20:04:00.000Z', counts(169, 2, 35, 3), counts(169, 2, 35, 3));
+    expect(text).toMatch(/^mic-jaunt-backup-2026-11-13\.json is a Mic Jaunt backup made .+ with 169 songs, 2 venues, 35 sing log entries and 3 setlists\. Same counts as this phone\.$/);
+  });
+
+  it('lists what the phone has more or fewer of, with correct plurals', () => {
+    const text = backupCheckMessage('b.json', '2026-11-01T10:00:00.000Z', counts(10, 1, 4, 1), counts(12, 1, 3, 1));
+    expect(text).toContain('This phone has 2 more songs, 1 fewer sing log entry than the file.');
+    expect(backupCheckMessage('b.json', '2026-11-01T10:00:00.000Z', counts(1, 0, 0, 0), counts(0, 0, 0, 1)))
+      .toContain('This phone has 1 fewer song, 1 more setlist than the file.');
+  });
+
+  it('copes with a missing or unreadable export time', () => {
+    expect(backupCheckMessage('b.json', undefined, counts(1, 0, 0, 0), counts(1, 0, 0, 0))).toContain('made at an unknown time');
+    expect(backupCheckMessage('b.json', 'yesterday', counts(1, 0, 0, 0), counts(1, 0, 0, 0))).toContain('made at an unknown time');
   });
 });
 

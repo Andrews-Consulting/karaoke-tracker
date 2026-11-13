@@ -11,7 +11,7 @@ import { savedThemeChoice, applyThemeChoice, savedAccentChoice, applyAccentChoic
 import { recordBackup } from '../reminder.js';
 import { suggestionsEnabled, setSuggestionsEnabled } from '../musicbrainz.js';
 import {
-  buildBackup, backupFileName, validateBackup, countRecords, formatCounts, restoreMessage,
+  buildBackup, backupFileName, validateBackup, countRecords, formatCounts, restoreMessage, backupCheckMessage,
 } from '../lib/backup.js';
 
 export const APP_VERSION = '0.2.0';
@@ -171,19 +171,68 @@ export async function renderSettings() {
     }
   }
 
-  // ---- R20: download a JSON backup ----
+  // ---- R20: download a JSON backup; R62: share it instead where that works ----
   const backupMsg = messageArea();
+
+  async function makeBackup() {
+    const now = new Date();
+    const backup = buildBackup(await db.exportAll(), now);
+    return { now, backup, name: backupFileName(now), text: JSON.stringify(backup, null, 2) };
+  }
 
   async function downloadBackup() {
     try {
-      const now = new Date();
-      const backup = buildBackup(await db.exportAll(), now);
-      const name = backupFileName(now);
-      saveFile(name, JSON.stringify(backup, null, 2), 'application/json');
+      const { now, backup, name, text } = await makeBackup();
+      saveFile(name, text, 'application/json');
       await recordBackup(now); // R25: the reminder counts from here
-      backupMsg.show(`Created ${name} with ${formatCounts(countRecords(backup.data))}.`);
+      backupMsg.show(`Created ${name} with ${formatCounts(countRecords(backup.data))}. `
+        + 'Check your Downloads folder; use "Check a backup file" below to be sure it is complete.');
     } catch (err) {
       backupMsg.show(`Could not create a backup. ${errorText(err)}`, { error: true });
+    }
+  }
+
+  // The share sheet (R62): the one route that works from an installed iPhone
+  // app, where a download may silently do nothing. The backup only counts once
+  // the sheet reports it was handed over.
+  function canShareFiles() {
+    try {
+      return typeof navigator.share === 'function' && typeof navigator.canShare === 'function'
+        && navigator.canShare({ files: [new File(['{}'], 'mic-jaunt-backup.json', { type: 'application/json' })] });
+    } catch {
+      return false;
+    }
+  }
+
+  async function shareBackup() {
+    try {
+      const { now, backup, name, text } = await makeBackup();
+      const file = new File([text], name, { type: 'application/json' });
+      await navigator.share({ files: [file], title: name });
+      await recordBackup(now);
+      backupMsg.show(`Shared ${name} with ${formatCounts(countRecords(backup.data))}. `
+        + 'If you chose Save to Files, it is in the Files app.');
+    } catch (err) {
+      if (err && err.name === 'AbortError') backupMsg.show('Share cancelled. No backup was made.');
+      else backupMsg.show(`Could not share a backup. ${errorText(err)}`, { error: true });
+    }
+  }
+
+  // Reads a backup file and says what it holds, without restoring (R62).
+  async function checkBackup(file) {
+    backupMsg.show(`Reading ${file.name}…`);
+    try {
+      const result = validateBackup(JSON.parse(await file.text()));
+      if (!result.ok) {
+        backupMsg.show(`${file.name} is not a usable backup.`, { error: true, items: result.problems });
+        return;
+      }
+      const incoming = countRecords(result.data);
+      const current = countRecords(await db.exportAll());
+      const exportedAt = JSON.parse(await file.text()).exportedAt;
+      backupMsg.show(backupCheckMessage(file.name, exportedAt, incoming, current));
+    } catch (err) {
+      backupMsg.show(`Could not read ${file.name}. ${errorText(err)}`, { error: true });
     }
   }
 
@@ -251,7 +300,19 @@ export async function renderSettings() {
           text: 'Save songs, venues, the sing log and setlists to one JSON file. '
             + 'Keep a copy somewhere other than this device.',
         }),
-        el('button', { class: 'btn', type: 'button', text: 'Download backup', onclick: downloadBackup }),
+        canShareFiles()
+          ? el('div', { class: 'row' },
+            el('button', { class: 'btn primary', type: 'button', text: 'Share backup', onclick: shareBackup }),
+            el('button', { class: 'btn', type: 'button', text: 'Download backup', onclick: downloadBackup }))
+          : el('button', { class: 'btn', type: 'button', text: 'Download backup', onclick: downloadBackup }),
+        canShareFiles()
+          ? el('p', { class: 'muted', text: 'On an iPhone, Share then "Save to Files" is the reliable way; a download from the installed app may do nothing.' })
+          : null,
+        el('p', {
+          class: 'muted',
+          text: 'Not sure a backup worked? Check it: this reads the file and reports what it holds without changing anything.',
+        }),
+        filePicker('Check a backup file', '.json,application/json', checkBackup),
         el('p', {
           class: 'muted',
           text: 'Restoring replaces everything on this device with the contents of a backup file. '
