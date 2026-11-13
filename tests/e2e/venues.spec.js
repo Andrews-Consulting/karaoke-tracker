@@ -185,7 +185,9 @@ test.describe('Venues', () => {
     });
     const form = page.getByRole('form', { name: 'Log a sing' });
     await expect(form.getByLabel('Date', { exact: true })).toHaveValue(today);
-    await expect(form.getByText('3 songs', { exact: true })).toBeVisible();
+    // A blank search lists nothing, just a hint with the library size.
+    await expect(form.getByText('Type to find one of 3 songs.', { exact: true })).toBeVisible();
+    await expect(form.getByRole('list', { name: 'Matching songs' }).getByRole('button')).toHaveCount(0);
     await expect(page.getByText('Nothing sung here yet.')).toBeVisible();
 
     // Searching narrows the picker as I type.
@@ -348,10 +350,13 @@ test.describe('Venues', () => {
 
     const form = page.getByRole('form', { name: 'Log a sing' });
     const picks = form.getByRole('list', { name: 'Matching songs' }).getByRole('button');
-    await expect(form.getByText('Showing 20 of 500 songs. Type more to narrow the search.')).toBeVisible();
-    await expect(picks).toHaveCount(20);
+    await expect(form.getByText('Type to find one of 500 songs.', { exact: true })).toBeVisible();
+    await expect(picks).toHaveCount(0);
 
     const search = form.getByRole('searchbox', { name: 'Find a song to log' });
+    await search.fill('track'); // every song: capped at 20
+    await expect(form.getByText('Showing 20 of 500 matches. Type more to narrow the search.')).toBeVisible();
+    await expect(picks).toHaveCount(20);
     await search.fill('track 49'); // Track 490 to Track 499
     await expect(form.getByText('10 matches', { exact: true })).toBeVisible();
     await expect(picks).toHaveCount(10);

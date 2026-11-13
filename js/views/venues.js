@@ -245,13 +245,14 @@ async function renderVenue(venueId) {
 
   function drawPicks() {
     const query = search.value.trim();
-    const matches = filterSongs(sorted, query);
-    const noun = query ? ['match', 'matches'] : ['song', 'songs'];
+    // A blank search lists nothing: the first 20 of hundreds helps nobody.
+    const matches = query ? filterSongs(sorted, query) : [];
     if (!songs.length) pickCount.textContent = 'No songs yet. Add some in the Songs tab first.';
+    else if (!query) pickCount.textContent = `Type to find one of ${plural(songs.length, 'song', 'songs')}.`;
     else if (!matches.length) pickCount.textContent = 'No songs match.';
     else if (matches.length > MAX_PICKS) {
-      pickCount.textContent = `Showing ${MAX_PICKS} of ${plural(matches.length, ...noun)}. Type more to narrow the search.`;
-    } else pickCount.textContent = plural(matches.length, ...noun);
+      pickCount.textContent = `Showing ${MAX_PICKS} of ${plural(matches.length, 'match', 'matches')}. Type more to narrow the search.`;
+    } else pickCount.textContent = plural(matches.length, 'match', 'matches');
 
     picks.replaceChildren(...matches.slice(0, MAX_PICKS).map((song) =>
       el('li', {},
