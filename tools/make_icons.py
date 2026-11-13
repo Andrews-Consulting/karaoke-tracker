@@ -11,7 +11,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 BG = "#14121a"
-ACCENT = "#ffb347"  # keep in step with --accent in css/app.css
+ACCENT = "#13bc52"  # keep in step with --accent in css/app.css
 LIGHT = "#f4efe4"
 MUTED = "#b5ad9d"
 SIZE = 1024  # draw large, then scale down for smooth edges

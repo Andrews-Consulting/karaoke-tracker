@@ -1,14 +1,14 @@
-/* Dark by default (R32), for a dim bar, with a warm amber accent (R51): 10:1
-   against the background, and dark text on it reads at the same ratio. For a
-   lime accent instead, swap --accent for #c6f135 (14:1) and the light theme's
-   for #4f7a00. The icon in tools/make_icons.py uses the same colours. */
+/* Dark by default (R32), for a dim bar, with a green accent (R51): 7.4:1
+   against the background, and dark text on it reads at the same ratio.
+   Alternatives tried: amber #ffb347 (10:1) and lime #c6f135 (14:1, too bright
+   in a dark room). The icon in tools/make_icons.py uses the same colours. */
 :root {
   --bg: #14121a;
   --surface: #1f1b26;
   --border: #37313f;
   --text: #f4efe4;
   --muted: #b5ad9d;
-  --accent: #ffb347;
+  --accent: #13bc52;
   --accent-text: #14121a;
   --tap: 44px; /* minimum tap target (R31) */
   color-scheme: dark;
@@ -22,7 +22,7 @@
   --border: #d9d3e6;
   --text: #1b1727;
   --muted: #5d5771;
-  --accent: #9e4f00;
+  --accent: #0f7a36;
   --accent-text: #ffffff;
   --error: #b3261e;
   color-scheme: light;
