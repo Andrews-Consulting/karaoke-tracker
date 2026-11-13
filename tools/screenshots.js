@@ -107,14 +107,8 @@ const SCREENS = [
     await page.getByText('Add a song', { exact: true }).click();
     await page.getByRole('form', { name: 'Add a song' }).getByLabel('Title').fill('Sweet Caroline');
   }],
-  ['song', async (page) => {
-    await page.reload(); // drops the "never sung" filter set above
-    await page.getByText(/of \d+ songs/).waitFor();
-    await page.getByRole('listitem').filter({ hasText: 'Come and Get Your Love' }).locator('button.song-row').click();
-    await heading(page, 'Come and Get Your Love', 2);
-  }],
   ['list-mode', async (page) => {
-    await page.getByRole('button', { name: 'Back to list' }).click();
+    await page.reload(); // drops the "never sung" filter and closes the Add form
     await page.getByText(/of \d+ songs/).waitFor();
     await page.getByRole('tab', { name: /^List/ }).click();
     await page.getByRole('button', { name: /^Sang / }).first().waitFor();
@@ -122,8 +116,12 @@ const SCREENS = [
   ['sung-mode', async (page) => {
     await page.getByRole('tab', { name: 'Sung' }).click();
     await page.getByRole('button', { name: /^Undo / }).first().waitFor();
-    await page.getByRole('tab', { name: 'Find' }).click();
+  }],
+  ['song', async (page) => {
+    await page.reload(); // back to Find mode
     await page.getByText(/of \d+ songs/).waitFor();
+    await page.getByRole('listitem').filter({ hasText: 'Come and Get Your Love' }).locator('button.song-row').click();
+    await heading(page, 'Come and Get Your Love', 2);
   }],
   ['song-edit', async (page) => { await page.getByRole('button', { name: 'Edit' }).click(); await page.getByRole('button', { name: 'Save' }).waitFor(); }],
   ['venues', async (page) => { await tab(page, 'Venues'); await page.getByRole('form', { name: 'Add a venue' }).waitFor(); }],
