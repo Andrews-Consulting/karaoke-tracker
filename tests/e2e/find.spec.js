@@ -4,6 +4,7 @@
 import { test, expect } from '@playwright/test';
 import { openApp, openSong } from './helpers.js';
 import { openVenues, venueRow, venueRows } from './helpers-venues.js';
+import { openSetlists, setlistRow, setlistRows } from './helpers-setlists.js';
 import {
   seed, reloadList, venueSelect, expectRememberedVenue, filtersForm, filtersSummary, openFilters, filter, choose,
   shownTitles, songRow, sungLine, expectTapTarget,
@@ -92,6 +93,13 @@ test.describe('Find', () => {
     await expect(sungLine(page, 'Valerie')).toHaveText('Never sung here');
 
     // Once the remembered venue is deleted, the list falls back to Overall.
+    // Picking it opened a set there (R47), which has to go first, as any
+    // setlist at a venue does before the venue can be deleted (R40).
+    await openSetlists(page);
+    await expect(setlistRows(page)).toHaveCount(2);
+    page.once('dialog', (dialog) => dialog.accept());
+    await setlistRow(page, 'Spare room').getByRole('button', { name: 'Delete Spare room' }).click();
+    await expect(setlistRows(page)).toHaveCount(1);
     await openVenues(page);
     page.once('dialog', (dialog) => dialog.accept());
     await venueRow(page, 'Spare room').getByRole('button', { name: 'Delete Spare room' }).click();

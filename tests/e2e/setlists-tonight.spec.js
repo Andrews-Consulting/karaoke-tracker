@@ -1,28 +1,17 @@
-// Setlists, Wave 4 J: suggest a set (R45) and Tonight mode (R17).
+// Setlists, Wave 4 J: suggest a set (R45). Tonight mode (R17) was here too
+// until the Songs tab's List mode (R49) replaced it; see night.spec.js.
 import { test, expect } from '@playwright/test';
 import { makeSong } from '../../js/lib/song.js';
 import { openApp, putRecords, readStore } from './helpers.js';
-import { openVenues, openVenue, historyRow } from './helpers-venues.js';
 import {
   openSetlists, openSetlist, backToSetlists, setlistSongRow, setlistSongRows, setlistSongTitles,
-  dragHandle, moveButton, removeFromSetlist, openMix, mixLine,
-  suggestForm, suggest, tonightButton, setTonight, sangBox, pageToday,
+  dragHandle, moveButton, removeFromSetlist, openMix, mixLine, suggestForm, suggest,
 } from './helpers-setlists.js';
 
 // Stores songs (partial fields, completed by makeSong) and returns { title: id }.
 async function seedSongs(page, songs) {
   const ids = await putRecords(page, 'songs', songs.map((fields) => makeSong(fields)));
   return Object.fromEntries(songs.map((s, i) => [s.title, ids[i]]));
-}
-
-// Dismisses and records every dialog, so a test can check that none appeared.
-function refuseDialogs(page) {
-  const seen = [];
-  page.on('dialog', (dialog) => {
-    seen.push(dialog.message());
-    dialog.dismiss();
-  });
-  return seen;
 }
 
 async function expectTapTarget(locator) {
@@ -55,7 +44,7 @@ const byTitle = new Map(LIBRARY.map((s) => [s.title, s]));
 const genreOf = (title) => byTitle.get(title).genre.toLowerCase();
 const decadeOf = (title) => Math.floor(byTitle.get(title).year / 10) * 10;
 
-test.describe('Setlists: suggest and Tonight', () => {
+test.describe('Setlists: suggest', () => {
   test('R45: suggests never-sung songs spread across genres and decades', async ({ page }) => {
     await openApp(page);
     const ids = await seedSongs(page, LIBRARY);
@@ -155,148 +144,5 @@ test.describe('Setlists: suggest and Tonight', () => {
     expect((await setlistSongTitles(page).allTextContents()).sort())
       .toEqual(['Born to Run', 'Livin\' on a Prayer', 'Valerie']);
     await expect(page.getByText('Sung here')).toHaveCount(0);
-  });
-
-  test('R17: checking off a song in Tonight mode logs a sing today, and unchecking removes it', async ({ page }) => {
-    const dialogs = refuseDialogs(page);
-    await openApp(page);
-    const today = await pageToday(page);
-    const ids = await seedSongs(page, [
-      { title: 'Valerie', artist: 'Amy Winehouse', genre: 'Soul', year: 2006 },
-      { title: 'Dancing Queen', artist: 'ABBA', genre: 'Pop', year: 1976 },
-      { title: 'Mr. Brightside', artist: 'The Killers', genre: 'Rock', year: 2004 },
-      { title: 'Jolene', artist: 'Dolly Parton', genre: 'Country', year: 1973 },
-    ]);
-    const [crown, anchor] = await putRecords(page, 'venues', [{ name: 'The Crown' }, { name: 'Anchor' }]);
-    const seeded = [
-      { songId: ids['Dancing Queen'], venueId: crown, date: today }, // logged on the Venues tab earlier today
-      { songId: ids['Mr. Brightside'], venueId: crown, date: '2026-10-15' },
-      { songId: ids.Valerie, venueId: anchor, date: today }, // today, but somewhere else
-    ];
-    await putRecords(page, 'sings', seeded);
-    await putRecords(page, 'setlists', [{
-      name: 'Friday', venueId: crown, songIds: [ids.Valerie, ids['Dancing Queen'], ids['Mr. Brightside'], ids.Jolene],
-    }]);
-    await openSetlists(page);
-    await openSetlist(page, 'Friday');
-
-    await expect(tonightButton(page)).toHaveAttribute('aria-pressed', 'false');
-    await expectTapTarget(tonightButton(page));
-    await expect(page.getByRole('list', { name: 'Songs in this setlist' }).getByRole('checkbox')).toHaveCount(0);
-
-    // On: the reorder and Remove controls give way to a checkbox per song.
-    await setTonight(page, true);
-    await expect(dragHandle(page, 'Valerie')).toHaveCount(0);
-    await expect(moveButton(page, 'Valerie', 'down')).toHaveCount(0);
-    await expect(page.getByLabel('Venue', { exact: true })).toBeHidden(); // the setlist's venue is used
-    await expect(page.getByText(`Check off each song as you sing it. Logged: The Crown, ${today}.`)).toBeVisible();
-    await expect(sangBox(page, 'Dancing Queen')).toBeChecked(); // sung here today already
-    await expect(sangBox(page, 'Valerie')).not.toBeChecked();
-    await expect(sangBox(page, 'Mr. Brightside')).not.toBeChecked();
-    await expect(setlistSongRow(page, 'Dancing Queen')).toContainText('Sang tonight');
-    await expect(page.getByText('4 songs · 1 sung tonight', { exact: true })).toBeVisible();
-    await expectTapTarget(sangBox(page, 'Valerie'));
-
-    // Check: a sing at The Crown today, shown on the row, its sung flag (R43) and the count.
-    await sangBox(page, 'Valerie').click();
-    await expect(sangBox(page, 'Valerie')).toBeChecked();
-    await expect(setlistSongRow(page, 'Valerie').locator('.tonight-mark')).toHaveText('Sang tonight');
-    await expect(setlistSongRow(page, 'Valerie').locator('.flag')).toHaveText(`Sung here · last ${today}`);
-    await expect(page.getByText('4 songs · 2 sung tonight', { exact: true })).toBeVisible();
-    await expect.poll(async () => (await readStore(page, 'sings')).length).toBe(4);
-    expect((await readStore(page, 'sings')).at(-1))
-      .toEqual({ id: expect.any(Number), songId: ids.Valerie, venueId: crown, date: today });
-
-    // Check and uncheck: the sing comes and goes again, with no confirmation.
-    await sangBox(page, 'Jolene').click();
-    await expect(sangBox(page, 'Jolene')).toBeChecked();
-    await expect.poll(async () => (await readStore(page, 'sings')).length).toBe(5);
-    await sangBox(page, 'Jolene').click();
-    await expect(sangBox(page, 'Jolene')).not.toBeChecked();
-    await expect(setlistSongRow(page, 'Jolene')).not.toContainText('Sang tonight');
-    await expect(setlistSongRow(page, 'Jolene').locator('.flag')).toHaveCount(0);
-    await expect.poll(async () => (await readStore(page, 'sings')).length).toBe(4);
-    expect((await readStore(page, 'sings')).some((s) => s.songId === ids.Jolene)).toBe(false);
-    expect(dialogs).toEqual([]);
-
-    // The mix still counts every song.
-    await openMix(page);
-    await expect(mixLine(page, 'Genres')).toHaveText('Country 1 · Pop 1 · Rock 1 · Soul 1');
-
-    // Off: the normal controls come back, and the flag stays.
-    await setTonight(page, false);
-    await expect(dragHandle(page, 'Valerie')).toBeVisible();
-    await expect(setlistSongRow(page, 'Valerie').getByRole('button', { name: 'Remove Valerie by Amy Winehouse' })).toBeVisible();
-    await expect(setlistSongRow(page, 'Valerie').locator('.flag')).toHaveText(`Sung here · last ${today}`);
-    await expect(page.getByText('4 songs', { exact: true })).toBeVisible();
-
-    // The Venues tab's history has the new sing, and not the one taken back.
-    await openVenues(page);
-    await openVenue(page, 'The Crown');
-    await expect(historyRow(page, 'Valerie')).toContainText(`Last sung ${today}`);
-    await expect(historyRow(page, 'Jolene')).toHaveCount(0);
-
-    // Leaving the screen turns Tonight off.
-    await openSetlists(page);
-    await openSetlist(page, 'Friday');
-    await expect(tonightButton(page)).toHaveAttribute('aria-pressed', 'false');
-    await expect(dragHandle(page, 'Valerie')).toBeVisible();
-  });
-
-  test('R17: a general setlist asks for a venue before logging', async ({ page }) => {
-    await openApp(page);
-    const today = await pageToday(page);
-    const ids = await seedSongs(page, [
-      { title: 'Valerie', artist: 'Amy Winehouse' },
-      { title: 'Jolene', artist: 'Dolly Parton' },
-    ]);
-    const [crown, anchor] = await putRecords(page, 'venues', [{ name: 'The Crown' }, { name: 'Anchor' }]);
-    await putRecords(page, 'sings', [{ songId: ids.Jolene, venueId: anchor, date: today }]);
-    await putRecords(page, 'setlists', [{ name: 'Anywhere', venueId: null, songIds: [ids.Valerie, ids.Jolene] }]);
-    await openSetlists(page);
-    await openSetlist(page, 'Anywhere');
-
-    await setTonight(page, true);
-    const venue = page.getByLabel('Venue', { exact: true });
-    await expect(venue).toBeVisible();
-    await expect(venue).toHaveValue('');
-    await expect(venue.locator('option')).toHaveText(['Choose a venue', 'Anchor', 'The Crown']);
-    await expectTapTarget(venue);
-    await expect(page.getByText('Pick a venue first.', { exact: true })).toBeVisible();
-    await expect(sangBox(page, 'Valerie')).toBeDisabled();
-    await expect(sangBox(page, 'Jolene')).toBeDisabled();
-    await expect(sangBox(page, 'Jolene')).not.toBeChecked();
-
-    // Anchor: Jolene was sung there today.
-    await venue.selectOption({ label: 'Anchor' });
-    await expect(page.getByText('Pick a venue first.', { exact: true })).toHaveCount(0);
-    await expect(sangBox(page, 'Valerie')).toBeEnabled();
-    await expect(sangBox(page, 'Jolene')).toBeChecked();
-
-    // The Crown: nothing sung there yet. Checking Valerie logs it at The Crown.
-    await venue.selectOption({ label: 'The Crown' });
-    await expect(sangBox(page, 'Jolene')).not.toBeChecked();
-    await sangBox(page, 'Valerie').click();
-    await expect(sangBox(page, 'Valerie')).toBeChecked();
-    await expect(setlistSongRow(page, 'Valerie')).toContainText('Sang tonight');
-    await expect.poll(async () => (await readStore(page, 'sings')).length).toBe(2);
-    expect((await readStore(page, 'sings')).at(-1))
-      .toEqual({ id: expect.any(Number), songId: ids.Valerie, venueId: crown, date: today });
-    // General setlists still show no sung flags (R43).
-    await expect(setlistSongRows(page).locator('.flag')).toHaveCount(0);
-
-    // The venue choice stays while the screen is open, and is not saved to the setlist.
-    await setTonight(page, false);
-    await setTonight(page, true);
-    await expect(venue).toHaveValue(String(crown));
-    await expect(sangBox(page, 'Valerie')).toBeChecked();
-    expect((await readStore(page, 'setlists'))[0].venueId).toBeNull();
-
-    // A new visit starts with Tonight off and no venue picked.
-    await backToSetlists(page);
-    await openSetlist(page, 'Anywhere');
-    await setTonight(page, true);
-    await expect(page.getByLabel('Venue', { exact: true })).toHaveValue('');
-    await expect(sangBox(page, 'Valerie')).toBeDisabled();
   });
 });

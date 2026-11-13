@@ -29,9 +29,10 @@ export async function addSong(page, { title, artist, genre, year } = {}) {
   await expect(page.getByRole('listitem').filter({ hasText: title })).toBeVisible();
 }
 
-// Taps a song in the list and waits for its details to open.
+// Taps a song in the list and waits for its details to open. At a venue a
+// row has a + beside it too (R48), so this taps the row itself.
 export async function openSong(page, title) {
-  await page.getByRole('listitem').filter({ hasText: title }).getByRole('button').click();
+  await page.getByRole('listitem').filter({ hasText: title }).locator('button.song-row').click();
   await expect(page.getByRole('heading', { level: 2, name: title })).toBeVisible();
 }
 

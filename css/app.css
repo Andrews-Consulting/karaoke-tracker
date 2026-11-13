@@ -505,61 +505,13 @@ a.btn {
 
 a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* ---- Setlists: suggest and Tonight (Wave 4 J) ---- */
+/* ---- Setlists: suggest (Wave 4 J) ---- */
 
 /* Suggest songs (R45): "How many" beside the button, both 44 px tall. */
 .suggest .hint { margin: 0; font-size: 0.875rem; }
 .suggest-row { display: flex; align-items: flex-end; gap: 8px; }
 .suggest-row label { flex: 0 0 7rem; }
 .suggest-row .btn { flex: 1; }
-
-/* Tonight mode (R17): the toggle above the song list, lit while on; for a
-   general setlist, the venue to log at and a note until one is picked. */
-.tonight-bar > * + * { margin-top: 8px; }
-.tonight-bar [hidden] { display: none; }
-.tonight-bar .tonight-line { margin: 0; font-size: 0.875rem; }
-.tonight-venue > select { margin-top: 4px; }
-.tonight-toggle[aria-pressed="true"] {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-text);
-  font-weight: 600;
-}
-
-/* A song's checkbox in Tonight mode: an empty box, ticked once sung tonight. */
-.setlist-song .check {
-  flex: none;
-  width: var(--tap);
-  min-width: var(--tap);
-  padding: 0;
-  border-width: 2px;
-  font-size: 1.25rem;
-  font-weight: 700;
-  line-height: 1;
-}
-.setlist-song .check[aria-checked="true"] {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-text);
-}
-.setlist-song .check:disabled { opacity: 0.35; cursor: not-allowed; }
-
-.setlists-view .tonight-mark {
-  display: inline-block;
-  margin-top: 4px;
-  padding: 0 8px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: var(--accent-text);
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-/* Space after the sung flag rather than before the mark, so a mark that wraps lines up on the left. */
-.setlist-song.tonight .flag { margin-right: 6px; }
-
-@media print {
-  .tonight-bar { display: none !important; }
-}
 
 /* ---- Songs tab: suggestions, duplicates, pick (Wave 4 I) ---- */
 
@@ -609,4 +561,122 @@ label.check > input[type="checkbox"] {
 
 @media print {
   .pick-note { display: none !important; }
+}
+
+/* ---- Night out: venue, set, Find / List / Sung (Wave 5 K) ---- */
+
+/* The venue, the set and the three modes, pinned to the top of the Songs tab
+   while the rest scrolls under them (R47). It spans <main>'s padding, so the
+   rows slide under a solid bar rather than showing at its sides or above it.
+   A sticky box stops at the scroller's padding, hence top: -16px. */
+.night-bar {
+  position: sticky;
+  top: -16px;
+  z-index: 2;
+  margin: -16px -16px 0;
+  padding: 8px 16px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.night-bar > * + * { margin-top: 8px; }
+.night-pickers { display: flex; gap: 8px; }
+
+/* Venue and Set: each label beside its menu, so the two share one 44 px row. */
+.night-picker { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 6px; }
+.night-picker > label { flex: none; }
+.night-picker > select { flex: 1 1 0; min-width: var(--tap); padding: 8px; text-overflow: ellipsis; }
+.night-picker > select:disabled { color: var(--muted); }
+
+/* Find | List (N) | Sung: one segmented control, the mode showing lit. */
+.modes {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.modes > .mode {
+  flex: 1 1 0;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  color: var(--text);
+}
+.modes > .mode + .mode { border-left: 1px solid var(--border); }
+.modes > .mode[aria-selected="true"] { background: var(--accent); color: var(--accent-text); font-weight: 600; }
+.modes > .mode:active { opacity: 0.6; }
+.modes > .mode:disabled { color: var(--muted); opacity: 0.6; cursor: not-allowed; }
+.modes > .mode:focus-visible { outline-offset: -4px; } /* inside, as the box clips the corners */
+.night-bar > .night-note { margin: 6px 0 0; font-size: 0.875rem; }
+
+/* What the last tap did: "Sang “Valerie”. Undo is under Sung." */
+.night-status { color: var(--accent); overflow-wrap: anywhere; }
+.night-status:empty { display: none; }
+
+/* Find (R48): a + at the right of each row, a ✓ once the song is in the set. */
+.list li.song-item { display: flex; align-items: center; gap: 8px; }
+.song-item > .song-row { flex: 1 1 0; min-width: 0; }
+.set-toggle {
+  flex: none;
+  width: var(--tap);
+  min-width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  border-color: var(--accent);
+  color: var(--accent);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.set-toggle.in-set { background: var(--accent); color: var(--accent-text); }
+
+/* A search that matches nothing offers to add it. */
+.list li.no-match { border-bottom: 0; }
+.no-match > p { margin: 0 0 8px; overflow-wrap: anywhere; }
+.no-match > .btn { max-width: 100%; overflow-wrap: anywhere; }
+
+/* List (R49) and Sung (R50): the song opens it; its buttons sit at the right,
+   on a line of their own under the song on a phone. */
+.night-song { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.night-open {
+  flex: 1 1 12rem;
+  min-width: 0;
+  min-height: var(--tap);
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.night-open:active { opacity: 0.6; }
+.night-open .title, .night-open .sub { display: block; overflow-wrap: anywhere; }
+.night-actions { display: flex; gap: 6px; margin-left: auto; }
+.night-actions .btn { padding: 8px 12px; }
+.night-actions .btn.move { min-width: var(--tap); padding: 0; font-size: 1.125rem; }
+.night-actions .btn.move:disabled { opacity: 0.35; }
+.night-actions .btn.sang { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+/* Already sung at this venue (R43), as on the Setlists tab. */
+.night-song .flag {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 0 8px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 0.875rem;
+}
+.night-song .nowrap { white-space: nowrap; }
+
+.night-empty > p { margin: 0 0 8px; }
+.night-day h3 { margin: 0; font-size: 1rem; }
+.night-day > .list { margin-top: 4px; }
+
+@media print {
+  .night-bar, .night-empty { display: none !important; }
+  /* The song in a List or Sung row prints; the buttons beside it do not. */
+  .night-panel .night-song > button.night-open { display: block !important; padding: 0; color: #000; }
+  .night-song .flag { margin: 0; padding: 0; border: 0; color: #000; font-size: 11pt; font-style: italic; }
 }
