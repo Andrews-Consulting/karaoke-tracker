@@ -101,6 +101,11 @@ Added 2026-11-12 after using v1. The Songs tab's job is finding the next song to
 | R53 | Filters and sort persist across tabs and reloads; the search persists across tabs | Must | Done | Saved on the device; Clear filters resets. Adding a song clears the search but keeps the filters. e2e: "R53: filters survive another tab and a reload; the search survives the tab but not the reload" |
 | R54 | Show the song full screen to the KJ: title, artist and key in the biggest type that fits, portrait or landscape | Must | Done | Tap the song in List mode, or "Show to the KJ" on the song screen. Header, tabs and banners hide; Close or the back gesture returns. e2e: "R54: tapping a song in List mode shows it full screen for the KJ, portrait and landscape" |
 
+| R56 | A setlist's venue is a label, not a binding: any setlist can be opened at any venue; "For Viking" or blank for anywhere | Must | Not started | The Set menu lists every setlist in groups: for this venue, any venue, other venues. The remembered set per venue stays; with nothing remembered, open the first list labelled for the venue, then the first unlabelled one, else create one named after the venue. Under Overall the menu shows too; + and List work, "Sang it", "Next time" and Sung stay off. Deleting a venue clears the label instead of being blocked. Setlists tab wording: "For venue (optional)", blank = "Any venue". Supersedes R39 |
+| R57 | "Find songs" on a setlist opens the Songs tab with that set at the current venue; the setlist screen's Add songs picker goes | Must | Not started | Suggest songs and Mix stay on the setlist screen |
+| R58 | Drop the title bar; the bottom tabs carry the selection, with the selected tab larger and filled with the accent | Must | Not started | The page title stays in the markup for screen readers but takes no space. The Songs tab's venue and set bar sits on the top edge |
+| R59 | Merge a setlist into another: pick any other setlist; every song not already there is appended to its end; the source is left empty | Must | Not started | Confirm first. The remembered-set and Next time roles are not affected |
+
 R17 Tonight mode on the Setlists tab is superseded by R49 and is removed when R49 lands. R45 Suggest songs and R44 Mix stay on the Setlists tab, which is for building and tidying lists.
 
 ## Out of scope
