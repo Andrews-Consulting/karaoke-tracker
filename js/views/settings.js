@@ -89,13 +89,31 @@ export async function renderSettings() {
     const persisted = await navigator.storage.persisted();
     status.textContent = persisted
       ? 'Storage is persistent: the browser will not clear it on its own.'
-      : 'Storage is not persistent yet. Installing the app to the home screen usually fixes this.';
+      : 'Storage is not marked persistent. An app added to the Home Screen keeps its data anyway; '
+        + 'the browser decides whether to grant the request and may say no without asking you.';
   }
 
+  // The answer to the last tap, so the tap visibly did something (R19).
+  const askResult = el('p', { class: 'muted', role: 'status' });
   const ask = el('button', {
     class: 'btn', type: 'button', text: 'Ask for persistent storage',
     onclick: async () => {
-      if (navigator.storage && navigator.storage.persist) await navigator.storage.persist();
+      if (!navigator.storage || !navigator.storage.persist) {
+        askResult.textContent = 'This browser has no way to ask.';
+        return;
+      }
+      ask.disabled = true;
+      askResult.textContent = 'Asking…';
+      try {
+        const granted = await navigator.storage.persist();
+        askResult.textContent = granted
+          ? 'Granted: the browser will keep this data.'
+          : 'The browser said no for now. It usually grants this once the app is installed and used a few times.';
+      } catch (err) {
+        askResult.textContent = `Could not ask: ${errorText(err)}`;
+      } finally {
+        ask.disabled = false;
+      }
       refresh();
     },
   });
@@ -199,7 +217,7 @@ export async function renderSettings() {
     el('div', { class: 'stack' },
       appearance,
       onlineSuggestions,
-      el('div', { class: 'card stack' }, el('strong', { text: 'Storage' }), status, ask),
+      el('div', { class: 'card stack' }, el('strong', { text: 'Storage' }), status, ask, askResult),
       el('div', { class: 'card stack' },
         el('strong', { text: 'Import songs' }),
         el('p', {
