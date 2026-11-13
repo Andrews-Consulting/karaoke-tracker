@@ -72,7 +72,7 @@ npm run test:e2e    # Playwright, tests/e2e/, mobile Chromium + mobile WebKit
 - Data stored in IndexedDB, with a persistent-storage request (R18, R19)
 
 - One-handed layout: bottom tabs, 44 px controls everywhere, actions at the bottom of detail screens, and the back gesture returns from a detail screen instead of leaving the app (R31)
-- Dark by default with a green accent (R51), a light option and "Match the phone" (R32); readable at desktop widths (R33)
+- Dark by default with a green accent (R51), or amber, lime or pink from Settings (R55); a light option and "Match the phone" (R32); readable at desktop widths (R33)
 - Filters persist across tabs and reloads (R53); a sung filter hides the redundant "never sung here" lines (R52); tap a song in List mode to show it full screen to the KJ (R54)
 
 ## Still to build

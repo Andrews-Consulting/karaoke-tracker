@@ -16,6 +16,23 @@ export const DEFAULT_THEME_CHOICE = 'dark';
 // as --bg in css/app.css.
 export const THEME_COLORS = { dark: '#14121a', light: '#f6f3fb' };
 
+// Accent colours (R55): the first is the default. Each has a dark-theme value
+// and a deeper light-theme partner; css/app.css carries the same numbers under
+// :root[data-accent="…"]. Contrast on the dark background: green 7:1,
+// amber 10:1, lime 14:1, pink 6:1.
+export const ACCENT_CHOICES = [
+  ['green', 'Green'],
+  ['amber', 'Amber'],
+  ['lime', 'Lime'],
+  ['pink', 'Pink'],
+];
+
+export const DEFAULT_ACCENT_CHOICE = 'green';
+
+export function normalizeAccentChoice(value) {
+  return ACCENT_CHOICES.some(([key]) => key === value) ? value : DEFAULT_ACCENT_CHOICE;
+}
+
 // A saved value, or anything unexpected, as one of the choices.
 export function normalizeThemeChoice(value) {
   return THEME_CHOICES.some(([key]) => key === value) ? value : DEFAULT_THEME_CHOICE;

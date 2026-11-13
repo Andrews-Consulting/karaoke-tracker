@@ -1,14 +1,15 @@
-/* Dark by default (R32), for a dim bar, with a green accent (R51): 7.4:1
-   against the background, and dark text on it reads at the same ratio.
-   Alternatives tried: amber #ffb347 (10:1) and lime #c6f135 (14:1, too bright
-   in a dark room). The icon in tools/make_icons.py uses the same colours. */
+/* Dark by default (R32), for a dim bar, with a green accent (R51): about 7:1
+   against the background, and dark text on it reads at the same ratio. The
+   accent can be changed in Settings (R55): js/theme.js sets data-accent to
+   amber, lime or pink; green is the default and needs no attribute. The icon
+   in tools/make_icons.py uses the green. */
 :root {
   --bg: #14121a;
   --surface: #1f1b26;
   --border: #37313f;
   --text: #f4efe4;
   --muted: #b5ad9d;
-  --accent: #13bc52;
+  --accent: #13b86a;
   --accent-text: #14121a;
   --tap: 44px; /* minimum tap target (R31) */
   color-scheme: dark;
@@ -27,6 +28,14 @@
   --error: #b3261e;
   color-scheme: light;
 }
+
+/* The other accents (R55), each with a deeper partner for the light theme. */
+:root[data-accent="amber"] { --accent: #ffb347; --accent-text: #14121a; }
+:root[data-accent="lime"] { --accent: #c6f135; --accent-text: #14121a; }
+:root[data-accent="pink"] { --accent: #ff5d8f; --accent-text: #14121a; }
+:root[data-theme="light"][data-accent="amber"] { --accent: #9e4f00; --accent-text: #ffffff; }
+:root[data-theme="light"][data-accent="lime"] { --accent: #4f7a00; --accent-text: #ffffff; }
+:root[data-theme="light"][data-accent="pink"] { --accent: #c8176a; --accent-text: #ffffff; }
 
 * { box-sizing: border-box; }
 
