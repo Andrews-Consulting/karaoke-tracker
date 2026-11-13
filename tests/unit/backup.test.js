@@ -57,7 +57,7 @@ describe('validateBackup (R21)', () => {
   });
 
   it('rejects files from another app or that are not objects', () => {
-    const notOurs = { ok: false, problems: ['This file is not a Karaoke Tracker backup.'] };
+    const notOurs = { ok: false, problems: ['This file is not a Mic Jaunt backup.'] };
     expect(validateBackup({ ...validFile(), app: 'other-app' })).toEqual(notOurs);
     expect(validateBackup({ ...validFile(), app: undefined })).toEqual(notOurs);
     expect(validateBackup(null)).toEqual(notOurs);

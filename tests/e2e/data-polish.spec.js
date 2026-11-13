@@ -236,7 +236,7 @@ test.describe('iPhone home screen', () => {
     const meta = (name) => page.locator(`meta[name="${name}"]`);
     await expect(meta('apple-mobile-web-app-capable')).toHaveAttribute('content', 'yes');
     await expect(meta('mobile-web-app-capable')).toHaveAttribute('content', 'yes');
-    await expect(meta('apple-mobile-web-app-title')).toHaveAttribute('content', 'Karaoke');
+    await expect(meta('apple-mobile-web-app-title')).toHaveAttribute('content', 'Mic Jaunt');
     await expect(meta('apple-mobile-web-app-status-bar-style')).toHaveAttribute('content', 'black-translucent');
     // black-translucent draws the app under the status bar; viewport-fit=cover lets
     // the header's safe-area padding keep the title clear of it.

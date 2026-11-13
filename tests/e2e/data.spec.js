@@ -210,7 +210,7 @@ test.describe('Backup and restore', () => {
 
     await restoreBackup(page, { name: 'something else' }, 'other.json');
     await expect(page.getByText('other.json cannot be restored. Nothing was changed.')).toBeVisible();
-    await expect(page.getByText('This file is not a Karaoke Tracker backup.')).toBeVisible();
+    await expect(page.getByText('This file is not a Mic Jaunt backup.')).toBeVisible();
 
     const broken = backupFile({ songs: [songRecord(1, 'Waterloo', 'ABBA')] }, { format: 2 });
     delete broken.data.sings;

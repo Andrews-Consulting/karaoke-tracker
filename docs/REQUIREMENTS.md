@@ -1,4 +1,4 @@
-# Karaoke Tracker: requirements
+# Mic Jaunt: requirements
 
 A personal, local-only PWA for tracking a karaoke repertoire of 500+ songs.
 

@@ -1,6 +1,8 @@
-# Karaoke Tracker
+# Mic Jaunt
 
-A personal, local-only PWA for tracking a karaoke repertoire: songs, venues, what was sung where, and setlists that avoid repeats and mix genres and decades.
+A personal, local-only PWA for tracking a karaoke repertoire: songs, venues, what was sung where, and setlists that avoid repeats and mix genres and decades. Lives at <https://micjaunt.app>.
+
+The code, database and backup files keep the internal id `karaoke-tracker` (the IndexedDB name, the cache prefix and the backup format's `app` field), so renaming the app did not break installed copies or old backups.
 
 No build step, no dependencies, no server. Plain HTML, CSS and JavaScript modules.
 
@@ -91,6 +93,8 @@ Only the app files matter to the host: `index.html`, `manifest.webmanifest`, `sw
 1. Push the repo to GitHub.
 2. Repo **Settings → Pages → Build and deployment**: Source "Deploy from a branch", branch `main`, folder `/ (root)`. Save.
 3. After a minute the site is at `https://<user>.github.io/<repo>/`. The sub-folder is fine: every path in the app is relative and the manifest's `start_url` and `scope` are `.`.
+
+**Custom domain (micjaunt.app):** the `CNAME` file at the repo root holds the domain, so GitHub Pages picks it up when it deploys. At the registrar, point the apex at GitHub Pages with four A records (`185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`) and, optionally, `www` as a CNAME to `<user>.github.io`. Then in **Settings → Pages** confirm the custom domain and tick **Enforce HTTPS** once the certificate check passes (minutes to an hour). `.app` domains are HTTPS-only by browser policy, so the site will not load at all until that certificate exists. If you also own `micjaunt.com`, forward it to `https://micjaunt.app` at the registrar rather than adding it to Pages.
 
 **Netlify or Cloudflare Pages:** connect the repo (or drag the folder onto Netlify Drop). Build command: none. Publish directory: the repo root.
 

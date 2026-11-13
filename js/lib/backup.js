@@ -47,7 +47,7 @@ function validKey(store, record) {
 // the same defaults as everywhere else; other records are kept as they are.
 export function validateBackup(parsed, now = new Date()) {
   if (!isObject(parsed) || parsed.app !== BACKUP_APP) {
-    return { ok: false, problems: ['This file is not a Karaoke Tracker backup.'] };
+    return { ok: false, problems: ['This file is not a Mic Jaunt backup.'] };
   }
 
   const problems = [];

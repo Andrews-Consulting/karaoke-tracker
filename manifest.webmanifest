@@ -1,7 +1,7 @@
 {
-  "name": "Karaoke Tracker",
-  "short_name": "Karaoke",
-  "description": "My karaoke repertoire, venues and setlists. Local only.",
+  "name": "Mic Jaunt",
+  "short_name": "Mic Jaunt",
+  "description": "Mic Jaunt: my karaoke repertoire, venues and setlists. Local only.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
