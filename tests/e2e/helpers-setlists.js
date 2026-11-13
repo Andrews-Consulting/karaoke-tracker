@@ -4,10 +4,16 @@ import { expect } from '@playwright/test';
 import { expectTab } from './helpers.js';
 
 // Taps the Setlists tab and waits for the setlist list.
+// Taps the Setlists tab and lands on the setlist list. Within a few minutes of
+// leaving a setlist the tab reopens it (R60), so this steps back out to the list.
 export async function openSetlists(page) {
   await page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name: 'Setlists' }).click();
   await expectTab(page, 'Setlists');
-  await expect(page.getByRole('form', { name: 'New setlist' })).toBeVisible();
+  const form = page.getByRole('form', { name: 'New setlist' });
+  const back = page.getByRole('button', { name: '‹ All setlists' });
+  await expect(form.or(back)).toBeVisible();
+  if (await back.isVisible()) await back.click();
+  await expect(form).toBeVisible();
 }
 
 // The setlist's row in the list (not while it is being edited).

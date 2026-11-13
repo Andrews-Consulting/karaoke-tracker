@@ -4,7 +4,7 @@
 // add every new app file to APP_SHELL. Otherwise installed copies keep serving
 // the old files, or fail offline when a module is missing from the cache.
 
-const CACHE_VERSION = 'v26';
+const CACHE_VERSION = 'v27';
 const CACHE_NAME = `mic-jaunt-${CACHE_VERSION}`;
 
 // Paths are relative so the app also works from a sub-folder (e.g. GitHub Pages).
@@ -20,6 +20,7 @@ const APP_SHELL = [
   'js/theme.js',
   'js/musicbrainz.js',
   'js/reminder.js',
+  'js/drag.js',
   'js/lib/theme.js',
   'js/lib/musicbrainz.js',
   'js/lib/pick.js',

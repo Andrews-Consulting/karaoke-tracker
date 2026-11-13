@@ -57,6 +57,24 @@ function draw(render) {
   return render();
 }
 
+// True while a render was started by going back (the back gesture, the
+// browser's back button or closeScreen), as opposed to a tab tap or opening a
+// screen. A view reads it synchronously at the start of its render; a tab's
+// root may reopen where it was on a tab tap but must not on the way back (R60).
+let backRender = false;
+export function renderingBack() {
+  return backRender;
+}
+
+function drawBack(render) {
+  backRender = true;
+  try {
+    return draw(render);
+  } finally {
+    backRender = false;
+  }
+}
+
 // Starts a tab: its list becomes the only screen on the stack. Tabs replace
 // the current history entry rather than adding one, so back from a tab's list
 // leaves the app the way it would from any other app's home screen.
@@ -88,7 +106,7 @@ export function closeScreen(render) {
     return;
   }
   screens.length = Math.max(1, top);
-  draw(render);
+  drawBack(render);
 }
 
 window.addEventListener('popstate', (event) => {
@@ -102,7 +120,7 @@ window.addEventListener('popstate', (event) => {
   screens.length = depth + 1;
   const render = pendingBack || screens[depth];
   pendingBack = null;
-  if (render) draw(render);
+  if (render) drawBack(render);
 });
 
 // A "Not built yet" card listing what a section will do.

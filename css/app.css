@@ -507,7 +507,7 @@ label > textarea { margin-top: 4px; color: var(--text); resize: vertical; }
 .setlist-song .btn.move { min-width: var(--tap); padding: 0; font-size: 1.125rem; }
 .setlist-song .btn.move:disabled { opacity: 0.35; }
 
-.setlist-song .handle {
+.setlist-song .handle, .night-song .handle {
   min-width: var(--tap);
   padding: 0;
   border-color: transparent;
@@ -523,14 +523,14 @@ label > textarea { margin-top: 4px; color: var(--text); resize: vertical; }
 }
 
 /* The row being dragged is lifted above the others and follows the pointer. */
-.setlist-song.dragging {
+.setlist-song.dragging, .night-song.dragging {
   position: relative;
   z-index: 1;
   background: var(--surface);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.55);
 }
-.setlist-song.dragging .handle { color: var(--accent); cursor: grabbing; }
+.setlist-song.dragging .handle, .night-song.dragging .handle { color: var(--accent); cursor: grabbing; }
 
 /* Mix by genre and decade (R44). */
 .mix .mix-empty { margin: 4px 0 0; }

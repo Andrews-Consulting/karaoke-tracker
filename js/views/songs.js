@@ -30,8 +30,9 @@ import {
   countActiveFilters, applyFind, sungParts, titleOrder, sungFilterActive,
 } from '../lib/find.js';
 import {
-  makeSetlist, addSongId, removeSongId, moveSongIdBy, setlistSongs, sungFlags, tonightSing,
+  makeSetlist, addSongId, removeSongId, moveSongId, moveSongIdBy, setlistSongs, sungFlags, tonightSing,
 } from '../lib/setlist.js';
+import { dragToReorder } from '../drag.js';
 import {
   currentSetlistKey, nextSetlistKey, tonightListName, uniqueSetlistName, currentSetlistFor, setMenuGroups,
   OVERALL_LIST_NAME, nextSetlistFor, putBackOnTop, groupSingsByDate,
@@ -708,7 +709,19 @@ export async function renderSongs({
     up.disabled = index === 0;
     down.disabled = index === total - 1;
     moves.set(song.id, { up, down });
-    return el('li', { class: 'night-song', 'data-song-id': song.id },
+    // A drag handle, as on the setlist screen (R61); arrow keys move the song too.
+    const handle = el('button', {
+      type: 'button', class: 'btn handle', text: '≡', 'aria-label': `Move ${song.title}`,
+      onkeydown: (e) => {
+        const delta = { ArrowUp: -1, ArrowDown: 1 }[e.key];
+        if (!delta) return;
+        e.preventDefault();
+        moveInSet(song, delta, 'handle');
+      },
+    });
+    moves.get(song.id).handle = handle;
+    const li = el('li', { class: 'night-song', 'data-song-id': song.id },
+      handle,
       // Tapping the song shows it full screen for the KJ (R54); details are a tap further.
       el('button', {
         type: 'button', class: 'night-open', 'aria-label': `Show ${song.title} to the KJ`,
@@ -740,6 +753,29 @@ export async function renderSongs({
               })
               : null,
           ])));
+    dragToReorder({
+      list: setList, li, handle,
+      onDrop: (newIndex, hadFocus) => moveInSetTo(song, newIndex, hadFocus),
+      onCancel: drawList,
+    });
+    return li;
+  }
+
+  // A drop at `newIndex` (R61): drawn at once, then saved.
+  async function moveInSetTo(song, newIndex, refocus) {
+    const next = moveSongId(state.set, song.id, newIndex, songsById);
+    if (sameOrder(next.songIds, state.set.songIds)) {
+      drawList();
+      return;
+    }
+    changeSet(next);
+    drawList();
+    if (refocus) moves.get(song.id)?.handle?.focus();
+    try {
+      await db.put('setlists', next);
+    } catch (err) {
+      failed(err);
+    }
   }
 
   // Takes a song off the set under Overall, with no confirmation: + puts it back (R56).
@@ -764,9 +800,9 @@ export async function renderSongs({
     drawList();
     if (which) {
       const row = moves.get(song.id);
-      const order = which === 'up' ? ['up', 'down'] : ['down', 'up'];
-      const name = order.find((key) => !row[key].disabled);
-      if (name) row[name].focus();
+      const order = which === 'up' ? ['up', 'down'] : which === 'down' ? ['down', 'up'] : [];
+      const name = order.find((key) => !row[key].disabled) || 'handle';
+      row[name]?.focus();
     }
     try {
       await db.put('setlists', next);
