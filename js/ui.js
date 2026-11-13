@@ -50,7 +50,7 @@ export function setViewSwitcher(fn) {
 }
 
 // A full-screen screen (e.g. the song shown to the KJ, R54) sets
-// body[data-screen] to hide the header and tabs. Every render through the
+// body[data-screen] to hide the page title and tabs. Every render through the
 // stack clears it first, so leaving that screen by any route restores them.
 function draw(render) {
   delete document.body.dataset.screen;

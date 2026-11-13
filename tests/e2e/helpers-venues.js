@@ -1,10 +1,11 @@
 // Steps for the Venues e2e tests (Wave 1 C). openApp and addSong live in helpers.js.
 import { expect } from '@playwright/test';
+import { expectTab } from './helpers.js';
 
 // Taps the Venues tab and waits for the venue list.
 export async function openVenues(page) {
   await page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name: 'Venues' }).click();
-  await expect(page.getByRole('heading', { name: 'Venues' })).toBeVisible();
+  await expectTab(page, 'Venues');
   await expect(page.getByRole('form', { name: 'Add a venue' })).toBeVisible();
 }
 

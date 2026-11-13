@@ -95,10 +95,13 @@ function put(page, store, records) {
 
 const tab = (page, name) => page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name }).click();
 const heading = (page, name, level) => page.getByRole('heading', { name, level, exact: true }).waitFor();
+// No title bar (R58): the selected tab says which screen is showing.
+const selected = (page, name) => page.getByRole('navigation', { name: 'Sections' })
+  .locator('button[aria-current="page"]').filter({ hasText: new RegExp(`^${name}$`) }).waitFor();
 
 // Each entry: a name and the steps that get the screen on the page.
 const SCREENS = [
-  ['songs', async (page) => { await heading(page, 'Songs', 1); await page.getByText(/of \d+ songs/).waitFor(); }],
+  ['songs', async (page) => { await selected(page, 'Songs'); await page.getByText(/of \d+ songs/).waitFor(); }],
   ['songs-filters', async (page) => {
     await page.locator('details.find-filters > summary').click();
     await page.getByRole('form', { name: 'Filters' }).getByLabel('Sung', { exact: true }).selectOption('never');
@@ -147,7 +150,11 @@ const SCREENS = [
     await heading(page, 'Friday at Viking', 2);
     await page.locator('details.mix > summary').click();
   }],
-  ['settings', async (page) => { await tab(page, 'Settings'); await heading(page, 'Settings', 1); }],
+  ['settings', async (page) => {
+    await tab(page, 'Settings');
+    await selected(page, 'Settings');
+    await page.getByLabel('Theme', { exact: true }).waitFor();
+  }],
 ];
 
 async function shoot(deviceKey, theme) {

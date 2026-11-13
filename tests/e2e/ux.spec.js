@@ -2,7 +2,7 @@
 // screen, and the phone's back gesture returns from a detail screen instead of
 // leaving the installed app.
 import { test, expect } from '@playwright/test';
-import { openApp, addSong, openSong, putRecords } from './helpers.js';
+import { openApp, addSong, openSong, putRecords, expectTab } from './helpers.js';
 import { seed } from './helpers-find.js';
 import { openVenues, openVenue, openOverall, backToVenues } from './helpers-venues.js';
 import { openSetlists, openSetlist } from './helpers-setlists.js';
@@ -57,7 +57,7 @@ test.describe('UX', () => {
     await expect(page.getByRole('heading', { level: 2, name: 'Valerie' })).toBeVisible();
 
     await page.goBack();
-    await expect(page.getByRole('heading', { name: 'Songs' })).toBeVisible();
+    await expectTab(page, 'Songs');
     await expect(page.getByText('1 of 1 songs')).toBeVisible();
     expect(page.url()).not.toBe('about:blank');
   });
@@ -132,7 +132,7 @@ test.describe('UX', () => {
     await expectTapTargets(page, 'Setlist detail');
 
     await page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name: 'Settings' }).click();
-    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+    await expectTab(page, 'Settings');
     await expectTapTargets(page, 'Settings');
   });
 });
@@ -144,7 +144,7 @@ const LIGHT_BG = 'rgb(246, 243, 251)';
 
 async function openSettings(page) {
   await page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name: 'Settings' }).click();
-  await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+  await expectTab(page, 'Settings');
 }
 
 test.describe('Theme', () => {
@@ -160,7 +160,7 @@ test.describe('Theme', () => {
     expect(await themeColor(page)).toBe('#f6f3fb');
 
     await page.reload();
-    await expect(page.getByRole('heading', { name: 'Songs' })).toBeVisible();
+    await expectTab(page, 'Songs');
     expect(await bodyBackground(page)).toBe(LIGHT_BG);
     await openSettings(page);
     await expect(page.getByLabel('Theme', { exact: true })).toHaveValue('light');
@@ -180,14 +180,15 @@ test.describe('Theme', () => {
     await expect.poll(() => bodyBackground(page)).toBe(LIGHT_BG);
 
     await page.reload();
-    await expect(page.getByRole('heading', { name: 'Songs' })).toBeVisible();
+    await expectTab(page, 'Songs');
     expect(await bodyBackground(page)).toBe(LIGHT_BG);
   });
 });
 
 test.describe('Accent', () => {
+  // The selected tab is filled with the accent (R58).
   const activeTabColor = (page) => page.evaluate(() =>
-    getComputedStyle(document.querySelector('.tabs button[aria-current="page"]')).color);
+    getComputedStyle(document.querySelector('.tabs button[aria-current="page"]')).backgroundColor);
 
   test('R55: the accent colour can be changed in Settings and survives a reload', async ({ page }) => {
     await openApp(page);
@@ -198,7 +199,7 @@ test.describe('Accent', () => {
     await expect.poll(() => activeTabColor(page)).toBe('rgb(255, 93, 143)');
 
     await page.reload();
-    await expect(page.getByRole('heading', { name: 'Songs' })).toBeVisible();
+    await expectTab(page, 'Songs');
     expect(await activeTabColor(page)).toBe('rgb(255, 93, 143)');
 
     // Each accent has a partner for the light theme.
@@ -211,6 +212,42 @@ test.describe('Accent', () => {
     await page.getByLabel('Accent colour', { exact: true }).selectOption('green');
     await expect.poll(() => activeTabColor(page)).toBe('rgb(19, 184, 106)');
     expect(await page.evaluate(() => document.documentElement.dataset.accent)).toBeUndefined();
+  });
+});
+
+test.describe('Tabs', () => {
+  test('R58: there is no title bar; the selected tab is filled with the accent and larger', async ({ page }) => {
+    await openApp(page);
+    await openVenues(page);
+
+    // Nothing above the screen: no header box, and <main> starts at the top.
+    const topHeight = await page.evaluate(() => {
+      const top = document.querySelector('.top');
+      return top ? top.getBoundingClientRect().height : 0;
+    });
+    expect(topHeight).toBe(0);
+    expect((await page.locator('main').boundingBox()).y).toBeLessThanOrEqual(20);
+    expect(await page.evaluate(() => !!document.elementFromPoint(innerWidth / 2, 4).closest('main'))).toBe(true);
+
+    // The page title stays for screen readers, taking no space.
+    const title = page.locator('#view-title');
+    await expect(title).toHaveText('Venues');
+    await expect(page.getByRole('heading', { level: 1, name: 'Venues' })).toHaveCount(1);
+    expect((await title.boundingBox()).height).toBeLessThanOrEqual(1);
+
+    // The selected tab: its label on the accent, and larger than the others.
+    const tabStyle = (name) => page.getByRole('navigation', { name: 'Sections' })
+      .getByRole('button', { name, exact: true })
+      .evaluate((node) => {
+        const style = getComputedStyle(node);
+        return { background: style.backgroundColor, color: style.color, fontSize: parseFloat(style.fontSize) };
+      });
+    const selected = await tabStyle('Venues');
+    const other = await tabStyle('Songs');
+    expect(selected.background).toBe('rgb(19, 184, 106)');
+    expect(selected.color).toBe('rgb(20, 18, 26)'); // --accent-text
+    expect(selected.fontSize).toBeGreaterThan(other.fontSize);
+    expect(other.background).toBe('rgba(0, 0, 0, 0)');
   });
 });
 

@@ -1,13 +1,13 @@
 // R25: a reminder to back up when the last export is over 30 days old.
 import { test, expect } from '@playwright/test';
-import { openApp, addSong, putRecords, readStore } from './helpers.js';
+import { openApp, addSong, putRecords, readStore, expectTab } from './helpers.js';
 import { openSettings, downloadBackup } from './helpers-data.js';
 
 const banner = (page) => page.getByRole('region', { name: 'Backup reminder' });
 
 async function reload(page) {
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Songs' })).toBeVisible();
+  await expectTab(page, 'Songs');
   await expect(page.getByText(/of \d+ songs/)).toBeVisible();
 }
 
@@ -21,7 +21,7 @@ test.describe('Backup reminder', () => {
     await expect(banner(page)).toContainText('You have not backed up yet');
 
     await banner(page).getByRole('button', { name: 'Back up now' }).click();
-    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+    await expectTab(page, 'Settings');
     await expect(banner(page)).toHaveCount(0);
 
     await downloadBackup(page);

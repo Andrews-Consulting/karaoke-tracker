@@ -1,12 +1,12 @@
 // Steps for the Find e2e tests (Wave 2 D). openApp, putRecords and readStore live in helpers.js.
 import { expect } from '@playwright/test';
 import { makeSong } from '../../js/lib/song.js';
-import { putRecords, readStore, mockedMusicBrainz } from './helpers.js';
+import { putRecords, readStore, mockedMusicBrainz, expectTab } from './helpers.js';
 
 // Reloads and waits for the Songs list to show all `total` songs.
 export async function reloadList(page, total) {
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Songs' })).toBeVisible();
+  await expectTab(page, 'Songs');
   await expect(page.getByText(`${total} of ${total} songs`)).toBeVisible();
 }
 
