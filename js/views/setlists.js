@@ -1,25 +1,27 @@
-// Setlists view: create, edit and delete setlists, each general or tied to one
-// venue (R14, R39); add and remove songs (R15); flag songs already sung at the
-// setlist's venue, with the date last sung there (R43); reorder songs by
-// dragging or with Up and Down buttons (R16); show the mix by genre and decade (R44);
-// suggest songs never sung at the venue, spread across genres and decades (R45).
-// This tab is for building and tidying lists; working one through the night
-// is the Songs tab's List mode (R49), which replaced Tonight mode (R17).
+// Setlists view: create, edit and delete setlists, each labelled for a venue
+// or for any venue (R14, R56); remove songs (R15), and "Find songs" to add
+// them on the Songs tab (R57); flag songs already sung at the label venue,
+// with the date last sung there (R43); reorder songs by dragging or with Up
+// and Down buttons (R16); show the mix by genre and decade (R44); suggest
+// songs never sung at the label venue, spread across genres and decades
+// (R45); merge a setlist into another (R59). This tab is for building and
+// tidying lists; working one through the night is the Songs tab's List mode
+// (R49), which replaced Tonight mode (R17).
 //
 // Two screens in one tab: the setlist list and one setlist. renderSetlists()
 // always shows the list, so tapping the Setlists tab is a way back as well.
-import { db } from '../db.js';
+import { db, request } from '../db.js';
 import { el, viewEl, confirmAction, openScreen, closeScreen } from '../ui.js';
 import { plural, sortVenues } from '../lib/stats.js';
 import {
-  setlistNameError, sortSetlists, venueValue, venueIdFromValue, venueOptions, venueLabel, venueLine,
-  makeSetlist, updateSetlist, describeSetlistDelete, addSongId, removeSongId, setlistSongs,
-  pickableSongs, sungFlags, moveSongId, moveSongIdBy, mixByGenre, mixByDecade, formatMix,
+  setlistNameError, sortSetlists, venueValue, venueIdFromValue, venueOptions, venueLabel,
+  makeSetlist, updateSetlist, describeSetlistDelete, removeSongId, addSongId, setlistSongs,
+  sungFlags, moveSongId, moveSongIdBy, mixByGenre, mixByDecade, formatMix,
   SUGGEST_MIN, SUGGEST_MAX, SUGGEST_DEFAULT, suggestCount, suggestSongs, describeSuggestion,
+  mergePlan, describeMerge, describeMerged,
 } from '../lib/setlist.js';
-
-// Most songs the picker lists at once; more than this asks to narrow the search.
-const MAX_PICKS = 20;
+import { setMenuGroups } from '../lib/night.js';
+import { showSetInFind } from './songs.js';
 
 // Bumped on every screen change, so a slow load never paints over a newer screen.
 let screen = 0;
@@ -46,7 +48,7 @@ function subLine(parts) {
   return el('span', { class: 'sub' }, ...children);
 }
 
-// The venue <select> (R39): General, then every venue by name.
+// The "For venue (optional)" <select> (R56): Any venue, then every venue by name.
 function venueSelect(venues, venueId) {
   const select = el('select', { name: 'venue' },
     ...venueOptions(venues, venueId).map((o) => el('option', { value: o.value, text: o.label })));
@@ -54,7 +56,7 @@ function venueSelect(venues, venueId) {
   return select;
 }
 
-// ---------- Setlist list (R14, R39) ----------
+// ---------- Setlist list (R14, R56) ----------
 
 export async function renderSetlists() {
   const token = ++screen;
@@ -74,8 +76,8 @@ export async function renderSetlists() {
   const form = el('form', { class: 'stack', 'aria-label': 'New setlist', novalidate: '' },
     el('h2', { text: 'New setlist' }),
     el('label', { text: 'Setlist name' }, nameInput),
-    el('label', { text: 'Venue' }, venueInput),
-    venues.length ? null : el('p', { class: 'count', text: 'Add venues in the Venues tab to tie a setlist to one.' }),
+    el('label', { text: 'For venue (optional)' }, venueInput),
+    venues.length ? null : el('p', { class: 'count', text: 'Add venues in the Venues tab to label a setlist with one.' }),
     el('button', { class: 'btn primary', type: 'submit', text: 'Create setlist' }),
     addError);
 
@@ -114,14 +116,14 @@ export async function renderSetlists() {
           })));
     }
 
-    // Name and venue in one inline form (R14 rename, R39 change venue or General).
+    // Name and label in one inline form (R14 rename, R56 change the venue label or clear it).
     function showEdit() {
       const input = el('input', { name: 'name', required: '', autocomplete: 'off', value: setlist.name });
       const select = venueSelect(venues, setlist.venueId);
       const error = el('p', { class: 'error', role: 'alert' });
       const editForm = el('form', { class: 'stack', 'aria-label': `Edit ${setlist.name}`, novalidate: '' },
         el('label', { text: 'Setlist name' }, input),
-        el('label', { text: 'Venue' }, select),
+        el('label', { text: 'For venue (optional)' }, select),
         el('div', { class: 'row' },
           el('button', { class: 'btn primary', type: 'submit', text: 'Save' }),
           el('button', { class: 'btn', type: 'button', text: 'Cancel', onclick: showNormal })),
@@ -158,7 +160,7 @@ export async function renderSetlists() {
   const list = el('ul', { class: 'list', 'aria-label': 'Setlists' }, ...setlists.map(setlistRow));
   const empty = setlists.length
     ? null
-    : el('p', { class: 'muted empty', text: 'No setlists yet. Create one above, then add songs to it.' });
+    : el('p', { class: 'muted empty', text: 'No setlists yet. Create one above, then find songs for it.' });
 
   show(el('div', { class: 'card' }, form), list, empty);
 }
@@ -171,13 +173,29 @@ function middleOf(node) {
 
 const sameOrder = (a, b) => a.length === b.length && a.every((id, i) => id === b[i]);
 
-// ---------- One setlist: songs (R15), sung flags (R43), order (R16), mix (R44)
-// and suggest (R45) ----------
+// Merges one setlist into another in one transaction (R59), from what is
+// stored, so a list changed elsewhere meanwhile is merged as it is now.
+// Resolves with mergePlan()'s result, or null when either setlist is gone.
+function mergeSetlists(sourceId, targetId, songsById) {
+  return db.transaction('setlists', 'readwrite', async (stores) => {
+    const source = await request(stores.setlists.get(sourceId));
+    const target = await request(stores.setlists.get(targetId));
+    if (!source || !target || source.id === target.id) return null;
+    const plan = mergePlan(source, target, songsById);
+    stores.setlists.put(plan.target);
+    stores.setlists.put(plan.source);
+    return plan;
+  });
+}
 
-async function renderSetlist(id) {
+// ---------- One setlist: songs (R15), find songs (R57), sung flags (R43),
+// order (R16), mix (R44), suggest (R45) and merge (R59) ----------
+
+// `message` is a line to show at the top, e.g. after a merge.
+async function renderSetlist(id, message = '') {
   const token = ++screen;
-  const [found, venues, songs, sings] = await Promise.all([
-    db.get('setlists', id), db.getAll('venues'), db.getAll('songs'), db.getAll('sings'),
+  const [found, venues, songs, sings, allSetlists] = await Promise.all([
+    db.get('setlists', id), db.getAll('venues'), db.getAll('songs'), db.getAll('sings'), db.getAll('setlists'),
   ]);
   if (!stillCurrent(token)) return;
   if (!found) {
@@ -188,10 +206,83 @@ async function renderSetlist(id) {
   // The latest state, updated before each save so quick taps build on each other.
   let setlist = found;
   const songsById = new Map(songs.map((s) => [s.id, s]));
+  const others = allSetlists.filter((s) => s.id !== setlist.id);
 
   const count = el('p', { class: 'count' });
   const list = el('ol', { class: 'list setlist-songs', 'aria-label': 'Songs in this setlist' });
-  const empty = el('p', { class: 'muted empty', text: 'No songs yet. Add some below.' });
+
+  // "Find songs" (R57): the Songs tab, in Find, with this set open at the
+  // venue it is on, where + adds songs. At the top, and in place of the list
+  // while there is nothing in it, so only one shows at a time.
+  const findSongs = () => showSetInFind(setlist.id);
+  const findButton = el('button', { class: 'btn', type: 'button', text: 'Find songs', onclick: findSongs });
+  const empty = el('div', { class: 'empty setlist-empty' },
+    el('p', { class: 'muted', text: 'No songs yet. Find songs to add some, or let Suggest songs pick a few.' }),
+    el('button', { class: 'btn primary', type: 'button', text: 'Find songs', onclick: findSongs }));
+  const status = el('p', { class: 'status', role: 'status', text: message });
+
+  // Merge into another setlist (R59): an inline form under the buttons.
+  const mergeButton = el('button', {
+    class: 'btn', type: 'button', text: 'Merge into…', 'aria-expanded': 'false', onclick: () => showMergeForm(true),
+  });
+  const mergeNote = el('p', { class: 'muted merge-note' });
+  const mergeSelect = el('select', { name: 'merge-target', id: 'merge-target' },
+    ...setMenuGroups(others, venues, setlist.venueId).map((group) => el('optgroup', { label: group.label },
+      ...group.items.map((item) => el('option', { value: String(item.id), text: item.text })))));
+  const mergeError = el('p', { class: 'error', role: 'alert' });
+  const mergeForm = el('form', { class: 'card stack merge-form', 'aria-label': 'Merge into another setlist', hidden: '' },
+    // The label beside the menu rather than around it, so the menu's name is just "Merge into".
+    el('div', { class: 'merge-field' }, el('label', { for: 'merge-target', text: 'Merge into' }), mergeSelect),
+    el('p', { class: 'muted hint', text: 'Every song not already there goes to its end, and this list is left empty.' }),
+    el('div', { class: 'row' },
+      el('button', { class: 'btn primary', type: 'submit', text: 'Merge' }),
+      el('button', { class: 'btn', type: 'button', text: 'Cancel', onclick: () => showMergeForm(false) })),
+    mergeError);
+  let merging = false; // stops a double tap from merging twice
+
+  function showMergeForm(open) {
+    mergeForm.hidden = !open;
+    mergeButton.setAttribute('aria-expanded', String(open));
+    mergeError.textContent = '';
+    if (open) mergeSelect.focus();
+    else mergeButton.focus({ preventScroll: true });
+  }
+
+  // Off, with a note, while there is nothing to merge or nowhere to merge it.
+  function syncMerge(songCount) {
+    const why = !songCount ? 'Nothing to merge.' : !others.length ? 'No other setlist to merge into.' : '';
+    mergeButton.disabled = !!why;
+    mergeNote.textContent = why;
+    if (why && !mergeForm.hidden) showMergeForm(false);
+  }
+
+  mergeForm.addEventListener('keydown', (e) => { if (e.key === 'Escape') showMergeForm(false); });
+  mergeForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (merging) return;
+    const target = others.find((s) => String(s.id) === mergeSelect.value);
+    if (!target) {
+      mergeError.textContent = 'Pick a setlist to merge into.';
+      return;
+    }
+    const preview = mergePlan(setlist, target, songsById);
+    if (!confirmAction(describeMerge(setlist, target, preview))) return;
+    merging = true;
+    let plan;
+    try {
+      plan = await mergeSetlists(setlist.id, target.id, songsById);
+    } catch (err) {
+      merging = false;
+      mergeError.textContent = `Could not merge: ${err.message}`;
+      return;
+    }
+    if (!plan) {
+      renderSetlist(setlist.id, 'Could not merge: that setlist is no longer there.');
+      return;
+    }
+    // The target's screen takes this one's place, so Back still goes to the list.
+    renderSetlist(target.id, describeMerged(setlist, plan));
+  });
 
   // The mix (R44): closed by default, a reading aid so gaps and repeats stand out.
   const mixGenres = el('dd');
@@ -205,14 +296,6 @@ async function renderSetlist(id) {
   // Each row's handle and Up and Down buttons by song id, so focus can go back
   // to the moved song's control after the list is redrawn.
   const controls = new Map();
-
-  const search = el('input', {
-    type: 'search', placeholder: 'Search title or artist', 'aria-label': 'Find a song to add', autocomplete: 'off',
-    oninput: () => drawPicks(),
-  });
-  const pickCount = el('p', { class: 'count' });
-  const picks = el('ul', { class: 'picks', 'aria-label': 'Songs to add' });
-  const status = el('p', { class: 'status', role: 'status' });
 
   // Suggest songs (R45): adds songs never sung here to the end, as a start to edit.
   const general = setlist.venueId == null;
@@ -345,11 +428,13 @@ async function renderSetlist(id) {
 
   function drawSongs() {
     const inList = setlistSongs(setlist, songsById);
-    const flags = sungFlags(setlist, sings); // empty for a general setlist
+    const flags = sungFlags(setlist, sings); // empty for a setlist for any venue
     count.textContent = plural(inList.length, 'song', 'songs');
     controls.clear();
     list.replaceChildren(...inList.map((song, i) => songRow(song, flags.get(song.id), i, inList.length)));
     empty.hidden = inList.length > 0;
+    findButton.hidden = inList.length === 0; // the empty state has its own
+    syncMerge(inList.length);
     drawMix(inList);
   }
 
@@ -370,45 +455,16 @@ async function renderSetlist(id) {
     row[name].focus();
   }
 
-  function drawPicks() {
-    const query = search.value.trim();
-    const { shown, total } = pickableSongs(songs, setlist, query, MAX_PICKS);
-    const noun = query ? ['match', 'matches'] : ['song', 'songs'];
-    if (!songs.length) pickCount.textContent = 'No songs yet. Add some in the Songs tab first.';
-    else if (!total) pickCount.textContent = query ? 'No other songs match.' : 'Every song is already in this setlist.';
-    else if (total > MAX_PICKS) {
-      pickCount.textContent = `Showing ${MAX_PICKS} of ${plural(total, ...noun)}. Type more to narrow the search.`;
-    } else pickCount.textContent = plural(total, ...noun);
-
-    picks.replaceChildren(...shown.map((song) =>
-      el('li', {},
-        el('button', {
-          class: 'pick', type: 'button', 'aria-label': `Add ${song.title} by ${song.artist}`,
-          onclick: () => addSong(song),
-        },
-        el('span', { class: 'title', text: song.title }),
-        el('span', { class: 'sub', text: song.artist })))));
-  }
-
   async function save() {
     await db.put('setlists', setlist);
     drawSongs();
-    drawPicks();
   }
 
-  // The lines under Add songs and Suggest songs, which go stale once the list changes again.
+  // The lines at the top and under Suggest songs, which go stale once the list changes again.
   function clearStatus() {
     status.textContent = '';
     suggestStatus.textContent = '';
     suggestError.textContent = '';
-  }
-
-  // Adds to the end; a song already in the setlist is never added twice.
-  async function addSong(song) {
-    setlist = addSongId(setlist, song.id);
-    clearStatus();
-    await save();
-    status.textContent = `Added “${song.title}”.`;
   }
 
   // Adds the suggested songs to the end (R45); nothing already there moves or goes.
@@ -466,15 +522,14 @@ async function renderSetlist(id) {
       class: 'btn back', type: 'button', text: '‹ All setlists', onclick: () => closeScreen(() => renderSetlists()),
     }),
     el('h2', { text: setlist.name }),
-    el('p', { class: 'muted venue-line', text: venueLine(setlist, venues) }),
+    el('p', { class: 'muted venue-line', text: venueLabel(setlist, venues) }),
+    el('div', { class: 'setlist-actions' }, findButton, mergeButton, mergeNote),
+    mergeForm,
+    status,
     count,
     mix,
     list,
     empty,
-    suggestForm,
-    el('section', { class: 'card stack', 'aria-label': 'Add songs' },
-      el('h3', { text: 'Add songs' }),
-      search, pickCount, picks, status));
+    suggestForm);
   drawSongs();
-  drawPicks();
 }

@@ -721,3 +721,17 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
 .kj-key { font-size: clamp(1.25rem, 5vmin, 3rem); color: var(--accent); font-weight: 600; }
 .kj-actions { margin-top: 16px; }
 .kj-button { width: 100%; }
+
+/* ---- Setlist labels, Find songs and merge (R56, R57, R59) ---- */
+
+/* Under the label line: Find songs and Merge into…, with why merging is off. */
+.setlist-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.setlist-actions .merge-note { flex-basis: 100%; margin: 0; font-size: 0.875rem; }
+.setlist-actions .merge-note:empty { display: none; }
+.merge-form .hint { margin: 0; font-size: 0.875rem; }
+.merge-field > label + select { margin-top: 4px; }
+.setlist-empty > p { margin: 0 0 8px; }
+
+@media print {
+  .setlist-actions, .merge-form, .setlist-empty { display: none !important; }
+}

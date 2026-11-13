@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
-  setlistNameError, sortSetlists, venueValue, venueIdFromValue, venueOptions, venueLabel, venueLine,
+  setlistNameError, sortSetlists, venueValue, venueIdFromValue, venueOptions, venueLabel,
   makeSetlist, updateSetlist, describeSetlistDelete, addSongId, removeSongId, setlistSongs,
-  pickableSongs, sungFlags,
+  sungFlags, mergePlan, describeMerge, describeMerged,
 } from '../../js/lib/setlist.js';
 import { moveSongId, moveSongIdBy, mixByGenre, mixByDecade, formatMix } from '../../js/lib/setlist.js';
 import {
@@ -76,8 +76,8 @@ describe('R14 sortSetlists', () => {
   });
 });
 
-describe('R39 venue values', () => {
-  it('maps General to an empty value and back to null', () => {
+describe('R56 venue values', () => {
+  it('maps any venue to an empty value and back to null', () => {
     expect(venueValue(null)).toBe('');
     expect(venueValue(undefined)).toBe('');
     expect(venueIdFromValue('')).toBe(null);
@@ -91,22 +91,22 @@ describe('R39 venue values', () => {
     expect(venueIdFromValue(venueValue(CROWN))).toBe(CROWN);
   });
 
-  it('treats a value that is not a number as General', () => {
+  it('treats a value that is not a number as any venue', () => {
     expect(venueIdFromValue('abc')).toBe(null);
   });
 });
 
-describe('R39 venueOptions', () => {
-  it('lists General first, then venues by name ignoring case', () => {
+describe('R56 venueOptions', () => {
+  it('lists Any venue first, then venues by name ignoring case', () => {
     expect(venueOptions(venues)).toEqual([
-      { value: '', label: 'General' },
+      { value: '', label: 'Any venue' },
       { value: '2', label: 'anchor' },
       { value: '1', label: 'The Crown' },
     ]);
   });
 
-  it('offers only General when there are no venues', () => {
-    expect(venueOptions([])).toEqual([{ value: '', label: 'General' }]);
+  it('offers only Any venue when there are no venues', () => {
+    expect(venueOptions([])).toEqual([{ value: '', label: 'Any venue' }]);
   });
 
   it('keeps a missing current venue as "Unknown venue"', () => {
@@ -116,26 +116,24 @@ describe('R39 venueOptions', () => {
   });
 });
 
-describe('R39 venueLabel and venueLine', () => {
-  it('names a general setlist', () => {
-    expect(venueLabel(general, venues)).toBe('General');
-    expect(venueLine(general, venues)).toBe('General setlist');
+describe('R56 venueLabel', () => {
+  it('says Any venue for a setlist without a label', () => {
+    expect(venueLabel(general, venues)).toBe('Any venue');
   });
 
-  it('names a venue setlist after its venue', () => {
-    expect(venueLabel(friday, venues)).toBe('The Crown');
-    expect(venueLine(friday, venues)).toBe('At The Crown');
+  it('says which venue a labelled setlist is for', () => {
+    expect(venueLabel(friday, venues)).toBe('For The Crown');
+    expect(venueLabel({ ...friday, venueId: ANCHOR }, venues)).toBe('For anchor');
   });
 
   it('says when the venue no longer exists', () => {
     const orphan = { ...friday, venueId: 99 };
-    expect(venueLabel(orphan, venues)).toBe('Unknown venue');
-    expect(venueLine(orphan, venues)).toBe('At a venue that no longer exists');
-    expect(venueLabel(orphan, [])).toBe('Unknown venue');
+    expect(venueLabel(orphan, venues)).toBe('For an unknown venue');
+    expect(venueLabel(orphan, [])).toBe('For an unknown venue');
   });
 
-  it('treats an undefined venueId as general', () => {
-    expect(venueLabel({ name: 'x', songIds: [] }, venues)).toBe('General');
+  it('treats an undefined venueId as any venue', () => {
+    expect(venueLabel({ name: 'x', songIds: [] }, venues)).toBe('Any venue');
   });
 });
 
@@ -242,35 +240,91 @@ describe('R15 setlistSongs', () => {
   });
 });
 
-describe('R15 pickableSongs', () => {
-  it('lists every song not already in the setlist, by title', () => {
-    const { shown, total } = pickableSongs(songs, friday, '');
-    expect(shown.map((s) => s.title)).toEqual(['Back to Black']);
-    expect(total).toBe(1);
+describe('R59 mergePlan', () => {
+  const nextTime = { id: 7, name: 'Next time', venueId: ANCHOR, songIds: [13, 11] };
+
+  it('appends the source\'s songs to the target\'s end, in order, and empties the source', () => {
+    const source = { id: 8, name: 'Saturday', venueId: null, songIds: [12, 10] };
+    expect(mergePlan(source, nextTime)).toEqual({
+      target: { ...nextTime, songIds: [13, 11, 12, 10] },
+      source: { ...source, songIds: [] },
+      moved: 2,
+      skipped: 0,
+    });
   });
 
-  it('lists everything for an empty setlist, sorted by title', () => {
-    expect(pickableSongs(songs, makeSetlist('x')).shown.map((s) => s.id)).toEqual([13, 11, 12, 10]);
+  it('skips songs already in the target and counts them', () => {
+    const plan = mergePlan(friday, nextTime); // friday is [12, 10, 11]; 11 is already there
+    expect(plan.target.songIds).toEqual([13, 11, 12, 10]);
+    expect(plan.source.songIds).toEqual([]);
+    expect([plan.moved, plan.skipped]).toEqual([2, 1]);
   });
 
-  it('filters by title or artist, ignoring case', () => {
-    const empty = makeSetlist('x');
-    expect(pickableSongs(songs, empty, 'AMY').shown.map((s) => s.title)).toEqual(['Back to Black', 'Valerie']);
-    expect(pickableSongs(songs, empty, 'queen').shown.map((s) => s.id)).toEqual([11]);
-    expect(pickableSongs(songs, general, 'amy')).toEqual({ shown: [], total: 0 });
+  it('keeps everything else about both setlists, including their labels', () => {
+    const plan = mergePlan(friday, nextTime);
+    expect(plan.target).toMatchObject({ id: 7, name: 'Next time', venueId: ANCHOR });
+    expect(plan.source).toMatchObject({ id: 5, name: 'Friday', venueId: CROWN });
   });
 
-  it('caps the list but reports how many matched', () => {
-    const many = Array.from({ length: 30 }, (_, i) => ({ id: i + 1, title: `Track ${String(i + 1).padStart(2, '0')}`, artist: 'Band' }));
-    const { shown, total } = pickableSongs(many, { songIds: [1] }, 'track');
-    expect(shown).toHaveLength(20);
-    expect(total).toBe(29);
-    expect(shown[0].title).toBe('Track 02');
-    expect(pickableSongs(many, { songIds: [] }, '', 5).shown).toHaveLength(5);
+  it('moves nothing from an empty source', () => {
+    const plan = mergePlan({ id: 8, name: 'Empty', venueId: null, songIds: [] }, nextTime);
+    expect(plan.target.songIds).toEqual([13, 11]);
+    expect(plan.source.songIds).toEqual([]);
+    expect([plan.moved, plan.skipped]).toEqual([0, 0]);
+    expect(mergePlan({ id: 8, name: 'No ids' }, nextTime).moved).toBe(0);
   });
 
-  it('handles no songs at all', () => {
-    expect(pickableSongs([], friday, 'x')).toEqual({ shown: [], total: 0 });
+  it('with songsById, drops ids of songs that no longer exist instead of moving them', () => {
+    const source = { id: 8, name: 'Saturday', venueId: null, songIds: [99, 12, 98] };
+    const plan = mergePlan(source, nextTime, songs);
+    expect(plan.target.songIds).toEqual([13, 11, 12]);
+    expect(plan.source.songIds).toEqual([]);
+    expect([plan.moved, plan.skipped]).toEqual([1, 0]);
+  });
+
+  it('changes nothing when a setlist is merged into itself', () => {
+    const plan = mergePlan(friday, { ...friday });
+    expect(plan.target.songIds).toEqual([12, 10, 11]);
+    expect(plan.source.songIds).toEqual([12, 10, 11]);
+    expect([plan.moved, plan.skipped]).toEqual([0, 0]);
+  });
+
+  it('does not change its inputs', () => {
+    const source = structuredClone(friday);
+    const target = structuredClone(nextTime);
+    mergePlan(source, target);
+    expect(source).toEqual(friday);
+    expect(target).toEqual(nextTime);
+  });
+});
+
+describe('R59 describeMerge and describeMerged', () => {
+  const source = { id: 8, name: 'Friday', songIds: [] };
+  const target = { id: 7, name: 'Next time', songIds: [] };
+
+  it('asks before moving the songs, saying the source will be left empty', () => {
+    expect(describeMerge(source, target, { moved: 3, skipped: 0 }))
+      .toBe('Move 3 songs from “Friday” to the end of “Next time”? “Friday” will be left empty.');
+    expect(describeMerge(source, target, { moved: 1, skipped: 0 }))
+      .toBe('Move 1 song from “Friday” to the end of “Next time”? “Friday” will be left empty.');
+  });
+
+  it('mentions songs already in the target', () => {
+    expect(describeMerge(source, target, { moved: 2, skipped: 1 }))
+      .toBe('Move 2 songs from “Friday” to the end of “Next time”? 1 song is already there. “Friday” will be left empty.');
+    expect(describeMerge(source, target, { moved: 2, skipped: 3 })).toContain(' 3 songs are already there.');
+  });
+
+  it('says so when every song is already in the target', () => {
+    expect(describeMerge(source, target, { moved: 0, skipped: 2 }))
+      .toBe('All 2 songs in “Friday” are already in “Next time”. Empty “Friday”?');
+    expect(describeMerge(source, target, { moved: 0, skipped: 1 }))
+      .toBe('The song in “Friday” is already in “Next time”. Empty “Friday”?');
+  });
+
+  it('reports what moved on the target\'s screen', () => {
+    expect(describeMerged(source, { moved: 3, skipped: 0 })).toBe('Moved 3 songs from “Friday”.');
+    expect(describeMerged(source, { moved: 1, skipped: 2 })).toBe('Moved 1 song from “Friday”. 2 were already here.');
   });
 });
 
