@@ -42,6 +42,27 @@ export function restoreBackup(page, backup, name = 'mic-jaunt-backup.json') {
   return chooseFile(page, 'Restore from backup', { name, mimeType: 'application/json', contents });
 }
 
+// Hands a file to "Check a backup file" (R62), which reports on it without restoring.
+export function checkBackupFile(page, backup, name = 'mic-jaunt-backup.json') {
+  const contents = typeof backup === 'string' ? backup : JSON.stringify(backup);
+  return chooseFile(page, 'Check a backup file', { name, mimeType: 'application/json', contents });
+}
+
+// Pretends the browser has a share sheet that accepts files (R62). `outcome`
+// is 'shared' (the sheet reports success), 'cancelled' (the owner dismissed
+// it) or 'failed'. What was shared is kept on window.__shared for the test.
+export function fakeShareSheet(page, outcome = 'shared') {
+  return page.addInitScript((how) => {
+    window.__shared = [];
+    navigator.canShare = (data) => !!(data && data.files && data.files.length);
+    navigator.share = async (data) => {
+      window.__shared.push({ names: data.files.map((f) => f.name), title: data.title, size: data.files[0].size });
+      if (how === 'cancelled') throw new DOMException('Share canceled', 'AbortError');
+      if (how === 'failed') throw new Error('Sharing is unavailable right now');
+    };
+  }, outcome);
+}
+
 // Taps "Download backup" and returns the file name, raw text and parsed JSON.
 export async function downloadBackup(page) {
   const downloading = page.waitForEvent('download');
