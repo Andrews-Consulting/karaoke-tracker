@@ -430,8 +430,9 @@ test.describe('Night out', () => {
     await showMode(page, 'Sung');
     await showMode(page, 'Find');
     await showMode(page, 'List');
+    // Tapping the song in List shows it to the KJ (R54); back returns to List.
     await setRow(page, 'Valerie').locator('.night-open').click();
-    await expect(page.getByRole('heading', { level: 2, name: 'Valerie' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Show to the KJ' })).toContainText('Valerie');
     await page.goBack();
     await expect(tab(page, 'List')).toHaveAttribute('aria-selected', 'true');
     await expect(setTitles(page)).toHaveText(['Mr. Brightside', 'Valerie', 'Dancing Queen']);

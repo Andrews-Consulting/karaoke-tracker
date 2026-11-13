@@ -11,9 +11,9 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 BG = "#14121a"
-ACCENT = "#ff5d8f"
-LIGHT = "#f2eff8"
-MUTED = "#a39db5"
+ACCENT = "#ffb347"  # keep in step with --accent in css/app.css
+LIGHT = "#f4efe4"
+MUTED = "#b5ad9d"
 SIZE = 1024  # draw large, then scale down for smooth edges
 TILT = 24  # degrees the mic leans to the right, mid-stride
 
