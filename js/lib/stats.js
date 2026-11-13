@@ -115,10 +115,20 @@ export function venueNameError(name, venues, exceptId = null) {
   return clash ? `There is already a venue called “${clash.name}”.` : '';
 }
 
-// Deleting a venue is hard and only allowed when nothing references it.
-// Returns why it cannot be deleted, or '' when it can.
-export function venueInUseMessage(name, singCount, setlistCount) {
-  if (!singCount && !setlistCount) return '';
-  return `Can't delete “${name}”: ${plural(singCount, 'sing log entry', 'sing log entries')} and ` +
-    `${plural(setlistCount, 'setlist', 'setlists')} still use it. Remove those first.`;
+// Deleting a venue is hard and only allowed when no sing references it.
+// Setlists labelled for it do not hold it up (R56): the delete clears their
+// label. Returns why it cannot be deleted, or '' when it can.
+export function venueInUseMessage(name, singCount) {
+  if (!singCount) return '';
+  return `Can't delete “${name}”: ${plural(singCount, 'sing log entry', 'sing log entries')} ` +
+    `still ${singCount === 1 ? 'uses' : 'use'} it. Remove those first.`;
+}
+
+// The confirmation before deleting a venue, saying what happens to the
+// setlists labelled for it (R56).
+export function describeVenueDelete(name, setlistCount = 0) {
+  const labelled = !setlistCount ? ''
+    : setlistCount === 1 ? ' 1 setlist is labelled for it; it will become Any venue.'
+      : ` ${setlistCount} setlists are labelled for it; they will become Any venue.`;
+  return `Delete the venue “${name}”?${labelled}`;
 }

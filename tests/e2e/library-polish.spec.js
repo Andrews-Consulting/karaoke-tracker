@@ -238,7 +238,7 @@ test.describe('Library polish', () => {
     await expectTapTarget(moreButton(page));
     await moreButton(page).click();
     await expect(songRows(page)).toHaveCount(400);
-    await expect(songRows(page).nth(200).getByRole('button')).toBeFocused();
+    await expect(songRows(page).nth(200).locator('button.song-row')).toBeFocused(); // the row, not its + (R56)
     await expect(moreButton(page)).toHaveText('Show 144 more');
     await moreButton(page).click();
     await expect(songRows(page)).toHaveCount(544);
@@ -248,11 +248,11 @@ test.describe('Library polish', () => {
 
     // Coming back from a song far down the list shows it again, focused.
     const deep = matches[450].title;
-    await songRows(page).nth(450).getByRole('button').click();
+    await songRows(page).nth(450).locator('button.song-row').click();
     await expect(page.getByRole('heading', { level: 2, name: deep })).toBeVisible();
     await backToList(page);
     await expect(countLine(page)).toHaveText('544 of 1000 songs');
-    await expect(songRow(page, deep).getByRole('button')).toBeFocused();
+    await expect(songRow(page, deep).locator('button.song-row')).toBeFocused();
     await expect(songRow(page, deep)).toBeInViewport();
 
     // A new search starts again from the first 200.

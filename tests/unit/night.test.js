@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   currentSetlistKey, nextSetlistKey, tonightListName, uniqueSetlistName, venueSetlists, currentSetlistFor,
-  nextSetlistFor, putBackOnTop, dateLabel, groupSingsByDate,
+  setMenuGroups, nextSetlistFor, putBackOnTop, dateLabel, groupSingsByDate,
 } from '../../js/lib/night.js';
 
 const VIKING = 1;
@@ -15,10 +15,15 @@ const setlists = [
   { id: 9, name: 'Anywhere', venueId: null, songIds: [10] },
 ];
 
-describe('R47 R49 meta keys', () => {
+describe('R47 R49 R56 meta keys', () => {
   it('names the current set and Next time records per venue', () => {
     expect(currentSetlistKey(VIKING)).toBe('currentSetlist:1');
     expect(nextSetlistKey(CROWN)).toBe('nextTimeSetlist:2');
+  });
+
+  it('names Overall\'s current set record', () => {
+    expect(currentSetlistKey(null)).toBe('currentSetlist:overall');
+    expect(currentSetlistKey(undefined)).toBe('currentSetlist:overall');
   });
 });
 
@@ -62,37 +67,109 @@ describe('R47 uniqueSetlistName', () => {
 });
 
 describe('R47 venueSetlists', () => {
-  it('lists only the venue\'s setlists, by name', () => {
+  it('lists only the setlists labelled for the venue, by name', () => {
     expect(venueSetlists(setlists, VIKING).map((s) => s.id)).toEqual([7, 6, 5]);
     expect(venueSetlists(setlists, CROWN).map((s) => s.id)).toEqual([8]);
     expect(venueSetlists(setlists, 99)).toEqual([]);
   });
+
+  it('lists the setlists for any venue when given no venue', () => {
+    expect(venueSetlists(setlists, null).map((s) => s.id)).toEqual([9]);
+    expect(venueSetlists([{ id: 1, name: 'x', songIds: [] }], null).map((s) => s.id)).toEqual([1]);
+  });
 });
 
-describe('R47 currentSetlistFor', () => {
+describe('R47 R56 currentSetlistFor', () => {
+  const ANCHOR = 3; // a venue with no setlists labelled for it
+  const noAnyVenue = setlists.filter((s) => s.venueId != null);
+
   it('opens the remembered set', () => {
     expect(currentSetlistFor(setlists, VIKING, 5).id).toBe(5);
     expect(currentSetlistFor(setlists, VIKING, 6).id).toBe(6);
   });
 
-  it('falls back to the venue\'s first set by name when the remembered one is gone', () => {
+  it('opens a remembered set labelled for another venue or for any venue (R56)', () => {
+    expect(currentSetlistFor(setlists, CROWN, 7).id).toBe(7);
+    expect(currentSetlistFor(setlists, VIKING, 9).id).toBe(9);
+    expect(currentSetlistFor(setlists, ANCHOR, 8).id).toBe(8);
+  });
+
+  it('falls back to the first set by name labelled for the venue when the remembered one is gone', () => {
     expect(currentSetlistFor(setlists, VIKING, 42).id).toBe(7);
     expect(currentSetlistFor(setlists, VIKING, undefined).id).toBe(7);
     expect(currentSetlistFor(setlists, VIKING, null).id).toBe(7);
+    expect(currentSetlistFor(setlists, CROWN, 42).id).toBe(8);
   });
 
-  it('ignores a remembered set that now belongs to another venue or is general', () => {
-    expect(currentSetlistFor(setlists, CROWN, 7).id).toBe(8);
-    expect(currentSetlistFor(setlists, VIKING, 9).id).toBe(7);
+  it('then to the first set by name for any venue', () => {
+    expect(currentSetlistFor(setlists, ANCHOR, undefined).id).toBe(9);
+    const two = [...setlists, { id: 10, name: 'aardvark', venueId: null, songIds: [] }];
+    expect(currentSetlistFor(two, ANCHOR, 42).id).toBe(10);
   });
 
-  it('is null when the venue has no setlists, so one is created', () => {
-    expect(currentSetlistFor(setlists, 99, 5)).toBeNull();
+  it('never falls back to a set labelled for another venue: null, so one is created', () => {
+    expect(currentSetlistFor(noAnyVenue, ANCHOR, undefined)).toBeNull();
+    expect(currentSetlistFor(noAnyVenue, ANCHOR, 42)).toBeNull();
     expect(currentSetlistFor([], VIKING, undefined)).toBeNull();
+    expect(currentSetlistFor(undefined, VIKING, undefined)).toBeNull();
   });
 
-  it('is null for Overall', () => {
-    expect(currentSetlistFor(setlists, null, 9)).toBeNull();
+  it('under Overall opens the remembered set, whatever its label', () => {
+    expect(currentSetlistFor(setlists, null, 6).id).toBe(6);
+    expect(currentSetlistFor(setlists, null, 9).id).toBe(9);
+  });
+
+  it('under Overall falls back to the first for any venue, then the first of all', () => {
+    expect(currentSetlistFor(setlists, null, undefined).id).toBe(9);
+    expect(currentSetlistFor(setlists, null, 42).id).toBe(9);
+    expect(currentSetlistFor(noAnyVenue, null, undefined).id).toBe(7); // 'Abba night' first by name
+  });
+
+  it('under Overall is null when there are no setlists at all', () => {
+    expect(currentSetlistFor([], null, undefined)).toBeNull();
+    expect(currentSetlistFor([], null, 9)).toBeNull();
+  });
+});
+
+describe('R56 setMenuGroups', () => {
+  const venues = [{ id: VIKING, name: 'Viking' }, { id: CROWN, name: 'The Crown' }, { id: 3, name: 'Anchor' }];
+  const withMore = [...setlists, { id: 10, name: 'Best of', venueId: null, songIds: [] }];
+
+  it('at a venue: for this venue, any venue, then other venues, each by name', () => {
+    expect(setMenuGroups(withMore, venues, VIKING)).toEqual([
+      { label: 'For Viking', items: [{ id: 7, text: 'Abba night' }, { id: 6, text: 'Next time' }, { id: 5, text: 'viking' }] },
+      { label: 'Any venue', items: [{ id: 9, text: 'Anywhere' }, { id: 10, text: 'Best of' }] },
+      { label: 'Other venues', items: [{ id: 8, text: 'The Crown · The Crown' }] },
+    ]);
+  });
+
+  it('leaves out empty groups', () => {
+    expect(setMenuGroups(setlists, venues, 3).map((g) => g.label)).toEqual(['Any venue', 'Other venues']);
+    expect(setMenuGroups(setlists.filter((s) => s.venueId === CROWN), venues, CROWN)).toEqual([
+      { label: 'For The Crown', items: [{ id: 8, text: 'The Crown' }] },
+    ]);
+    expect(setMenuGroups([], venues, VIKING)).toEqual([]);
+  });
+
+  it('under Overall: any venue, then every labelled list with its venue', () => {
+    expect(setMenuGroups(setlists, venues, null)).toEqual([
+      { label: 'Any venue', items: [{ id: 9, text: 'Anywhere' }] },
+      {
+        label: 'For a venue',
+        items: [
+          { id: 7, text: 'Abba night · Viking' },
+          { id: 6, text: 'Next time · Viking' },
+          { id: 8, text: 'The Crown · The Crown' },
+          { id: 5, text: 'viking · Viking' },
+        ],
+      },
+    ]);
+  });
+
+  it('names a venue that no longer exists as unknown', () => {
+    const orphan = [{ id: 1, name: 'Lost', venueId: 99, songIds: [] }];
+    expect(setMenuGroups(orphan, venues, VIKING)).toEqual([{ label: 'Other venues', items: [{ id: 1, text: 'Lost · Unknown venue' }] }]);
+    expect(setMenuGroups(orphan, [], 99)[0].label).toBe('For this venue');
   });
 });
 

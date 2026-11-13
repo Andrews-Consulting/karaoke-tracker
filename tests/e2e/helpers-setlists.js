@@ -20,11 +20,11 @@ export function setlistRows(page) {
   return page.getByRole('list', { name: 'Setlists' }).locator('li[data-setlist-id]');
 }
 
-// Creates a setlist through the "New setlist" form. venue is the option label.
-export async function createSetlist(page, name, venue = 'General') {
+// Creates a setlist through the "New setlist" form. venue is the label option (R56).
+export async function createSetlist(page, name, venue = 'Any venue') {
   const form = page.getByRole('form', { name: 'New setlist' });
   await form.getByLabel('Setlist name').fill(name);
-  await form.getByLabel('Venue').selectOption({ label: venue });
+  await form.getByLabel('For venue (optional)').selectOption({ label: venue });
   await form.getByRole('button', { name: 'Create setlist' }).click();
   await expect(setlistRow(page, name.trim())).toBeVisible();
 }
@@ -61,18 +61,24 @@ export function setlistSongRow(page, title) {
     .filter({ has: page.locator('.title', { hasText: new RegExp(`^${escapeRegExp(title)}$`) }) });
 }
 
-// The "Add songs" area of the open setlist.
-export function addArea(page) {
-  return page.getByRole('region', { name: 'Add songs' });
-}
-
-// Searches for a song in the open setlist's picker and adds it.
-export async function addToSetlist(page, { title, artist }) {
-  const area = addArea(page);
-  await area.getByRole('searchbox', { name: 'Find a song to add' }).fill(title);
-  await area.getByRole('button', { name: `Add ${title} by ${artist}`, exact: true }).click();
-  await expect(area.getByRole('status')).toHaveText(`Added “${title}”.`);
-  await expect(setlistSongRow(page, title)).toBeVisible();
+// Adds songs to the open setlist the R57 way: "Find songs" opens the Songs
+// tab in Find with this set, + adds each song there (searching for it), and
+// the setlist opens again. Songs go to the end in the order given. Leaves the
+// search empty, since it persists across tabs (R53).
+export async function addToSetlist(page, setlistName, ...songs) {
+  await page.getByRole('button', { name: 'Find songs', exact: true }).click();
+  const search = page.getByRole('searchbox', { name: 'Search songs' });
+  await expect(page.getByRole('tab', { name: 'Find' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByLabel('Set', { exact: true }).locator('option:checked')).toHaveText(new RegExp(`^${escapeRegExp(setlistName)}( · |$)`));
+  for (const { title } of songs) {
+    await search.fill(title);
+    await page.getByRole('button', { name: `Add ${title} to the set`, exact: true }).click();
+    await expect(page.getByRole('button', { name: `Remove ${title} from the set`, exact: true })).toBeVisible();
+  }
+  await search.fill('');
+  await openSetlists(page);
+  await openSetlist(page, setlistName);
+  for (const { title } of songs) await expect(setlistSongRow(page, title)).toBeVisible();
 }
 
 export async function removeFromSetlist(page, { title, artist }) {
@@ -80,7 +86,7 @@ export async function removeFromSetlist(page, { title, artist }) {
   await expect(setlistSongRow(page, title)).toHaveCount(0);
 }
 
-function escapeRegExp(text) {
+export function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 

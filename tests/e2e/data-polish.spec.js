@@ -6,7 +6,7 @@ import {
   openSettings, openSongs, collectPageErrors, importCsv, restoreBackup, answerNextDialog,
   songRecord, backupFile, downloadSongsCsv,
 } from './helpers-data.js';
-import { openSetlists, openSetlist, setlistSongRows, setlistSongRow, addArea } from './helpers-setlists.js';
+import { openSetlists, openSetlist, setlistSongRows, setlistSongRow, suggestForm } from './helpers-setlists.js';
 import { openVenues, openVenue, historyRow } from './helpers-venues.js';
 
 // Every awkward value a CSV has to survive: commas, quotes, a line break,
@@ -125,10 +125,12 @@ test.describe('Printing', () => {
     await page.emulateMedia({ media: 'print' });
     await expect(tabBar(page)).toBeHidden();
     await expect(page.getByRole('button', { name: '‹ All setlists' })).toBeHidden();
-    await expect(addArea(page)).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Find songs', exact: true })).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Merge into…', exact: true })).toBeHidden();
+    await expect(suggestForm(page)).toBeHidden();
 
     await expect(page.getByRole('heading', { level: 2, name: 'Friday' })).toBeVisible();
-    await expect(page.getByText('At The Crown')).toBeVisible();
+    await expect(page.getByText('For The Crown', { exact: true })).toBeVisible();
     await expect(setlistSongRows(page)).toHaveCount(2);
     const valerie = setlistSongRow(page, 'Valerie');
     await expect(setlistSongRow(page, '"Heroes"')).toBeVisible();

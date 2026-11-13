@@ -40,7 +40,7 @@ test.describe('Library', () => {
 
     await page.getByRole('searchbox', { name: 'Search songs' }).fill('amy');
     await expect(page.getByText('1 of 2 songs')).toBeVisible();
-    await expectTapTarget(listRow(page, 'Valerie').getByRole('button'));
+    await expectTapTarget(listRow(page, 'Valerie').locator('button.song-row')); // the row, not its + (R56)
 
     await openSong(page, 'Valerie');
     await expect(details(page)).toContainText('Amy Winehouse');

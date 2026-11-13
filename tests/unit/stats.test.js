@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   plural, todayLocalISO, isISODate, singStats, venueStats, totals, statsRows, singsBySong,
-  sortVenues, venueNameError, venueInUseMessage,
+  sortVenues, venueNameError, venueInUseMessage, describeVenueDelete,
 } from '../../js/lib/stats.js';
 
 const CROWN = 1;
@@ -235,15 +235,34 @@ describe('R40 venueNameError', () => {
   });
 });
 
-describe('R40 venueInUseMessage', () => {
-  it('is empty when nothing references the venue', () => {
-    expect(venueInUseMessage('The Crown', 0, 0)).toBe('');
+describe('R40 R56 venueInUseMessage', () => {
+  it('is empty when no sing references the venue', () => {
+    expect(venueInUseMessage('The Crown', 0)).toBe('');
   });
 
-  it('gives both counts with the right plurals', () => {
-    expect(venueInUseMessage('The Crown', 1, 0)).toBe(
-      'Can\'t delete “The Crown”: 1 sing log entry and 0 setlists still use it. Remove those first.');
-    expect(venueInUseMessage('The Crown', 3, 1)).toContain('3 sing log entries and 1 setlist');
-    expect(venueInUseMessage('The Crown', 0, 2)).toContain('0 sing log entries and 2 setlists');
+  it('gives the number of sings with the right plurals', () => {
+    expect(venueInUseMessage('The Crown', 1)).toBe(
+      'Can\'t delete “The Crown”: 1 sing log entry still uses it. Remove those first.');
+    expect(venueInUseMessage('The Crown', 3)).toBe(
+      'Can\'t delete “The Crown”: 3 sing log entries still use it. Remove those first.');
+  });
+
+  it('ignores setlists labelled for the venue, which no longer hold it up (R56)', () => {
+    expect(venueInUseMessage('The Crown', 0, 2)).toBe('');
+    expect(venueInUseMessage('The Crown', 2, 5)).not.toContain('setlist');
+  });
+});
+
+describe('R56 describeVenueDelete', () => {
+  it('asks plainly when no setlist is labelled for the venue', () => {
+    expect(describeVenueDelete('The Crown', 0)).toBe('Delete the venue “The Crown”?');
+    expect(describeVenueDelete('The Crown')).toBe('Delete the venue “The Crown”?');
+  });
+
+  it('says the labelled setlists will become Any venue', () => {
+    expect(describeVenueDelete('The Crown', 1))
+      .toBe('Delete the venue “The Crown”? 1 setlist is labelled for it; it will become Any venue.');
+    expect(describeVenueDelete('The Crown', 3))
+      .toBe('Delete the venue “The Crown”? 3 setlists are labelled for it; they will become Any venue.');
   });
 });
