@@ -3,7 +3,7 @@ import { openApp, addSong, putRecords, readStore } from './helpers.js';
 import { openVenues, venueRow, venueRows, songRecord } from './helpers-venues.js';
 import {
   openSetlists, setlistRow, setlistRows, createSetlist, editSetlist, openSetlist, backToSetlists,
-  setlistSongRows, setlistSongTitles, setlistSongRow, addArea, addToSetlist, removeFromSetlist,
+  setlistSongRows, setlistSongTitles, setlistSongRow, addToSetlist, removeFromSetlist,
 } from './helpers-setlists.js';
 
 const VALERIE = { title: 'Valerie', artist: 'Amy Winehouse' };
@@ -36,7 +36,7 @@ test.describe('Setlists', () => {
     await expect(page.getByText('No setlists yet.')).toBeVisible();
 
     await createSetlist(page, '  Friday night  ');
-    await expect(setlistRow(page, 'Friday night')).toContainText('General · 0 songs');
+    await expect(setlistRow(page, 'Friday night')).toContainText('Any venue · 0 songs');
     await expect(page.getByRole('form', { name: 'New setlist' }).getByLabel('Setlist name')).toHaveValue('');
     await expect(page.getByText('No setlists yet.')).toHaveCount(0);
     expect(await readStore(page, 'setlists')).toEqual([
@@ -59,7 +59,7 @@ test.describe('Setlists', () => {
     await page.reload();
     await openSetlists(page);
     await expect(setlistRows(page)).toHaveCount(1);
-    await expect(setlistRow(page, 'Saturday')).toContainText('General · 0 songs');
+    await expect(setlistRow(page, 'Saturday')).toContainText('Any venue · 0 songs');
 
     dialogs.accept = true;
     await setlistRow(page, 'Saturday').getByRole('button', { name: 'Delete Saturday' }).click();
@@ -81,13 +81,13 @@ test.describe('Setlists', () => {
     await putRecords(page, 'sings', [{ songId: ids.Valerie, venueId: crown, date: '2026-10-01' }]);
     await putRecords(page, 'setlists', [{ name: 'Friday', venueId: crown, songIds: [ids.Valerie, ids['Dancing Queen']] }]);
     await openSetlists(page);
-    await expect(setlistRow(page, 'Friday')).toContainText('The Crown · 2 songs');
+    await expect(setlistRow(page, 'Friday')).toContainText('For The Crown · 2 songs');
 
     await setlistRow(page, 'Friday').getByRole('button', { name: 'Delete Friday' }).click();
     await expect.poll(() => dialogs.messages).toEqual([
       'Delete the setlist “Friday”? It has 2 songs. Your song library is not changed.',
     ]);
-    await expect(setlistRow(page, 'Friday')).toContainText('The Crown · 2 songs');
+    await expect(setlistRow(page, 'Friday')).toContainText('For The Crown · 2 songs');
 
     await page.reload();
     await openSetlists(page);
@@ -145,58 +145,63 @@ test.describe('Setlists', () => {
     expect((await readStore(page, 'setlists')).map((s) => s.name).sort()).toEqual(['Anywhere', 'Big night', 'Friday']);
   });
 
-  test('R39: a setlist is general or tied to a venue, and the venue can be changed', async ({ page }) => {
+  test('R56: a setlist is labelled for a venue or any venue, and the label can be changed', async ({ page }) => {
     const dialogs = answerDialogs(page);
     await openApp(page);
     const [crown, anchor] = await putRecords(page, 'venues', [{ name: 'The Crown' }, { name: 'Anchor' }]);
     await openSetlists(page);
 
-    // General is the default, then every venue by name.
-    const venue = page.getByRole('form', { name: 'New setlist' }).getByLabel('Venue');
+    // Any venue is the default, then every venue by name.
+    const venue = page.getByRole('form', { name: 'New setlist' }).getByLabel('For venue (optional)');
     await expect(venue).toHaveValue('');
-    await expect(venue.locator('option')).toHaveText(['General', 'Anchor', 'The Crown']);
+    await expect(venue.locator('option')).toHaveText(['Any venue', 'Anchor', 'The Crown']);
 
     await createSetlist(page, 'Crown Friday', 'The Crown');
     await createSetlist(page, 'Anywhere');
-    await expect(setlistRow(page, 'Crown Friday')).toContainText('The Crown · 0 songs');
-    await expect(setlistRow(page, 'Anywhere')).toContainText('General · 0 songs');
+    await expect(setlistRow(page, 'Crown Friday')).toContainText('For The Crown · 0 songs');
+    await expect(setlistRow(page, 'Anywhere')).toContainText('Any venue · 0 songs');
     const stored = async () => Object.fromEntries((await readStore(page, 'setlists')).map((s) => [s.name, s.venueId]));
     expect(await stored()).toEqual({ 'Crown Friday': crown, Anywhere: null });
 
     await openSetlist(page, 'Crown Friday');
-    await expect(page.getByText('At The Crown', { exact: true })).toBeVisible();
+    await expect(page.getByText('For The Crown', { exact: true })).toBeVisible();
     await backToSetlists(page);
     await openSetlist(page, 'Anywhere');
-    await expect(page.getByText('General setlist', { exact: true })).toBeVisible();
+    await expect(page.getByText('Any venue', { exact: true })).toBeVisible();
     await backToSetlists(page);
 
-    // Change a venue setlist to general, and a general one to a venue.
+    // Clear a label, and label a list for any venue with a venue.
     let edit = await editSetlist(page, 'Crown Friday');
-    await expect(edit.getByLabel('Venue')).toHaveValue(String(crown));
-    await edit.getByLabel('Venue').selectOption({ label: 'General' });
+    const editVenue = () => edit.getByLabel('For venue (optional)');
+    await expect(editVenue()).toHaveValue(String(crown));
+    await editVenue().selectOption({ label: 'Any venue' });
     await edit.getByRole('button', { name: 'Save' }).click();
-    await expect(setlistRow(page, 'Crown Friday')).toContainText('General · 0 songs');
+    await expect(setlistRow(page, 'Crown Friday')).toContainText('Any venue · 0 songs');
 
     edit = await editSetlist(page, 'Anywhere');
-    await expect(edit.getByLabel('Venue')).toHaveValue('');
-    await edit.getByLabel('Venue').selectOption({ label: 'Anchor' });
+    await expect(editVenue()).toHaveValue('');
+    await editVenue().selectOption({ label: 'Anchor' });
     await edit.getByRole('button', { name: 'Save' }).click();
-    await expect(setlistRow(page, 'Anywhere')).toContainText('Anchor · 0 songs');
+    await expect(setlistRow(page, 'Anywhere')).toContainText('For Anchor · 0 songs');
     expect(await stored()).toEqual({ 'Crown Friday': null, Anywhere: anchor });
 
     await page.reload();
     await openSetlists(page);
     await openSetlist(page, 'Anywhere');
-    await expect(page.getByText('At Anchor', { exact: true })).toBeVisible();
+    await expect(page.getByText('For Anchor', { exact: true })).toBeVisible();
 
-    // The Venues tab sees the change: Anchor is now in use, The Crown is free.
+    // The Venues tab sees the change: deleting Anchor says its setlist will
+    // become Any venue; The Crown has none now.
     await openVenues(page);
     await venueRow(page, 'Anchor').getByRole('button', { name: 'Delete Anchor' }).click();
-    await expect(venueRow(page, 'Anchor').getByRole('alert')).toHaveText(
-      'Can\'t delete “Anchor”: 0 sing log entries and 1 setlist still use it. Remove those first.');
+    await expect.poll(() => dialogs.messages).toEqual([
+      'Delete the venue “Anchor”? 1 setlist is labelled for it; it will become Any venue.',
+    ]);
+    await expect(venueRows(page)).toHaveCount(2);
     dialogs.accept = true;
     await venueRow(page, 'The Crown').getByRole('button', { name: 'Delete The Crown' }).click();
     await expect(venueRows(page)).toHaveCount(1);
+    expect(dialogs.messages.at(-1)).toBe('Delete the venue “The Crown”?');
   });
 
   test('R15: adds and removes songs, and a song can be in two setlists', async ({ page }) => {
@@ -210,51 +215,47 @@ test.describe('Setlists', () => {
 
     await openSetlist(page, 'Friday');
     await expect(page.getByText('0 songs', { exact: true })).toBeVisible();
-    await expect(page.getByText('No songs yet. Add some below.')).toBeVisible();
-    const area = addArea(page);
-    await expect(area.getByText('3 songs', { exact: true })).toBeVisible();
-    await expect(area.getByRole('list', { name: 'Songs to add' }).getByRole('button')).toHaveCount(3);
+    await expect(page.getByText('No songs yet. Find songs to add some, or let Suggest songs pick a few.')).toBeVisible();
+    // The setlist screen has no picker of its own now (R57): Find songs goes to the Songs tab.
+    await expect(page.getByRole('region', { name: 'Add songs' })).toHaveCount(0);
+    await expect(page.getByRole('searchbox')).toHaveCount(0);
 
-    await addToSetlist(page, VALERIE);
-    await addToSetlist(page, BRIGHTSIDE);
-    await addToSetlist(page, QUEEN);
+    await addToSetlist(page, 'Friday', VALERIE, BRIGHTSIDE, QUEEN);
     await expect(setlistSongTitles(page)).toHaveText(['Valerie', 'Mr. Brightside', 'Dancing Queen']);
     await expect(setlistSongRow(page, 'Valerie')).toContainText('Amy Winehouse');
     await expect(page.getByText('3 songs', { exact: true })).toBeVisible();
-    await expect(page.getByText('No songs yet. Add some below.')).toBeHidden();
+    await expect(page.getByText('No songs yet. Find songs to add some, or let Suggest songs pick a few.')).toBeHidden();
 
-    // Songs already in the setlist are not offered again.
-    const search = area.getByRole('searchbox', { name: 'Find a song to add' });
-    await search.fill('');
-    await expect(area.getByText('Every song is already in this setlist.')).toBeVisible();
-    await search.fill('amy');
-    await expect(area.getByText('No other songs match.')).toBeVisible();
-    await expect(area.getByRole('list', { name: 'Songs to add' }).getByRole('button')).toHaveCount(0);
+    // Songs already in the setlist show ✓ in Find rather than + (R48).
+    await page.getByRole('button', { name: 'Find songs', exact: true }).click();
+    for (const title of ['Valerie', 'Mr. Brightside', 'Dancing Queen']) {
+      await expect(page.getByRole('button', { name: `Remove ${title} from the set`, exact: true })).toHaveText('✓');
+    }
+    await openSetlists(page);
+    await openSetlist(page, 'Friday');
 
     // Remove keeps the others in order; adding back puts the song at the end.
     await removeFromSetlist(page, BRIGHTSIDE);
     await expect(setlistSongTitles(page)).toHaveText(['Valerie', 'Dancing Queen']);
     await expect(page.getByText('2 songs', { exact: true })).toBeVisible();
-    await addToSetlist(page, BRIGHTSIDE);
+    await addToSetlist(page, 'Friday', BRIGHTSIDE);
     await expect(setlistSongTitles(page)).toHaveText(['Valerie', 'Dancing Queen', 'Mr. Brightside']);
 
     // Tap targets are at least 44 px (R31).
     const remove = setlistSongRow(page, 'Valerie').getByRole('button', { name: 'Remove Valerie by Amy Winehouse' });
     expect((await remove.boundingBox()).height).toBeGreaterThanOrEqual(44);
+    expect((await page.getByRole('button', { name: 'Find songs', exact: true }).boundingBox()).height).toBeGreaterThanOrEqual(44);
 
     await backToSetlists(page);
-    await expect(setlistRow(page, 'Friday')).toContainText('General · 3 songs');
+    await expect(setlistRow(page, 'Friday')).toContainText('Any venue · 3 songs');
 
     // The same song goes into a second setlist too.
     await openSetlist(page, 'Saturday');
-    await expect(area.getByRole('list', { name: 'Songs to add' }).getByRole('button')).toHaveCount(3);
-    const pick = area.getByRole('button', { name: 'Add Valerie by Amy Winehouse' });
-    expect((await pick.boundingBox()).height).toBeGreaterThanOrEqual(44);
-    await addToSetlist(page, VALERIE);
+    await addToSetlist(page, 'Saturday', VALERIE);
     await expect(setlistSongTitles(page)).toHaveText(['Valerie']);
     await backToSetlists(page);
-    await expect(setlistRow(page, 'Saturday')).toContainText('General · 1 song');
-    await expect(setlistRow(page, 'Friday')).toContainText('General · 3 songs');
+    await expect(setlistRow(page, 'Saturday')).toContainText('Any venue · 1 song');
+    await expect(setlistRow(page, 'Friday')).toContainText('Any venue · 3 songs');
 
     const songs = await readStore(page, 'songs');
     const idOf = (title) => songs.find((s) => s.title === title).id;
@@ -271,38 +272,27 @@ test.describe('Setlists', () => {
     await expect(setlistSongTitles(page)).toHaveText(['Valerie', 'Dancing Queen', 'Mr. Brightside']);
   });
 
-  test('R15: a quick double tap adds a song only once', async ({ page }) => {
-    await openApp(page);
-    const ids = await seedSongs(page, [VALERIE]);
-    await putRecords(page, 'setlists', [{ name: 'Friday', venueId: null, songIds: [] }]);
-    await openSetlists(page);
-    await openSetlist(page, 'Friday');
-
-    await addArea(page).getByRole('button', { name: 'Add Valerie by Amy Winehouse' }).dblclick();
-    await expect(setlistSongRows(page)).toHaveCount(1);
-    await expect.poll(async () => (await readStore(page, 'setlists'))[0].songIds).toEqual([ids.Valerie]);
-  });
-
   test('R15: skips songs that no longer exist and finds songs in a large library', async ({ page }) => {
     await openApp(page);
     const many = Array.from({ length: 60 }, (_, i) => ({ title: `Track ${String(i + 1).padStart(2, '0')}`, artist: `Band ${i + 1}` }));
     const ids = await seedSongs(page, [VALERIE, ...many]);
     await putRecords(page, 'setlists', [{ name: 'Friday', venueId: null, songIds: [9999, ids.Valerie] }]);
     await openSetlists(page);
-    await expect(setlistRow(page, 'Friday')).toContainText('General · 1 song');
+    await expect(setlistRow(page, 'Friday')).toContainText('Any venue · 1 song');
 
     await openSetlist(page, 'Friday');
     await expect(setlistSongTitles(page)).toHaveText(['Valerie']);
     await expect(page.getByText('1 song', { exact: true })).toBeVisible();
 
-    const area = addArea(page);
-    const picks = area.getByRole('list', { name: 'Songs to add' }).getByRole('button');
-    await expect(area.getByText('Showing 20 of 60 songs. Type more to narrow the search.')).toBeVisible();
-    await expect(picks).toHaveCount(20);
-    await area.getByRole('searchbox', { name: 'Find a song to add' }).fill('track 5');
-    await expect(area.getByText('10 matches', { exact: true })).toBeVisible();
-    await addToSetlist(page, { title: 'Track 57', artist: 'Band 57' });
+    // Found with the Songs tab's search (R57), which narrows the whole library.
+    await page.getByRole('button', { name: 'Find songs', exact: true }).click();
+    await page.getByRole('searchbox', { name: 'Search songs' }).fill('track 5');
+    await expect(page.getByText('10 of 61 songs')).toBeVisible();
+    await openSetlists(page);
+    await openSetlist(page, 'Friday');
+    await addToSetlist(page, 'Friday', { title: 'Track 57', artist: 'Band 57' });
     await expect(setlistSongTitles(page)).toHaveText(['Valerie', 'Track 57']);
+    expect((await readStore(page, 'setlists'))[0].songIds).toEqual([9999, ids.Valerie, ids['Track 57']]);
   });
 
   test('R43: flags songs already sung at the setlist\'s venue with the last date', async ({ page }) => {
@@ -330,16 +320,16 @@ test.describe('Setlists', () => {
     await expect(setlistSongRows(page).locator('.flag')).toHaveCount(1);
 
     // A song added later is flagged straight away when it has been sung here.
-    await addToSetlist(page, BLACK);
+    await addToSetlist(page, 'Crown Friday', BLACK);
     await expect(setlistSongRow(page, 'Back to Black').locator('.flag')).toHaveText('Sung here · last 2026-09-09');
 
-    // Moving the setlist to another venue moves the flags with it.
+    // Labelling the setlist for another venue moves the flags with it.
     await backToSetlists(page);
     const edit = await editSetlist(page, 'Crown Friday');
-    await edit.getByLabel('Venue').selectOption({ label: 'Anchor' });
+    await edit.getByLabel('For venue (optional)').selectOption({ label: 'Anchor' });
     await edit.getByRole('button', { name: 'Save' }).click();
     await openSetlist(page, 'Crown Friday');
-    await expect(page.getByText('At Anchor', { exact: true })).toBeVisible();
+    await expect(page.getByText('For Anchor', { exact: true })).toBeVisible();
     await expect(setlistSongRow(page, 'Valerie').locator('.flag')).toHaveText('Sung here · last 2026-11-11');
     await expect(setlistSongRow(page, 'Dancing Queen').locator('.flag')).toHaveText('Sung here · last 2026-11-10');
     await expect(setlistSongRow(page, 'Mr. Brightside').locator('.flag')).toHaveCount(0);
@@ -358,7 +348,7 @@ test.describe('Setlists', () => {
     await openSetlists(page);
     await openSetlist(page, 'Anywhere');
 
-    await expect(page.getByText('General setlist', { exact: true })).toBeVisible();
+    await expect(page.getByText('Any venue', { exact: true })).toBeVisible();
     await expect(setlistSongTitles(page)).toHaveText(['Valerie', 'Dancing Queen']);
     await expect(setlistSongRows(page).locator('.flag')).toHaveCount(0);
     await expect(page.getByText('Sung here')).toHaveCount(0);

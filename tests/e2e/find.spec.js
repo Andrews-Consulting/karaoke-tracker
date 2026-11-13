@@ -93,17 +93,16 @@ test.describe('Find', () => {
     await expect(sungLine(page, 'Valerie')).toHaveText('Never sung here');
 
     // Once the remembered venue is deleted, the list falls back to Overall.
-    // Picking it opened a set there (R47), which has to go first, as any
-    // setlist at a venue does before the venue can be deleted (R40).
+    // Picking it opened a set labelled for it (R47), which does not hold up
+    // the delete: the set becomes a list for any venue (R56).
     await openSetlists(page);
     await expect(setlistRows(page)).toHaveCount(2);
-    page.once('dialog', (dialog) => dialog.accept());
-    await setlistRow(page, 'Spare room').getByRole('button', { name: 'Delete Spare room' }).click();
-    await expect(setlistRows(page)).toHaveCount(1);
     await openVenues(page);
     page.once('dialog', (dialog) => dialog.accept());
     await venueRow(page, 'Spare room').getByRole('button', { name: 'Delete Spare room' }).click();
     await expect(venueRows(page)).toHaveCount(1);
+    await openSetlists(page);
+    await expect(setlistRow(page, 'Spare room')).toContainText('Any venue');
     await showTab(page, 'Songs');
     await expect(venueSelect(page)).toHaveValue('');
     await expect(venueSelect(page).locator('option')).toHaveText(['Overall', 'The Crown']);

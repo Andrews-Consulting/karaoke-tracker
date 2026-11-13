@@ -117,7 +117,7 @@ test.describe('Venues', () => {
     const row = venueRow(page, 'The Crown');
     await row.getByRole('button', { name: 'Delete The Crown' }).click();
     await expect(row.getByRole('alert')).toHaveText(
-      'Can\'t delete “The Crown”: 2 sing log entries and 0 setlists still use it. Remove those first.');
+      'Can\'t delete “The Crown”: 2 sing log entries still use it. Remove those first.');
     expect(dialogs.messages).toEqual([]);
 
     await page.reload();
@@ -139,34 +139,6 @@ test.describe('Venues', () => {
     await expect(venueRows(page)).toHaveCount(0);
     expect(dialogs.messages).toHaveLength(3);
     expect(await readStore(page, 'venues')).toEqual([]);
-  });
-
-  test('R40: refuses to delete a venue that has setlists', async ({ page }) => {
-    const dialogs = answerDialogs(page);
-    await openApp(page);
-    await openVenues(page);
-    await addVenue(page, 'The Crown');
-    await addVenue(page, 'Anchor');
-
-    // Setlists have no UI yet (R39, R14), so store them directly.
-    const crownId = Number(await venueRow(page, 'The Crown').getAttribute('data-venue-id'));
-    await addRecords(page, 'setlists', [
-      { name: 'Friday', venueId: crownId, songIds: [] },
-      { name: 'Anywhere', venueId: null, songIds: [] },
-    ]);
-    await openVenues(page);
-
-    await venueRow(page, 'The Crown').getByRole('button', { name: 'Delete The Crown' }).click();
-    await expect(venueRow(page, 'The Crown').getByRole('alert')).toHaveText(
-      'Can\'t delete “The Crown”: 0 sing log entries and 1 setlist still use it. Remove those first.');
-    expect(dialogs.messages).toEqual([]);
-    await expect(venueRows(page)).toHaveCount(2);
-
-    // A general setlist does not hold up an unrelated venue.
-    dialogs.accept = true;
-    await venueRow(page, 'Anchor').getByRole('button', { name: 'Delete Anchor' }).click();
-    await expect(venueRows(page)).toHaveCount(1);
-    expect(dialogs.messages).toHaveLength(1);
   });
 
   test('R8: logs a sing with date and venue and shows times sung and last sung at that venue', async ({ page }) => {
