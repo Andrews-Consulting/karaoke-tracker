@@ -125,7 +125,7 @@ export function sungOptions(atVenue) {
 // ---------- Matching (R41, R11, R42) ----------
 
 // "Not since" without a valid date filters nothing, like "Any".
-function sungFilterActive(filters) {
+export function sungFilterActive(filters) {
   return filters.sung === SUNG_NEVER || (filters.sung === SUNG_NOT_SINCE && isISODate(filters.since));
 }
 

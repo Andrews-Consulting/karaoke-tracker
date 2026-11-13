@@ -23,7 +23,7 @@ import { singStats, sortVenues, todayLocalISO } from '../lib/stats.js';
 import { filterSongs } from '../lib/search.js';
 import {
   SUNG_NOT_SINCE, SORT_MENU, MIN_RATING_OPTIONS, defaultFilters, decadeLabel, filterChoices, sungOptions,
-  countActiveFilters, applyFind, sungParts, titleOrder,
+  countActiveFilters, applyFind, sungParts, titleOrder, sungFilterActive,
 } from '../lib/find.js';
 import {
   makeSetlist, addSongId, removeSongId, moveSongIdBy, setlistSongs, sungFlags, tonightSing,
@@ -217,14 +217,40 @@ function setChildren(parent, items) {
 }
 
 // A row's sing line, each part on one line so a date never breaks at its hyphens.
-function sungLine(parts) {
+// A "never sung" line carries class `never`, so it can be hidden while a sung
+// filter already says so for every row (R52).
+function sungLine(parts, never = false) {
   const children = [];
   for (const part of parts) {
     if (children.length) children.push(' · ');
     children.push(el('span', { class: 'nowrap', text: part }));
   }
-  return el('span', { class: 'sung' }, ...children);
+  return el('span', { class: never ? 'sung never' : 'sung' }, ...children);
 }
+
+// The filters and sort the owner last used, kept across tabs and reloads (R53).
+const FILTERS_KEY = 'findFilters';
+
+function loadSavedFilters() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(FILTERS_KEY) || 'null');
+    return saved && typeof saved === 'object' ? { ...defaultFilters(), ...saved } : defaultFilters();
+  } catch {
+    return defaultFilters();
+  }
+}
+
+function saveFilters(filters) {
+  try {
+    localStorage.setItem(FILTERS_KEY, JSON.stringify(filters));
+  } catch {
+    // Storage blocked: the filters last for this visit only.
+  }
+}
+
+// The search box text, kept while the app is open so another tab and back
+// does not lose it (R53). A reload starts with an empty search.
+let rememberedQuery = '';
 
 // The Songs tab. Coming back from a song passes back what the screen showed,
 // so it is restored: the search (`query`), the venue (`venueId`; undefined
@@ -233,9 +259,12 @@ function sungLine(parts) {
 // (`focusId`) and an optional status line (`message`). The set comes from
 // meta and the mode from module state, so both come back too.
 export async function renderSongs({
-  query = '', venueId, filters = defaultFilters(), filtersOpen = false, focusId = null, message = '',
+  query, venueId, filters, filtersOpen = false, focusId = null, message = '',
 } = {}) {
   const token = ++screen;
+  // Nothing passed means "as the owner left it": saved filters, remembered search (R53).
+  if (query === undefined) query = rememberedQuery;
+  if (filters === undefined) filters = loadSavedFilters();
   const [songRecords, venueRecords, singRecords, setlistRecords, metaRecords] = await Promise.all([
     db.getAll('songs'),
     db.getAll('venues'),
@@ -260,6 +289,7 @@ export async function renderSongs({
     filters: { ...defaultFilters(), ...filters },
     set: null, // the set open at the venue (R47); null for Overall, which has none
   };
+  rememberedQuery = state.query;
   const currentVenue = () => venues.find((v) => v.id === state.venueId) || null;
   if (state.venueId != null) {
     const opened = await openCurrentSet(currentVenue(), setlists, meta);
@@ -353,7 +383,7 @@ export async function renderSongs({
       el('button', { type: 'button', class: 'song-row', onclick: () => openSong(s.id) },
         el('span', { class: 'title', text: s.title }),
         el('span', { class: 'sub', text: details }),
-        sungLine(sungParts(stats.get(s.id), state.venueId != null))),
+        sungLine(sungParts(stats.get(s.id), state.venueId != null), !stats.get(s.id))),
       state.set ? toggleFor(s) : null);
   }
 
@@ -393,6 +423,9 @@ export async function renderSongs({
   // Runs the search, filters and sort again and draws the first page of rows.
   function draw() {
     shown = applyFind(songs, stats, state.filters, state.query);
+    rememberedQuery = state.query;
+    // With a sung filter on, every row would say "never sung here": hide those lines (R52).
+    list.classList.toggle('hide-never', sungFilterActive(state.filters));
     count.textContent = `${shown.length} of ${songs.length} songs`;
     pickButton.disabled = shown.length === 0;
     pickNote.hidden = shown.length > 0;
@@ -623,7 +656,14 @@ export async function renderSongs({
     down.disabled = index === total - 1;
     moves.set(song.id, { up, down });
     return el('li', { class: 'night-song', 'data-song-id': song.id },
-      el('button', { type: 'button', class: 'night-open', onclick: () => openSong(song.id) },
+      // Tapping the song shows it full screen for the KJ (R54); details are a tap further.
+      el('button', {
+        type: 'button', class: 'night-open', 'aria-label': `Show ${song.title} to the KJ`,
+        onclick: () => {
+          const back = backState();
+          openScreen(() => renderKjCard(song.id, back));
+        },
+      },
         el('span', { class: 'title', text: song.title }),
         el('span', { class: 'sub', text: song.artist }),
         lastSung ? el('span', { class: 'flag' }, 'Sung here · last ', el('span', { class: 'nowrap', text: lastSung })) : null),
@@ -793,6 +833,7 @@ export async function renderSongs({
 
   function setFilter(key, value) {
     state.filters = { ...state.filters, [key]: value };
+    saveFilters(state.filters);
     syncFilters();
     draw();
   }
@@ -826,6 +867,7 @@ export async function renderSongs({
       type: 'button', class: 'btn', text: 'Clear filters',
       onclick: () => {
         state.filters = defaultFilters();
+        saveFilters(state.filters);
         syncFilters();
         draw();
       },
@@ -930,7 +972,7 @@ export async function renderSongs({
     if (showErrors(form, errorBox, validateSong(fields))) return;
     await db.add('songs', makeSong(fields));
     // Search and filters start afresh so the new song shows; the venue stays.
-    renderSongs({ venueId: state.venueId });
+    renderSongs({ venueId: state.venueId, query: '' }); // the search clears so the new song shows; filters stay (R53)
   });
 
   // Adding a song is occasional, so it waits at the bottom of the list (R48).
@@ -1028,6 +1070,10 @@ async function renderSong(id, back) {
           field('Year', song.year == null ? '' : String(song.year)),
           field('Tags', formatTags(song.tags))),
         errorBox,
+        el('button', {
+          type: 'button', class: 'btn kj-button', text: 'Show to the KJ',
+          onclick: () => openScreen(() => renderKjCard(song.id, back)),
+        }),
         // Opens in a new tab, so the app stays where it was; nothing is fetched or saved (R38).
         el('a', { class: 'btn video-link', href: videoSearchUrl(song), target: '_blank', rel: 'noopener' },
           'Search video', el('span', { 'aria-hidden': 'true', text: ' ↗' })),
@@ -1037,6 +1083,37 @@ async function renderSong(id, back) {
             onclick: () => openScreen(() => renderEditSong(song, back)),
           }),
           el('button', { type: 'button', class: 'btn danger', text: 'Delete', onclick: remove })))));
+  viewEl.scrollTop = 0;
+}
+
+// The song full screen, in the biggest type that fits, to show the KJ (R54):
+// title, artist and the key change. The header, tabs and banners hide while it
+// is up (body[data-screen="kj"], cleared by the screen stack on any other
+// render), so a phone turned to landscape gives the title the whole width.
+async function renderKjCard(id, back) {
+  const token = ++screen;
+  const song = await db.get('songs', id);
+  if (!stillCurrent(token)) return;
+  if (!song) {
+    closeScreen(() => renderSongs({ ...back, message: 'That song is no longer in your library.' }));
+    return;
+  }
+  document.body.dataset.screen = 'kj';
+  viewEl.replaceChildren(
+    el('div', { class: 'kj-card', role: 'dialog', 'aria-label': 'Show to the KJ' },
+      el('div', { class: 'kj-text' },
+        el('p', { class: 'kj-title', text: song.title }),
+        el('p', { class: 'kj-artist', text: song.artist }),
+        song.key ? el('p', { class: 'kj-key', text: `Key ${song.key}` }) : null),
+      el('div', { class: 'row kj-actions' },
+        el('button', {
+          type: 'button', class: 'btn', text: 'Details',
+          onclick: () => openScreen(() => renderSong(song.id, back)),
+        }),
+        el('button', {
+          type: 'button', class: 'btn primary', text: 'Close',
+          onclick: () => closeScreen(() => renderSongs({ ...back, focusId: song.id })),
+        }))));
   viewEl.scrollTop = 0;
 }
 

@@ -109,7 +109,9 @@ const SCREENS = [
     await page.getByRole('form', { name: 'Add a song' }).getByLabel('Title').fill('Sweet Caroline');
   }],
   ['list-mode', async (page) => {
-    await page.reload(); // drops the "never sung" filter and closes the Add form
+    // Filters persist across reloads (R53), so drop the "never sung" one set above.
+    await page.evaluate(() => localStorage.removeItem('findFilters'));
+    await page.reload(); // closes the Add form too
     await page.getByText(/of \d+ songs/).waitFor();
     await page.getByRole('tab', { name: /^List/ }).click();
     await page.getByRole('button', { name: /^Sang / }).first().waitFor();

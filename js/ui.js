@@ -49,6 +49,14 @@ export function setViewSwitcher(fn) {
   switchView = fn;
 }
 
+// A full-screen screen (e.g. the song shown to the KJ, R54) sets
+// body[data-screen] to hide the header and tabs. Every render through the
+// stack clears it first, so leaving that screen by any route restores them.
+function draw(render) {
+  delete document.body.dataset.screen;
+  return render();
+}
+
 // Starts a tab: its list becomes the only screen on the stack. Tabs replace
 // the current history entry rather than adding one, so back from a tab's list
 // leaves the app the way it would from any other app's home screen.
@@ -58,14 +66,14 @@ export function rootScreen(view, render) {
   screens.push(render);
   pendingBack = null;
   history.replaceState({ view, depth: 0 }, '');
-  return render();
+  return draw(render);
 }
 
 // Shows a detail screen on top of the current one, with a history entry.
 export function openScreen(render) {
   screens.push(render);
   history.pushState({ view: currentView, depth: screens.length - 1 }, '');
-  return render();
+  return draw(render);
 }
 
 // Leaves the current detail screen, rendering `render` (usually the screen
@@ -80,7 +88,7 @@ export function closeScreen(render) {
     return;
   }
   screens.length = Math.max(1, top);
-  render();
+  draw(render);
 }
 
 window.addEventListener('popstate', (event) => {
@@ -94,7 +102,7 @@ window.addEventListener('popstate', (event) => {
   screens.length = depth + 1;
   const render = pendingBack || screens[depth];
   pendingBack = null;
-  if (render) render();
+  if (render) draw(render);
 });
 
 // A "Not built yet" card listing what a section will do.

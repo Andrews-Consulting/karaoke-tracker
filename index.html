@@ -25,6 +25,10 @@
           || (savedTheme === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches)) {
         document.documentElement.dataset.theme = 'light';
       }
+      var savedAccent = localStorage.getItem('accent'); // R55; green needs no attribute
+      if (savedAccent === 'amber' || savedAccent === 'lime' || savedAccent === 'pink') {
+        document.documentElement.dataset.accent = savedAccent;
+      }
     } catch (e) { /* storage blocked: stay dark */ }
   </script>
   <link rel="stylesheet" href="css/app.css">

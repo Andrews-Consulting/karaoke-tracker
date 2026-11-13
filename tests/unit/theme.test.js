@@ -1,7 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import {
   THEME_CHOICES, DEFAULT_THEME_CHOICE, THEME_COLORS, normalizeThemeChoice, resolveTheme,
+  ACCENT_CHOICES, DEFAULT_ACCENT_CHOICE, normalizeAccentChoice,
 } from '../../js/lib/theme.js';
+
+describe('accent (R55)', () => {
+  it('offers green, amber, lime and pink, green first and default', () => {
+    expect(ACCENT_CHOICES.map(([key]) => key)).toEqual(['green', 'amber', 'lime', 'pink']);
+    expect(DEFAULT_ACCENT_CHOICE).toBe('green');
+  });
+
+  it('turns unknown saved values into green', () => {
+    for (const key of ['amber', 'lime', 'pink']) expect(normalizeAccentChoice(key)).toBe(key);
+    for (const bad of [null, undefined, '', 'teal', 'PINK', 3]) expect(normalizeAccentChoice(bad)).toBe('green');
+  });
+});
 
 describe('theme (R32)', () => {
   it('offers dark, light and the phone setting, dark first', () => {

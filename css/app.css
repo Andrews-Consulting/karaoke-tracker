@@ -1,11 +1,15 @@
-/* Dark by default (R32). A light theme can override these variables later. */
+/* Dark by default (R32), for a dim bar, with a green accent (R51): about 7:1
+   against the background, and dark text on it reads at the same ratio. The
+   accent can be changed in Settings (R55): js/theme.js sets data-accent to
+   amber, lime or pink; green is the default and needs no attribute. The icon
+   in tools/make_icons.py uses the green. */
 :root {
   --bg: #14121a;
-  --surface: #1e1b27;
-  --border: #322d40;
-  --text: #f2eff8;
-  --muted: #a39db5;
-  --accent: #ff5d8f;
+  --surface: #1f1b26;
+  --border: #37313f;
+  --text: #f4efe4;
+  --muted: #b5ad9d;
+  --accent: #13b86a;
   --accent-text: #14121a;
   --tap: 44px; /* minimum tap target (R31) */
   color-scheme: dark;
@@ -19,11 +23,19 @@
   --border: #d9d3e6;
   --text: #1b1727;
   --muted: #5d5771;
-  --accent: #c8176a;
+  --accent: #0f7a36;
   --accent-text: #ffffff;
   --error: #b3261e;
   color-scheme: light;
 }
+
+/* The other accents (R55), each with a deeper partner for the light theme. */
+:root[data-accent="amber"] { --accent: #ffb347; --accent-text: #14121a; }
+:root[data-accent="lime"] { --accent: #c6f135; --accent-text: #14121a; }
+:root[data-accent="pink"] { --accent: #ff5d8f; --accent-text: #14121a; }
+:root[data-theme="light"][data-accent="amber"] { --accent: #9e4f00; --accent-text: #ffffff; }
+:root[data-theme="light"][data-accent="lime"] { --accent: #4f7a00; --accent-text: #ffffff; }
+:root[data-theme="light"][data-accent="pink"] { --accent: #c8176a; --accent-text: #ffffff; }
 
 * { box-sizing: border-box; }
 
@@ -681,3 +693,31 @@ label.check > input[type="checkbox"] {
   .night-panel .night-song > button.night-open { display: block !important; padding: 0; color: #000; }
   .night-song .flag { margin: 0; padding: 0; border: 0; color: #000; font-size: 11pt; font-style: italic; }
 }
+
+/* ---- Design pass 1: sung filter, KJ card (R52, R54) ---- */
+
+/* With a sung filter on, every row would read "never sung here" (R52). */
+.list.hide-never .sung.never { display: none; }
+
+/* The song full screen for the KJ (R54): header, tabs and banners go, the
+   title takes the biggest type that fits the width, portrait or landscape. */
+body[data-screen="kj"] .top,
+body[data-screen="kj"] .tabs,
+body[data-screen="kj"] .update-banner { display: none; }
+body[data-screen="kj"] main { padding: 0; max-width: none; }
+
+.kj-card {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: calc(env(safe-area-inset-top) + 16px) calc(env(safe-area-inset-right) + 16px)
+    calc(env(safe-area-inset-bottom) + 16px) calc(env(safe-area-inset-left) + 16px);
+  text-align: center;
+}
+.kj-text { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 2vmin; }
+.kj-text p { margin: 0; overflow-wrap: anywhere; }
+.kj-title { font-size: clamp(2.25rem, 11vmin, 7rem); font-weight: 800; line-height: 1.05; }
+.kj-artist { font-size: clamp(1.375rem, 6vmin, 3.5rem); color: var(--muted); line-height: 1.15; }
+.kj-key { font-size: clamp(1.25rem, 5vmin, 3rem); color: var(--accent); font-weight: 600; }
+.kj-actions { margin-top: 16px; }
+.kj-button { width: 100%; }

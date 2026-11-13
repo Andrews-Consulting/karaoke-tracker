@@ -6,8 +6,8 @@ import {
   parseCsv, planImport, importSummary, songsToCsv, csvFileName,
 } from '../lib/csv.js';
 import { songKey } from '../lib/song.js';
-import { THEME_CHOICES } from '../lib/theme.js';
-import { savedThemeChoice, applyThemeChoice } from '../theme.js';
+import { THEME_CHOICES, ACCENT_CHOICES } from '../lib/theme.js';
+import { savedThemeChoice, applyThemeChoice, savedAccentChoice, applyAccentChoice } from '../theme.js';
 import { recordBackup } from '../reminder.js';
 import { suggestionsEnabled, setSuggestionsEnabled } from '../musicbrainz.js';
 import {
@@ -61,10 +61,16 @@ export async function renderSettings() {
     ...THEME_CHOICES.map(([value, text]) => el('option', { value, text })));
   themeSelect.value = savedThemeChoice();
   themeSelect.addEventListener('change', () => applyThemeChoice(themeSelect.value));
+  const accentSelect = el('select', { name: 'accent', id: 'setting-accent' },
+    ...ACCENT_CHOICES.map(([value, text]) => el('option', { value, text })));
+  accentSelect.value = savedAccentChoice();
+  accentSelect.addEventListener('change', () => applyAccentChoice(accentSelect.value));
   const appearance = el('div', { class: 'card stack' },
     el('strong', { text: 'Appearance' }),
     el('label', { for: 'setting-theme', text: 'Theme' }),
-    themeSelect);
+    themeSelect,
+    el('label', { for: 'setting-accent', text: 'Accent colour' }),
+    accentSelect);
 
   // ---- R35: online suggestions, the app's only network call ----
   const suggestBox = el('input', { type: 'checkbox', name: 'musicbrainz' });
