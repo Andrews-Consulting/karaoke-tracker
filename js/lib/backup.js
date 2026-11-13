@@ -126,9 +126,9 @@ export function backupReminder({ lastBackupAt = null, snoozedUntil = null, songC
   const snoozed = Date.parse(snoozedUntil);
   if (!Number.isNaN(snoozed) && snoozed > now.getTime()) return null;
   const days = lastBackupAt ? daysSince(lastBackupAt, now) : null;
-  if (days === null) return 'You have not backed up yet. A backup is the only copy of your songs and sing log.';
+  if (days === null) return 'You have not backed up yet.';
   if (days < BACKUP_REMINDER_DAYS) return null;
-  return `Your last backup was ${days} days ago. Download a fresh one to be safe.`;
+  return `Your last backup was ${days} days ago.`;
 }
 
 // When a snoozed reminder may show again: BACKUP_SNOOZE_DAYS from now, as ISO.

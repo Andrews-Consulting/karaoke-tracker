@@ -382,7 +382,8 @@ label > textarea { margin-top: 4px; color: var(--text); resize: vertical; }
   background: var(--surface);
   border-top: 2px solid var(--accent);
 }
-.update-banner p { flex: 1 1 12em; margin: 0; }
+.update-banner p { flex: 1 1 8em; margin: 0; font-size: 0.9375rem; }
+.update-banner .btn { padding-left: 12px; padding-right: 12px; }
 .tabs { order: 2; }
 
 /* Printing from the browser's share or print menu (R24): the song list, a

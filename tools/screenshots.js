@@ -67,6 +67,7 @@ async function seed(page) {
   await put(page, 'meta', [
     { key: 'findVenueId', value: venue.Viking },
     { key: `currentSetlist:${venue.Viking}`, value: setlistIds[0] },
+    { key: 'lastBackupAt', value: d.toISOString() }, // no reminder banner over the screens
   ]);
 }
 
