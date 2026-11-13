@@ -65,7 +65,7 @@ async function seed(page) {
 function put(page, store, records) {
   return page.evaluate(async ({ store, records }) => {
     const conn = await new Promise((resolve, reject) => {
-      const req = indexedDB.open('karaoke-tracker');
+      const req = indexedDB.open('mic-jaunt');
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
     });

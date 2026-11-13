@@ -1,5 +1,5 @@
 {
-  "name": "karaoke-tracker",
+  "name": "mic-jaunt",
   "version": "0.2.0",
   "private": true,
   "description": "Mic Jaunt: a personal, local-only karaoke tracker PWA. No build step, no runtime dependencies.",

@@ -36,7 +36,7 @@ export function importCsv(page, csv, name = 'songs.csv') {
 }
 
 // `backup` is a string (sent as is) or an object (sent as JSON).
-export function restoreBackup(page, backup, name = 'karaoke-backup.json') {
+export function restoreBackup(page, backup, name = 'mic-jaunt-backup.json') {
   const contents = typeof backup === 'string' ? backup : JSON.stringify(backup);
   return chooseFile(page, 'Restore from backup', { name, mimeType: 'application/json', contents });
 }
@@ -83,7 +83,7 @@ export function songRecord(id, title, artist, extra = {}) {
 // A backup file in the app's format, with every store present.
 export function backupFile(data = {}, overrides = {}) {
   return {
-    app: 'karaoke-tracker',
+    app: 'mic-jaunt',
     format: 1,
     dbVersion: 1,
     exportedAt: '2026-11-01T20:00:00.000Z',

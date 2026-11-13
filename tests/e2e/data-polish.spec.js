@@ -41,7 +41,7 @@ test.describe('CSV export', () => {
     await openSettings(page);
 
     const { filename, text } = await downloadSongsCsv(page);
-    expect(filename).toMatch(/^karaoke-songs-\d{4}-\d{2}-\d{2}\.csv$/);
+    expect(filename).toMatch(/^mic-jaunt-songs-\d{4}-\d{2}-\d{2}\.csv$/);
     await expect(page.getByText(`Created ${filename} with 5 songs.`)).toBeVisible();
     // BOM, header, rows by title ignoring case (punctuation first), RFC 4180 quoting, CRLF.
     expect(text).toBe('﻿'

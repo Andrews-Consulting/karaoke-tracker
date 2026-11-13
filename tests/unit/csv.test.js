@@ -359,8 +359,8 @@ describe('songsToCsv (R23)', () => {
 
 describe('csvFileName (R23)', () => {
   it('uses the local calendar day', () => {
-    expect(csvFileName(new Date(2026, 10, 11, 23, 59))).toBe('karaoke-songs-2026-11-11.csv');
-    expect(csvFileName(new Date(2027, 0, 5, 0, 1))).toBe('karaoke-songs-2027-01-05.csv');
+    expect(csvFileName(new Date(2026, 10, 11, 23, 59))).toBe('mic-jaunt-songs-2026-11-11.csv');
+    expect(csvFileName(new Date(2027, 0, 5, 0, 1))).toBe('mic-jaunt-songs-2027-01-05.csv');
   });
 });
 

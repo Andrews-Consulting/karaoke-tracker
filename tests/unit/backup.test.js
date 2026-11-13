@@ -24,7 +24,7 @@ const validFile = () => JSON.parse(JSON.stringify(buildBackup(sampleData(), now)
 describe('buildBackup (R20)', () => {
   it('wraps every store with the app name, format, db version and time', () => {
     expect(buildBackup(sampleData(), now)).toEqual({
-      app: 'karaoke-tracker',
+      app: 'mic-jaunt',
       format: 1,
       dbVersion: DB_VERSION,
       exportedAt: '2026-11-11T12:00:00.000Z',
@@ -40,8 +40,8 @@ describe('buildBackup (R20)', () => {
 
 describe('backupFileName (R20)', () => {
   it('uses the local calendar day', () => {
-    expect(backupFileName(new Date(2026, 10, 11, 23, 59))).toBe('karaoke-backup-2026-11-11.json');
-    expect(backupFileName(new Date(2027, 0, 5, 0, 1))).toBe('karaoke-backup-2027-01-05.json');
+    expect(backupFileName(new Date(2026, 10, 11, 23, 59))).toBe('mic-jaunt-backup-2026-11-11.json');
+    expect(backupFileName(new Date(2027, 0, 5, 0, 1))).toBe('mic-jaunt-backup-2027-01-05.json');
   });
 });
 
@@ -63,6 +63,12 @@ describe('validateBackup (R21)', () => {
     expect(validateBackup(null)).toEqual(notOurs);
     expect(validateBackup([validFile()])).toEqual(notOurs);
     expect(validateBackup('karaoke-tracker')).toEqual(notOurs);
+  });
+
+  it('still accepts a backup written before the rename', () => {
+    const legacy = validateBackup({ ...validFile(), app: 'karaoke-tracker' });
+    expect(legacy.ok).toBe(true);
+    expect(legacy.data.songs).toHaveLength(validFile().data.songs.length);
   });
 
   it('rejects an unknown or missing format number', () => {

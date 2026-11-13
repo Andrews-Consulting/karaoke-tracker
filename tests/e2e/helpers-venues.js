@@ -74,7 +74,7 @@ function escapeRegExp(text) {
 // or would be slow at (hundreds of songs), and to check stored records.
 export async function readStore(page, store) {
   return page.evaluate((store) => new Promise((resolve, reject) => {
-    const req = indexedDB.open('karaoke-tracker');
+    const req = indexedDB.open('mic-jaunt');
     req.onerror = () => reject(req.error);
     req.onsuccess = () => {
       const conn = req.result;
@@ -87,7 +87,7 @@ export async function readStore(page, store) {
 
 export async function addRecords(page, store, records) {
   return page.evaluate(({ store, records }) => new Promise((resolve, reject) => {
-    const req = indexedDB.open('karaoke-tracker');
+    const req = indexedDB.open('mic-jaunt');
     req.onerror = () => reject(req.error);
     req.onsuccess = () => {
       const conn = req.result;

@@ -92,8 +92,8 @@ test.describe('Backup and restore', () => {
     await openSettings(page);
 
     const { filename, json } = await downloadBackup(page);
-    expect(filename).toMatch(/^karaoke-backup-\d{4}-\d{2}-\d{2}\.json$/);
-    expect(json).toMatchObject({ app: 'karaoke-tracker', format: 1, dbVersion: 1 });
+    expect(filename).toMatch(/^mic-jaunt-backup-\d{4}-\d{2}-\d{2}\.json$/);
+    expect(json).toMatchObject({ app: 'mic-jaunt', format: 1, dbVersion: 1 });
     expect(Number.isNaN(Date.parse(json.exportedAt))).toBe(false);
     expect(Object.keys(json.data).sort()).toEqual(['meta', 'setlists', 'sings', 'songs', 'venues']);
     expect(json.data.songs.map((s) => s.title).sort()).toEqual(['Dancing Queen', 'Valerie']);

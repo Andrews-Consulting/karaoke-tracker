@@ -1,7 +1,7 @@
 // JSON backup (R20) and restore (R21). Pure: no DOM, no IndexedDB access.
 //
 // A backup file is one JSON object:
-//   { app: 'karaoke-tracker', format: 1, dbVersion, exportedAt,
+//   { app: 'mic-jaunt', format: 1, dbVersion, exportedAt,
 //     data: { songs: [...], venues: [...], sings: [...], setlists: [...], meta: [...] } }
 // `format` is the layout of this wrapper; `dbVersion` is DB_VERSION from js/db.js
 // when the file was made, i.e. the shape of the records. When DB_VERSION is bumped,
@@ -10,7 +10,9 @@
 import { DB_VERSION, STORES } from '../db.js';
 import { makeSong } from './song.js';
 
-export const BACKUP_APP = 'karaoke-tracker';
+export const BACKUP_APP = 'mic-jaunt';
+// Files written before the app was renamed (November 2026) still restore.
+export const LEGACY_BACKUP_APPS = ['karaoke-tracker'];
 export const BACKUP_FORMAT = 1;
 
 const LABELS = { songs: 'songs', venues: 'venues', sings: 'sing log', setlists: 'setlists', meta: 'app settings' };
@@ -29,10 +31,10 @@ export function buildBackup(data, now = new Date()) {
   };
 }
 
-// karaoke-backup-YYYY-MM-DD.json, using the local calendar day.
+// mic-jaunt-backup-YYYY-MM-DD.json, using the local calendar day.
 export function backupFileName(now = new Date()) {
   const pad = (n) => String(n).padStart(2, '0');
-  return `karaoke-backup-${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}.json`;
+  return `mic-jaunt-backup-${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}.json`;
 }
 
 function validKey(store, record) {
@@ -46,7 +48,7 @@ function validKey(store, record) {
 // Songs are rebuilt through makeSong() (keeping their ids) so missing fields get
 // the same defaults as everywhere else; other records are kept as they are.
 export function validateBackup(parsed, now = new Date()) {
-  if (!isObject(parsed) || parsed.app !== BACKUP_APP) {
+  if (!isObject(parsed) || (parsed.app !== BACKUP_APP && !LEGACY_BACKUP_APPS.includes(parsed.app))) {
     return { ok: false, problems: ['This file is not a Mic Jaunt backup.'] };
   }
 
