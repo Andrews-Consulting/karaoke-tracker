@@ -1,11 +1,12 @@
 // Steps for the Setlists e2e tests (Wave 2 E). openApp, addSong, putRecords and
 // readStore live in helpers.js.
 import { expect } from '@playwright/test';
+import { expectTab } from './helpers.js';
 
 // Taps the Setlists tab and waits for the setlist list.
 export async function openSetlists(page) {
   await page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name: 'Setlists' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Setlists' })).toBeVisible();
+  await expectTab(page, 'Setlists');
   await expect(page.getByRole('form', { name: 'New setlist' })).toBeVisible();
 }
 

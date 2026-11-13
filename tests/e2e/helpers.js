@@ -13,8 +13,15 @@ export async function openApp(page) {
   await page.route('https://musicbrainz.org/**', (route) =>
     (mockedMusicBrainz.has(page) ? route.fallback() : route.abort('internetdisconnected')));
   await page.goto('./');
-  await expect(page.getByRole('heading', { name: 'Songs' })).toBeVisible();
+  await expectTab(page, 'Songs');
   await expect(page.getByText(/of \d+ songs/)).toBeVisible();
+}
+
+// Checks that the tab named `name` is the selected one. There is no title bar
+// (R58): the tabs say where you are, and the page title is for screen readers.
+export async function expectTab(page, name) {
+  const tab = page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name, exact: true });
+  await expect(tab).toHaveAttribute('aria-current', 'page');
 }
 
 // Adds a song through the form the way a user would.
