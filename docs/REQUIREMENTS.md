@@ -115,6 +115,16 @@ Added 2026-11-12 after using v1. The Songs tab's job is finding the next song to
 
 R17 Tonight mode on the Setlists tab is superseded by R49 and is removed when R49 lands. R45 Suggest songs and R44 Mix stay on the Setlists tab, which is for building and tidying lists.
 
+## KaraFun catalog
+
+KaraFun publishes its whole catalog (about 100,000 songs) as a free CSV: `Id;Title;Artist;Year;Duo;Explicit;"Date Added";Styles;Languages`, semicolon-separated, UTF-8, about 7 MB, linked from <https://www.karafun.com/karaoke-song-list.html>. Their site refuses requests that are not a person in a browser and sends no CORS header, and their terms allow private use only, so the app never fetches or hosts the file: the owner downloads it in Safari (Save to Files) and loads it in Settings, and refreshes it the same way every six months or so. The catalog is a browsing aid, kept outside backups and rebuilt from the file. MusicBrainz (R35, R63) stays for songs KaraFun does not have.
+
+| ID | Requirement | Priority | Status | Notes |
+|---|---|---|---|---|
+| R66 | Load the KaraFun catalog from its CSV file in Settings; see when it was loaded and how many songs it holds; replace it with a newer file; remove it | Must | Planned | A link opens KaraFun's catalog page for the download. The wrong file is refused with a clear message. Loading 100,000 rows must not freeze the phone: parse and store in chunks with progress. Stored in the `catalog` store (db v2), never in a backup |
+| R67 | Browse the KaraFun catalog from Find: a "My songs / KaraFun" switch, with search and the Genre, Decade, Duet, Explicit and Language filters; add a song to my songs with title, artist, year and genre filled, or straight into the current set with + | Must | Planned | Only shown once a catalog is loaded. Sung, Status, Rating and Tag filters hide for the catalog. Songs already in my library are marked. Search needs two characters or a filter before it lists anything, and pages 200 at a time like Find |
+| R68 | My songs carry a KaraFun flag: set when a song is added from the catalog, and matched by title and artist for every song when a catalog is loaded or replaced; shown on the song's row and screen, with an "In KaraFun" filter | Must | Planned | `karafunId` on the song record (the catalog's id, or null). Matching ignores case; a song KaraFun does not have keeps null. Removing the catalog keeps the flags |
+
 ## Out of scope
 
 | ID | Item | Notes |

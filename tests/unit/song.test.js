@@ -51,7 +51,16 @@ describe('makeSong', () => {
       status: '', // not set (R64)
       tags: [],
       createdAt: '2026-11-11T12:00:00.000Z',
+      karafunId: null, // not matched to the KaraFun catalog (R68)
     });
+  });
+
+  it('keeps a valid KaraFun id and drops anything else (R68)', () => {
+    expect(makeSong({ karafunId: 12543 }).karafunId).toBe(12543);
+    expect(makeSong({ karafunId: '12543' }).karafunId).toBe(12543);
+    expect(makeSong({ karafunId: 0 }).karafunId).toBeNull();
+    expect(makeSong({ karafunId: 'abc' }).karafunId).toBeNull();
+    expect(makeSong({}).karafunId).toBeNull();
   });
 
   it('keeps valid optional fields and normalises the rest', () => {
@@ -180,7 +189,7 @@ describe('validateSong (R2)', () => {
 describe('updateSong (R2)', () => {
   const existing = {
     id: 7, title: 'Valerie', artist: 'Amy Winehouse', genre: 'Soul', year: 2006, key: '',
-    notes: '', rating: null, status: 'go-to', tags: [], createdAt: '2020-01-01T00:00:00.000Z',
+    notes: '', rating: null, status: 'go-to', tags: [], createdAt: '2020-01-01T00:00:00.000Z', karafunId: 12543,
   };
 
   it('keeps the id and createdAt and normalises edited fields from the form', () => {
@@ -192,6 +201,7 @@ describe('updateSong (R2)', () => {
       id: 7, title: 'Valerie (live)', artist: 'Amy Winehouse', genre: 'Pop', year: 2007, key: '+1',
       notes: 'skip the bridge\nstarts cold', rating: 4, status: 'retired', tags: ['duet', 'Slow'],
       createdAt: '2020-01-01T00:00:00.000Z',
+      karafunId: 12543, // the form does not send it, so the match is kept (R68)
     });
   });
 
