@@ -10,6 +10,7 @@ Everything the app does today, written as what the singer wants and why, without
 - As a singer, I want to search and filter my songs and put one on tonight's set, or take it off, with a single tap, so that building the set is as fast as thinking of the song. (R48)
 - As a singer, I want to see tonight's set in order and move songs around, so that I can plan what comes next while the night unfolds. (R49, R61)
 - As a singer, I want to mark a song as sung the moment I finish it, so that it is logged for this venue and today and drops off the set without my doing anything else. (R49)
+- As a singer, as soon as I finish my song I need to mark it sung and have the next song ready to show to the KJ before I leave the stage, so that I do not lose my place in the rotation. (R74)
 - As a singer, I want to park a song I did not get to for next time at this venue, so that it is waiting for me the next time I am here. (R49)
 - As a singer, I want to see what I have sung here tonight and on earlier nights, grouped by date, so that I know what the room has already heard from me. (R50)
 - As a singer, I want to undo a sing I logged by mistake tonight and have the song go back to the top of the set, so that a mis-tap does not cost me the song. (R50)
