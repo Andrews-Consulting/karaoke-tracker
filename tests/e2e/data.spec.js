@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { DB_VERSION } from '../../js/db.js';
 import { openApp, addSong } from './helpers.js';
 import {
   openSettings, openSongs, collectPageErrors, importCsv, restoreBackup, downloadBackup,
@@ -93,7 +94,7 @@ test.describe('Backup and restore', () => {
 
     const { filename, json } = await downloadBackup(page);
     expect(filename).toMatch(/^mic-jaunt-backup-\d{4}-\d{2}-\d{2}\.json$/);
-    expect(json).toMatchObject({ app: 'mic-jaunt', format: 1, dbVersion: 1 });
+    expect(json).toMatchObject({ app: 'mic-jaunt', format: 1, dbVersion: DB_VERSION });
     expect(Number.isNaN(Date.parse(json.exportedAt))).toBe(false);
     expect(Object.keys(json.data).sort()).toEqual(['meta', 'setlists', 'sings', 'songs', 'venues']);
     expect(json.data.songs.map((s) => s.title).sort()).toEqual(['Dancing Queen', 'Valerie']);
