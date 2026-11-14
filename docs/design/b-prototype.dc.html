@@ -17,6 +17,8 @@ input::placeholder{color:#8F9CA9}
 .vh{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .scroll{scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .scroll::-webkit-scrollbar{display:none}
+.sang{transition:background-color .15s,color .15s,border-color .15s}
+.sang:active{background:var(--acc,#6CC4FF) !important;border-color:var(--acc,#6CC4FF) !important;color:#04121D !important}
 .kjl{display:none !important}
 @media (orientation: landscape){.kjl{display:flex !important}.kjp{display:none !important}}
 a{color:#6CC4FF}a:hover{color:#A8DCFF}
@@ -46,11 +48,21 @@ a{color:#6CC4FF}a:hover{color:#A8DCFF}
 <p style="flex-shrink: 0; margin: 4px 0 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.08em; color: #9AA7B4">AFTER THAT · {{ afterCount }}</p>
 <ol aria-label="The rest of tonight's set" style="flex-shrink: 0; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column">
 <sc-for list="{{ after }}" as="row" hint-placeholder-count="4">
-<li style="display: flex; align-items: center; gap: 10px; min-height: 56px; border-bottom: 1px solid #1E2731">
+<li style="position: relative; z-index: {{ row.z }}; display: flex; flex-direction: column; border-bottom: 1px solid #1E2731; border-radius: {{ row.radius }}; background: {{ row.bg }}">
+<div style="display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 {{ row.pad }}px">
 <span style="width: 22px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: #8F9CA9">{{ row.num }}</span>
 <button onClick="{{ row.open }}" style="flex: 1; min-width: 0; min-height: 52px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 0; background: none; border: 0; text-align: left; color: #E8EEF4"><span style="display: block; max-width: 100%; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ row.title }}</span><span style="display: block; max-width: 100%; font-size: 13px; color: #9AA7B4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ row.artist }}</span></button>
 <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #9AA7B4; white-space: nowrap">{{ row.here }}</span>
-<button aria-label="{{ row.moveLabel }}" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: none; border: 0; color: #8F9CA9"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01"></path></svg></button>
+<button aria-label="{{ row.menuLabel }}" aria-expanded="{{ row.expanded }}" onClick="{{ row.toggleMenu }}" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: none; border: 0; color: #C3CDD7"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="19" cy="12" r="2"></circle></svg></button>
+<button aria-label="{{ row.moveLabel }}" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: none; border: 0; color: #8F9CA9"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01"></path></svg></button>
+</div>
+<sc-if value="{{ row.menuOpen }}" hint-placeholder-val="{{ false }}">
+<div style="display: grid; grid-template-columns: 1fr 1.7fr 1fr; gap: 6px; padding: 0 8px 10px">
+<button aria-label="{{ row.parkLabel }}" onClick="{{ row.park }}" style="min-height: 44px; padding: 4px 6px; border-radius: 10px; background: none; border: 1.5px solid #3A4757; color: #E8EEF4; font-size: 14px; font-weight: 600">Park</button>
+<button aria-label="{{ row.removeLabel }}" onClick="{{ row.remove }}" style="min-height: 44px; padding: 4px 6px; border-radius: 10px; background: none; border: 1.5px solid #3A4757; color: #E8EEF4; font-size: 14px; font-weight: 600; line-height: 1.15">Remove from tonight</button>
+<button onClick="{{ row.details }}" style="min-height: 44px; padding: 4px 6px; border-radius: 10px; background: none; border: 1.5px solid #3A4757; color: #E8EEF4; font-size: 14px; font-weight: 600">Details</button>
+</div>
+</sc-if>
 </li>
 </sc-for>
 </ol>
@@ -68,6 +80,8 @@ a{color:#6CC4FF}a:hover{color:#A8DCFF}
 </sc-if>
 </div>
 
+<sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}"><button aria-label="Close song actions" onClick="{{ closeMenu }}" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; padding: 0; background: transparent; border: 0; cursor: default"></button></sc-if>
+
 <sc-if value="{{ showDock }}" hint-placeholder-val="{{ true }}">
 <section aria-labelledby="bp-up" style="position: absolute; left: 0; right: 0; bottom: 144px; z-index: 2; padding: 12px 16px; background: #151B22; border-top: 2px solid {{ accent }}; border-radius: 16px 16px 0 0; box-shadow: 0 -14px 30px rgba(0,0,0,0.55); display: flex; flex-direction: column; gap: 8px">
 <div style="display: flex; justify-content: space-between; align-items: center">
@@ -78,10 +92,9 @@ a{color:#6CC4FF}a:hover{color:#A8DCFF}
 <p style="margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ up.title }}</p>
 <p style="margin: 0; font-size: 14px; color: #9AA7B4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ up.artist }} · <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px">{{ up.here }}</span></p>
 </div>
-<div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 6px">
-<button onClick="{{ sang }}" style="display: flex; align-items: center; justify-content: center; gap: 6px; height: 52px; border-radius: 10px; border: 0; background: {{ accent }}; color: #04121D; font-size: 17px; font-weight: 700"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>Sang it</button>
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 6px">
+<button class="sang" onClick="{{ sangTap }}" style="--acc: {{ accent }}; display: flex; align-items: center; justify-content: center; gap: 6px; height: 52px; border-radius: 10px; background: {{ sangBg }}; border: 1.5px solid {{ sangBd }}; color: {{ sangFg }}; font-size: 17px; font-weight: 700"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>Sang it</button>
 <button aria-label="Show to the KJ" onClick="{{ upKJ }}" style="height: 52px; border-radius: 10px; background: none; border: 1.5px solid #3A4757; color: #E8EEF4; font-size: 15px; font-weight: 600">KJ</button>
-<button aria-label="Park for next time at The Crown" onClick="{{ park }}" style="height: 52px; border-radius: 10px; background: none; border: 1.5px solid #3A4757; color: #E8EEF4; font-size: 15px; font-weight: 600">Park</button>
 </div>
 </section>
 </sc-if>
@@ -200,6 +213,7 @@ a{color:#6CC4FF}a:hover{color:#A8DCFF}
 <p style="flex-shrink: 0; margin: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.04em; color: #C3CDD7">{{ lo.label }} · {{ lo.count }}</p>
 <p style="flex-shrink: 0; margin: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #9AA7B4">{{ lo.gl }}<br>{{ lo.dl }}</p>
 <p style="flex-shrink: 0; margin: 4px 0 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; color: {{ accent }}">{{ lo.inSetText }}</p>
+<p style="flex-shrink: 0; margin: 8px 0 2px; display: flex; align-items: center; gap: 6px; font-size: 13px; color: #9AA7B4"><span aria-hidden="true" style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 5px; background: {{ accent }}; color: #04121D"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span class="vh">Tick</span>= in tonight's set</p>
 <ul aria-label="Songs on this list" style="flex-shrink: 0; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border-top: 1px solid #1E2731">
 <sc-for list="{{ loRows }}" as="r" hint-placeholder-count="8">
 <li style="display: flex; align-items: center; gap: 10px; min-height: 62px; border-bottom: 1px solid #1E2731">
@@ -218,10 +232,11 @@ a{color:#6CC4FF}a:hover{color:#A8DCFF}
 <header style="flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px">
 <h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.01em">History</h1>
 <div style="display: flex; gap: 6px">
-<button style="height: 44px; padding: 0 12px; border-radius: 10px; background: none; border: 1.5px solid {{ accent }}; font-size: 14px; font-weight: 600; color: #E8EEF4">Log a sing</button>
+<button aria-describedby="bp-logcap" style="height: 44px; padding: 0 12px; border-radius: 10px; background: none; border: 1.5px solid {{ accent }}; font-size: 14px; font-weight: 600; color: #E8EEF4">Log a sing</button>
 <button style="height: 44px; padding: 0 12px; border-radius: 10px; background: none; border: 1px solid #33404D; font-size: 14px; font-weight: 600; color: #E8EEF4">Venues</button>
 </div>
 </header>
+<p id="bp-logcap" style="flex-shrink: 0; margin: -2px 0 2px; font-size: 14px; color: #9AA7B4">Log a sing you forgot, or one from another night</p>
 <div style="flex-shrink: 0; display: flex; gap: 6px; overflow: hidden; margin-right: -16px">
 <button aria-pressed="true" style="flex-shrink: 0; height: 44px; padding: 0 14px; border-radius: 22px; background: {{ accent }}; border: 0; color: #04121D; font-size: 15px; font-weight: 600">The Crown</button>
 <button aria-pressed="false" style="flex-shrink: 0; height: 44px; padding: 0 14px; border-radius: 22px; background: none; border: 1px solid #33404D; color: #C3CDD7; font-size: 15px">Rosie's</button>
@@ -451,7 +466,7 @@ class Component extends DCLogic {
       kj: null, kjFrom: null, logged: null,
       songPage: null, listOpen: null, catalog: "mine",
       filters: { since: true, eighties: true, upbeat: true, rated: true },
-      mine: {}, edits: {}
+      mine: {}, edits: {}, menu: null, flash: false
     };
   }
 
@@ -508,7 +523,12 @@ class Component extends DCLogic {
       if (!s.set.length) return;
       var id = s.set[0], rest = s.set.slice(1), next = rest.length ? rest[0] : null;
       var q = Object.assign({}, s.q, { tonight: "" });
-      self.setState({ set: rest, sung: s.sung.concat([id]), logged: id, kj: next, kjFrom: next ? "sang" : null, songPage: null, q: q });
+      self.setState({ set: rest, sung: s.sung.concat([id]), logged: id, kj: next, kjFrom: next ? "sang" : null, songPage: null, q: q, menu: null, flash: false });
+    };
+    var sangTap = function () {
+      if (self.state.flash) return;
+      self.setState({ flash: true, menu: null });
+      setTimeout(sang, 200);
     };
     var undo = function () {
       var s = self.state;
@@ -521,7 +541,7 @@ class Component extends DCLogic {
       if (!s.set.length) return;
       self.setState({ set: s.set.slice(1), parked: s.parked.concat([s.set[0]]) });
     };
-    var upKJ = function () { var s = self.state; if (s.set.length) self.setState({ kj: s.set[0], kjFrom: "button" }); };
+    var upKJ = function () { var s = self.state; if (s.set.length) self.setState({ kj: s.set[0], kjFrom: "button", menu: null }); };
     var songKJ = function () { var s = self.state; if (s.songPage) self.setState({ kj: s.songPage, kjFrom: "song" }); };
     var done = function () {
       if (self.state.kjFrom === "song") self.setState({ kj: null, kjFrom: null });
@@ -530,7 +550,7 @@ class Component extends DCLogic {
     var onQuery = function (e) {
       var s = self.state, q = Object.assign({}, s.q);
       q[s.scope] = e && e.target ? e.target.value : "";
-      self.setState({ q: q, songPage: null });
+      self.setState({ q: q, songPage: null, menu: null });
     };
     var clearQuery = function () {
       var s = self.state, q = Object.assign({}, s.q);
@@ -548,7 +568,18 @@ class Component extends DCLogic {
     var upId = st.set.length ? st.set[0] : null;
     var up = upId ? { title: by[upId].t, artist: by[upId].a, key: "KEY " + keyStr(keyOf(upId)), here: hereLong(upId) } : { title: "", artist: "", key: "", here: "" };
     var after = st.set.slice(1).map(function (id, i) {
-      return { num: pad(i + 2), title: by[id].t, artist: by[id].a, here: hereShort(id), open: openSong(id), moveLabel: "Move " + by[id].t };
+      var mo = st.menu === id;
+      return {
+        num: pad(i + 2), title: by[id].t, artist: by[id].a, here: hereShort(id), open: openSong(id), moveLabel: "Move " + by[id].t,
+        menuOpen: mo, expanded: mo ? "true" : "false", menuLabel: "More for " + by[id].t,
+        z: mo ? "3" : "auto", bg: mo ? "#151B22" : "transparent", pad: mo ? 8 : 0, radius: mo ? "10px" : "0",
+        toggleMenu: function () { self.setState({ menu: self.state.menu === id ? null : id }); },
+        park: function () { var s = self.state; self.setState({ set: s.set.filter(function (x) { return x !== id; }), parked: s.parked.concat([id]), menu: null }); },
+        remove: function () { var s = self.state; self.setState({ set: s.set.filter(function (x) { return x !== id; }), menu: null }); },
+        details: function () { self.setState({ songPage: id, menu: null }); },
+        parkLabel: "Park " + by[id].t + " for next time at The Crown",
+        removeLabel: "Remove " + by[id].t + " from tonight's set"
+      };
     });
     var tq = st.q.tonight.trim().toLowerCase();
     var typing = tq.length > 0;
@@ -607,18 +638,19 @@ class Component extends DCLogic {
     };
     var inSetCount = function (ids) { return ids.filter(inSet).length; };
     var lq = st.q.lists.trim().toLowerCase();
+    var idsOf = function (l) { return l.id === "crownsat" ? st.set : l.ids; };
     var listRows = this.lists.filter(function (l) { return !lq || l.name.toLowerCase().indexOf(lq) >= 0; }).map(function (l) {
-      var m = mix(l.ids), n = inSetCount(l.ids);
-      return { name: l.name, label: l.label, count: l.ids.length + " SONGS", gl: m.gl, dl: m.dl, hasInSet: n > 0, inSetText: n + " IN TONIGHT'S SET", open: function () { self.setState({ listOpen: l.id }); } };
+      var ids = idsOf(l), m = mix(ids), n = inSetCount(ids), tn = l.id === "crownsat";
+      return { name: l.name, label: l.label, count: ids.length + " SONGS", gl: m.gl, dl: m.dl, hasInSet: tn || n > 0, inSetText: tn ? "TONIGHT'S SET" : n + " OF " + ids.length + " IN TONIGHT'S SET", open: function () { self.setState({ listOpen: l.id }); } };
     });
     var loL = null;
     for (var li = 0; li < this.lists.length; li++) { if (this.lists[li].id === st.listOpen) loL = this.lists[li]; }
     var lo = { name: "", label: "", count: "", gl: "", dl: "", inSetText: "" };
     var loRows = [];
     if (loL) {
-      var lm = mix(loL.ids), ln = inSetCount(loL.ids);
-      lo = { name: loL.name, label: loL.label, count: loL.ids.length + " SONGS", gl: lm.gl, dl: lm.dl, inSetText: ln + " OF " + loL.ids.length + " IN TONIGHT'S SET" };
-      loRows = loL.ids.filter(function (id) { return !lq || (by[id].t + " " + by[id].a).toLowerCase().indexOf(lq) >= 0; }).map(function (id) {
+      var loIds = idsOf(loL), lm = mix(loIds), ln = inSetCount(loIds);
+      lo = { name: loL.name, label: loL.label, count: loIds.length + " SONGS", gl: lm.gl, dl: lm.dl, inSetText: loL.id === "crownsat" ? "THIS IS TONIGHT'S SET" : ln + " OF " + loIds.length + " IN TONIGHT'S SET" };
+      loRows = loIds.filter(function (id) { return !lq || (by[id].t + " " + by[id].a).toLowerCase().indexOf(lq) >= 0; }).map(function (id) {
         return Object.assign({ title: by[id].t, sub: by[id].a, here: hereShort(id), open: openSong(id) }, tog(id));
       });
     }
@@ -674,7 +706,7 @@ class Component extends DCLogic {
     var showBadge = scope === "songs" && !isKF && tokens.length > 0;
     var tabs = [["tonight", "Tonight"], ["songs", "Songs"], ["lists", "Lists"], ["history", "History"]].map(function (p) {
       var on = scope === p[0];
-      return { label: p[1], on: on, current: on ? "page" : "false", bg: on ? "#1C242D" : "transparent", fg: on ? "#E8EEF4" : "#A3B0BD", fw: on ? "600" : "500", select: function () { self.setState({ scope: p[0], songPage: null }); } };
+      return { label: p[1], on: on, current: on ? "page" : "false", bg: on ? "#1C242D" : "transparent", fg: on ? "#E8EEF4" : "#A3B0BD", fw: on ? "600" : "500", select: function () { self.setState({ scope: p[0], songPage: null, menu: null }); } };
     });
     var lastSung = st.sung.length ? by[st.sung[st.sung.length - 1]].t : "";
 
@@ -701,7 +733,12 @@ class Component extends DCLogic {
       emptySet: st.set.length === 0,
       showDock: showDock,
       up: up,
-      sang: sang, upKJ: upKJ, park: park,
+      sang: sang, sangTap: sangTap, upKJ: upKJ, park: park,
+      sangBg: st.flash ? accent : "transparent",
+      sangBd: st.flash ? accent : "#3A4757",
+      sangFg: st.flash ? "#04121D" : "#E8EEF4",
+      menuOpen: !!st.menu && st.set.indexOf(st.menu) > 0,
+      closeMenu: function () { self.setState({ menu: null }); },
       typing: typing,
       trayHeader: trayHeader,
       matches: matches,
