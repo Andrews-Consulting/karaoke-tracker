@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mic Jaunt B prototype</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0;background:#080B0F}
+button{font:inherit;color:inherit;cursor:pointer}
+input{font:inherit}
+input::placeholder{color:#8F9CA9}
+.vh{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.scroll{scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.scroll::-webkit-scrollbar{display:none}
+.kjl{display:none !important}
+@media (orientation: landscape){.kjl{display:flex !important}.kjp{display:none !important}}
+a{color:#6CC4FF}a:hover{color:#A8DCFF}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #0C1015; color: #E8EEF4; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 16px; line-height: 1.3">
+
+<sc-if value="{{ isTonight }}" hint-placeholder-val="{{ true }}">
+<div class="scroll" style="position: absolute; top: 0; left: 0; right: 0; bottom: {{ tonightBottom }}px; overflow-y: auto; box-sizing: border-box; padding: 52px 16px 16px; display: flex; flex-direction: column; gap: 10px">
+<header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-shrink: 0">
+<div style="display: flex; flex-direction: column">
+<button aria-label="Venue: The Crown. Change venue" style="display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0; background: none; border: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.01em; color: #E8EEF4">The Crown<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9AA7B4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></button>
+<p style="margin: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; letter-spacing: 0.04em; color: #9AA7B4">SAT 14 NOV 2026</p>
+</div>
+<button aria-label="Set: Crown Saturdays. Switch list" style="display: flex; flex-direction: column; align-items: flex-end; justify-content: center; min-height: 48px; padding: 4px 10px; border-radius: 10px; background: #151B22; border: 1px solid #27313C; text-align: right"><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: 0.08em; color: #9AA7B4">SET</span><span style="display: flex; align-items: center; gap: 4px; font-size: 15px; font-weight: 600">Crown Saturdays<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9AA7B4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></span></button>
+</header>
+
+<sc-if value="{{ hasSung }}" hint-placeholder-val="{{ true }}">
+<div style="flex-shrink: 0; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 4px 0 12px; border-radius: 10px; background: #151B22; border: 1px solid #27313C">
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.06em; color: #9AA7B4; white-space: nowrap">SUNG · {{ sungCount }}</span>
+<p style="margin: 0; flex: 1; min-width: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ sungTitles }}</p>
+<button aria-label="{{ undoLabel }}" onClick="{{ undo }}" style="display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 10px; border-radius: 8px; background: none; border: 0; font-size: 14px; font-weight: 600; color: {{ accent }}; white-space: nowrap"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"></path><path d="M4 9h11a5 5 0 010 10h-3"></path></svg>Undo last</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ hasAfter }}" hint-placeholder-val="{{ true }}">
+<p style="flex-shrink: 0; margin: 4px 0 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.08em; color: #9AA7B4">AFTER THAT · {{ afterCount }}</p>
+<ol aria-label="The rest of tonight's set" style="flex-shrink: 0; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column">
+<sc-for list="{{ after }}" as="row" hint-placeholder-count="4">
+<li style="display: flex; align-items: center; gap: 10px; min-height: 56px; border-bottom: 1px solid #1E2731">
+<span style="width: 22px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: #8F9CA9">{{ row.num }}</span>
+<button onClick="{{ row.open }}" style="flex: 1; min-width: 0; min-height: 52px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 0; background: none; border: 0; text-align: left; color: #E8EEF4"><span style="display: block; max-width: 100%; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ row.title }}</span><span style="display: block; max-width: 100%; font-size: 13px; color: #9AA7B4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ row.artist }}</span></button>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #9AA7B4; white-space: nowrap">{{ row.here }}</span>
+<button aria-label="{{ row.moveLabel }}" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: none; border: 0; color: #8F9CA9"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01"></path></svg></button>
+</li>
+</sc-for>
+</ol>
+</sc-if>
+
+<sc-if value="{{ hasParked }}" hint-placeholder-val="{{ false }}">
+<div style="flex-shrink: 0; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 10px; border: 1px dashed #33404D">
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.06em; color: #9AA7B4">NEXT TIME AT THE CROWN · {{ parkedCount }}</span>
+<p style="margin: 0; font-size: 14px">{{ parkedTitles }}</p>
+</div>
+</sc-if>
+
+<sc-if value="{{ emptySet }}" hint-placeholder-val="{{ false }}">
+<p style="flex-shrink: 0; margin: 8px 0 0; padding: 14px; border-radius: 10px; background: #151B22; font-size: 15px; color: #C3CDD7">Nothing up next. Type in the field below to add a song to tonight.</p>
+</sc-if>
+</div>
+
+<sc-if value="{{ showDock }}" hint-placeholder-val="{{ true }}">
+<section aria-labelledby="bp-up" style="position: absolute; left: 0; right: 0; bottom: 144px; z-index: 2; padding: 12px 16px; background: #151B22; border-top: 2px solid {{ accent }}; border-radius: 16px 16px 0 0; box-shadow: 0 -14px 30px rgba(0,0,0,0.55); display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between; align-items: center">
+<h2 id="bp-up" style="margin: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; font-weight: 600; letter-spacing: 0.06em; color: {{ accent }}">UP NEXT · 01</h2>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: #1C242D">{{ up.key }}</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 1px">
+<p style="margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ up.title }}</p>
+<p style="margin: 0; font-size: 14px; color: #9AA7B4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ up.artist }} · <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px">{{ up.here }}</span></p>
+</div>
+<div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 6px">
+<button onClick="{{ sang }}" style="display: flex; align-items: center; justify-content: center; gap: 6px; height: 52px; border-radius: 10px; border: 0; background: {{ accent }}; color: #04121D; font-size: 17px; font-weight: 700"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>Sang it</button>
+<button aria-label="Show to the KJ" onClick="{{ upKJ }}" style="height: 52px; border-radius: 10px; background: none; border: 1.5px solid #3A4757; color: #E8EEF4; font-size: 15px; font-weight: 600">KJ</button>
+<button aria-label="Park for next time at The Crown" onClick="{{ park }}" style="height: 52px; border-radius: 10px; background: none; border: 1.5px solid #3A4757; color: #E8EEF4; font-size: 15px; font-weight: 600">Park</button>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{ typing }}" hint-placeholder-val="{{ false }}">
+<section aria-label="Add to tonight" style="position: absolute; left: 8px; right: 8px; bottom: 152px; z-index: 3; padding: 6px 0; border-radius: 14px; background: #1C242D; border: 1px solid #33404D; box-shadow: 0 -12px 36px rgba(0,0,0,0.65)">
+<p style="margin: 0; padding: 6px 14px 4px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.06em; color: #A3B0BD">{{ trayHeader }}</p>
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column">
+<sc-for list="{{ matches }}" as="m" hint-placeholder-count="3">
+<li style="display: flex; align-items: center; gap: 10px; min-height: 54px; padding: 0 8px 0 14px">
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<p style="margin: 0; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span>{{ m.pre }}</span><span style="color: {{ accent }}">{{ m.mid }}</span><span>{{ m.post }}</span></p>
+<p style="margin: 0; font-size: 13px; color: #A3B0BD; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ m.artist }}</p>
+</div>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #A3B0BD; white-space: nowrap">{{ m.here }}</span>
+<sc-if value="{{ m.inSet }}" hint-placeholder-val="{{ false }}"><button aria-label="{{ m.label }}" aria-pressed="true" onClick="{{ m.toggle }}" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 0; background: {{ accent }}; color: #04121D"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></button></sc-if>
+<sc-if value="{{ m.notInSet }}" hint-placeholder-val="{{ true }}"><button aria-label="{{ m.label }}" aria-pressed="false" onClick="{{ m.toggle }}" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: none; border: 1.5px solid #4A5868; color: #E8EEF4"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></button></sc-if>
+</li>
+</sc-for>
+</ul>
+<sc-if value="{{ showKF }}" hint-placeholder-val="{{ false }}">
+<button onClick="{{ searchKF }}" style="width: 100%; min-height: 44px; padding: 0 14px; display: flex; align-items: center; gap: 8px; background: none; border: 0; border-top: 1px solid #33404D; font-size: 14px; font-weight: 600; color: {{ accent }}; text-align: left"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>Search the KaraFun catalog for “{{ tonightQuery }}”</button>
+</sc-if>
+</section>
+</sc-if>
+</sc-if>
+
+<sc-if value="{{ isSongs }}" hint-placeholder-val="{{ false }}">
+<div class="scroll" style="position: absolute; top: 0; left: 0; right: 0; bottom: {{ deckH }}px; overflow-y: auto; box-sizing: border-box; padding: 52px 16px 16px; display: flex; flex-direction: column; gap: 6px">
+<div aria-label="Search in" style="flex-shrink: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; padding: 3px; border-radius: 12px; background: #151B22; border: 1px solid #27313C">
+<button aria-pressed="{{ mineP }}" onClick="{{ toMine }}" style="height: 44px; border-radius: 9px; border: 0; background: {{ mineBg }}; color: {{ mineFg }}; font-size: 15px; font-weight: 600">My songs</button>
+<button aria-pressed="{{ kfP }}" onClick="{{ toKF }}" style="height: 44px; border-radius: 9px; border: 0; background: {{ kfBg }}; color: {{ kfFg }}; font-size: 15px; font-weight: 600">KaraFun catalog</button>
+</div>
+
+<sc-if value="{{ isMineMode }}" hint-placeholder-val="{{ true }}">
+<div style="flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 4px">
+<p style="margin: 0; display: flex; align-items: baseline; gap: 8px"><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 34px; font-weight: 600; letter-spacing: -0.02em">{{ songCount }}</span><span style="font-size: 15px; color: #9AA7B4">of {{ libTotal }} songs</span></p>
+<button aria-label="Pick one of these at random" onClick="{{ pick }}" style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: 10px; background: #151B22; border: 1px solid #27313C; font-size: 15px; font-weight: 600; color: #E8EEF4"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"></rect><circle cx="9" cy="9" r="1.3" fill="currentColor"></circle><circle cx="15" cy="15" r="1.3" fill="currentColor"></circle><circle cx="15" cy="9" r="1.3" fill="currentColor"></circle><circle cx="9" cy="15" r="1.3" fill="currentColor"></circle></svg>Pick one</button>
+</div>
+<div style="flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px">
+<div style="display: flex; align-items: center; gap: 2px; min-height: 44px">
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.06em; color: #9AA7B4">{{ filterLabel }}</span>
+<sc-if value="{{ hasFilters }}" hint-placeholder-val="{{ true }}"><button onClick="{{ clearFilters }}" style="min-height: 44px; padding: 0 8px; background: none; border: 0; font-size: 14px; font-weight: 600; color: {{ accent }}">Clear all</button></sc-if>
+</div>
+<button aria-label="Sort: longest since sung here. Change sort" style="display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 10px; border-radius: 10px; background: none; border: 1px solid #27313C; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.04em; color: #E8EEF4"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"></path></svg>LONGEST SINCE HERE</button>
+</div>
+<ul aria-label="Your songs" style="flex-shrink: 0; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border-top: 1px solid #1E2731">
+<sc-for list="{{ songRows }}" as="s" hint-placeholder-count="8">
+<li style="display: flex; align-items: center; gap: 10px; min-height: 62px; border-bottom: 1px solid #1E2731">
+<button onClick="{{ s.open }}" style="flex: 1; min-width: 0; min-height: 58px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 0; background: none; border: 0; text-align: left; color: #E8EEF4"><span style="display: block; max-width: 100%; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ s.title }}</span><span style="display: block; max-width: 100%; font-size: 13px; color: #9AA7B4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ s.sub }}</span></button>
+<div style="display: flex; flex-direction: column; align-items: flex-end; gap: 1px; font-family: 'IBM Plex Mono', ui-monospace, monospace"><span style="font-size: 12px; color: #C3CDD7; white-space: nowrap">{{ s.here }}</span><sc-if value="{{ s.kf }}" hint-placeholder-val="{{ true }}"><span style="font-size: 11px; color: #8F9CA9">KARAFUN</span></sc-if></div>
+<sc-if value="{{ s.inSet }}" hint-placeholder-val="{{ false }}"><button aria-label="{{ s.label }}" aria-pressed="true" onClick="{{ s.toggle }}" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 0; background: {{ accent }}; color: #04121D"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></button></sc-if>
+<sc-if value="{{ s.notInSet }}" hint-placeholder-val="{{ true }}"><button aria-label="{{ s.label }}" aria-pressed="false" onClick="{{ s.toggle }}" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: none; border: 1.5px solid #3A4757; color: #E8EEF4"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></button></sc-if>
+</li>
+</sc-for>
+</ul>
+<sc-if value="{{ noSongs }}" hint-placeholder-val="{{ false }}">
+<div style="flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 0">
+<p style="margin: 0; font-size: 15px; color: #C3CDD7">None of your songs match.</p>
+<button onClick="{{ toKF }}" style="min-height: 44px; padding: 0; background: none; border: 0; font-size: 15px; font-weight: 600; color: {{ accent }}">Search the KaraFun catalog instead</button>
+</div>
+</sc-if>
+</sc-if>
+
+<sc-if value="{{ isKFMode }}" hint-placeholder-val="{{ false }}">
+<p style="flex-shrink: 0; margin: 8px 0 4px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.06em; color: #9AA7B4">KARAFUN CATALOG · LOADED 3 NOV · {{ kfCount }} SHOWN</p>
+<ul aria-label="KaraFun catalog" style="flex-shrink: 0; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border-top: 1px solid #1E2731">
+<sc-for list="{{ kfRows }}" as="c" hint-placeholder-count="6">
+<li style="display: flex; flex-direction: column; gap: 2px; padding: 8px 0 6px; border-bottom: 1px solid #1E2731">
+<div style="display: flex; align-items: center; gap: 10px">
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<p style="margin: 0; font-size: 16px; font-weight: 600">{{ c.title }}</p>
+<p style="margin: 0; font-size: 13px; color: #9AA7B4">{{ c.sub }}</p>
+</div>
+<sc-if value="{{ c.inSet }}" hint-placeholder-val="{{ false }}"><button aria-label="{{ c.label }}" aria-pressed="true" onClick="{{ c.toggle }}" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 0; background: {{ accent }}; color: #04121D"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></button></sc-if>
+<sc-if value="{{ c.notInSet }}" hint-placeholder-val="{{ true }}"><button aria-label="{{ c.label }}" aria-pressed="false" onClick="{{ c.toggle }}" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: none; border: 1.5px solid #3A4757; color: #E8EEF4"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></button></sc-if>
+</div>
+<sc-if value="{{ c.isMine }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; min-height: 32px; display: flex; align-items: center; gap: 6px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.04em; color: #C3CDD7"><span style="display: flex; color: {{ accent }}"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>IN MY SONGS</p></sc-if>
+<sc-if value="{{ c.notMine }}" hint-placeholder-val="{{ true }}"><button aria-label="{{ c.addLabel }}" onClick="{{ c.addMine }}" style="align-self: flex-start; min-height: 44px; display: flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 10px; background: none; border: 1px solid #33404D; font-size: 14px; font-weight: 600; color: #E8EEF4"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>Add to my songs</button></sc-if>
+</li>
+</sc-for>
+</ul>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isListsIndex }}" hint-placeholder-val="{{ false }}">
+<div class="scroll" style="position: absolute; top: 0; left: 0; right: 0; bottom: 144px; overflow-y: auto; box-sizing: border-box; padding: 52px 16px 16px; display: flex; flex-direction: column; gap: 8px">
+<header style="flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px">
+<h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.01em">Lists</h1>
+<button style="display: flex; align-items: center; gap: 6px; height: 44px; padding: 0 12px; border-radius: 10px; background: none; border: 1px solid #33404D; font-size: 14px; font-weight: 600; color: #E8EEF4"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>New list</button>
+</header>
+<ul aria-label="Your lists" style="flex-shrink: 0; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{ listRows }}" as="l" hint-placeholder-count="5">
+<li>
+<button onClick="{{ l.open }}" style="width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px 8px 12px 14px; border-radius: 12px; background: #151B22; border: 1px solid #27313C; text-align: left; color: #E8EEF4">
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+<span style="font-size: 17px; font-weight: 600">{{ l.name }}</span>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.04em; color: #C3CDD7">{{ l.label }} · {{ l.count }}</span>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #9AA7B4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ l.gl }}</span>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #9AA7B4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ l.dl }}</span>
+<sc-if value="{{ l.hasInSet }}" hint-placeholder-val="{{ false }}"><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 600; color: {{ accent }}">{{ l.inSetText }}</span></sc-if>
+</span>
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9AA7B4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg>
+</button>
+</li>
+</sc-for>
+</ul>
+</div>
+</sc-if>
+
+<sc-if value="{{ isListOpen }}" hint-placeholder-val="{{ false }}">
+<div class="scroll" style="position: absolute; top: 0; left: 0; right: 0; bottom: 144px; overflow-y: auto; box-sizing: border-box; padding: 52px 16px 16px; display: flex; flex-direction: column; gap: 6px">
+<button aria-label="Back to lists" onClick="{{ closeList }}" style="flex-shrink: 0; align-self: flex-start; display: flex; align-items: center; gap: 2px; min-height: 44px; padding: 0 8px 0 0; background: none; border: 0; font-size: 15px; font-weight: 600; color: #C3CDD7"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"></path></svg>Lists</button>
+<h1 style="flex-shrink: 0; margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.01em">{{ lo.name }}</h1>
+<p style="flex-shrink: 0; margin: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.04em; color: #C3CDD7">{{ lo.label }} · {{ lo.count }}</p>
+<p style="flex-shrink: 0; margin: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #9AA7B4">{{ lo.gl }}<br>{{ lo.dl }}</p>
+<p style="flex-shrink: 0; margin: 4px 0 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; color: {{ accent }}">{{ lo.inSetText }}</p>
+<ul aria-label="Songs on this list" style="flex-shrink: 0; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border-top: 1px solid #1E2731">
+<sc-for list="{{ loRows }}" as="r" hint-placeholder-count="8">
+<li style="display: flex; align-items: center; gap: 10px; min-height: 62px; border-bottom: 1px solid #1E2731">
+<button onClick="{{ r.open }}" style="flex: 1; min-width: 0; min-height: 58px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 0; background: none; border: 0; text-align: left; color: #E8EEF4"><span style="display: block; max-width: 100%; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ r.title }}</span><span style="display: block; max-width: 100%; font-size: 13px; color: #9AA7B4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ r.sub }}</span></button>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C3CDD7; white-space: nowrap">{{ r.here }}</span>
+<sc-if value="{{ r.inSet }}" hint-placeholder-val="{{ false }}"><button aria-label="{{ r.label }}" aria-pressed="true" onClick="{{ r.toggle }}" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 0; background: {{ accent }}; color: #04121D"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></button></sc-if>
+<sc-if value="{{ r.notInSet }}" hint-placeholder-val="{{ true }}"><button aria-label="{{ r.label }}" aria-pressed="false" onClick="{{ r.toggle }}" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: none; border: 1.5px solid #3A4757; color: #E8EEF4"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></button></sc-if>
+</li>
+</sc-for>
+</ul>
+</div>
+</sc-if>
+
+<sc-if value="{{ isHistory }}" hint-placeholder-val="{{ false }}">
+<div class="scroll" style="position: absolute; top: 0; left: 0; right: 0; bottom: 144px; overflow-y: auto; box-sizing: border-box; padding: 52px 16px 16px; display: flex; flex-direction: column; gap: 8px">
+<header style="flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px">
+<h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.01em">History</h1>
+<div style="display: flex; gap: 6px">
+<button style="height: 44px; padding: 0 12px; border-radius: 10px; background: none; border: 1.5px solid {{ accent }}; font-size: 14px; font-weight: 600; color: #E8EEF4">Log a sing</button>
+<button style="height: 44px; padding: 0 12px; border-radius: 10px; background: none; border: 1px solid #33404D; font-size: 14px; font-weight: 600; color: #E8EEF4">Venues</button>
+</div>
+</header>
+<div style="flex-shrink: 0; display: flex; gap: 6px; overflow: hidden; margin-right: -16px">
+<button aria-pressed="true" style="flex-shrink: 0; height: 44px; padding: 0 14px; border-radius: 22px; background: {{ accent }}; border: 0; color: #04121D; font-size: 15px; font-weight: 600">The Crown</button>
+<button aria-pressed="false" style="flex-shrink: 0; height: 44px; padding: 0 14px; border-radius: 22px; background: none; border: 1px solid #33404D; color: #C3CDD7; font-size: 15px">Rosie's</button>
+<button aria-pressed="false" style="flex-shrink: 0; height: 44px; padding: 0 14px; border-radius: 22px; background: none; border: 1px solid #33404D; color: #C3CDD7; font-size: 15px">Bar Nine</button>
+<button aria-pressed="false" style="flex-shrink: 0; height: 44px; padding: 0 14px; border-radius: 22px; background: none; border: 1px solid #33404D; color: #C3CDD7; font-size: 15px">All venues</button>
+</div>
+<p style="flex-shrink: 0; margin: 4px 0 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.06em; color: #9AA7B4">BY SONG · RECENT FIRST</p>
+<ul aria-label="Songs sung at The Crown" style="flex-shrink: 0; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border-top: 1px solid #1E2731">
+<li style="display: flex; align-items: center; gap: 10px; min-height: 58px; border-bottom: 1px solid #1E2731"><span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 16px; font-weight: 600">Ring of Fire</span><span style="font-size: 13px; color: #9AA7B4">Johnny Cash</span></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C3CDD7">2× · 14 NOV</span></li>
+<li style="display: flex; align-items: center; gap: 10px; min-height: 58px; border-bottom: 1px solid #1E2731"><span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 16px; font-weight: 600">Ain't No Sunshine</span><span style="font-size: 13px; color: #9AA7B4">Bill Withers</span></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C3CDD7">1× · 14 NOV</span></li>
+<li style="display: flex; align-items: center; gap: 10px; min-height: 58px; border-bottom: 1px solid #1E2731"><span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 16px; font-weight: 600">Suspicious Minds</span><span style="font-size: 13px; color: #9AA7B4">Elvis Presley</span></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C3CDD7">3× · 31 OCT</span></li>
+<li style="display: flex; align-items: center; gap: 10px; min-height: 58px; border-bottom: 1px solid #1E2731"><span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 16px; font-weight: 600">Brown Eyed Girl</span><span style="font-size: 13px; color: #9AA7B4">Van Morrison</span></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C3CDD7">1× · 31 OCT</span></li>
+<li style="display: flex; align-items: center; gap: 10px; min-height: 58px; border-bottom: 1px solid #1E2731"><span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 16px; font-weight: 600">Hallelujah</span><span style="font-size: 13px; color: #9AA7B4">Leonard Cohen</span></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C3CDD7">1× · 31 OCT</span></li>
+<li style="display: flex; align-items: center; gap: 10px; min-height: 58px; border-bottom: 1px solid #1E2731"><span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 16px; font-weight: 600">Folsom Prison Blues</span><span style="font-size: 13px; color: #9AA7B4">Johnny Cash</span></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C3CDD7">2× · 17 OCT</span></li>
+<li style="display: flex; align-items: center; gap: 10px; min-height: 58px; border-bottom: 1px solid #1E2731"><span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 16px; font-weight: 600">Delilah</span><span style="font-size: 13px; color: #9AA7B4">Tom Jones</span></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C3CDD7">1× · 17 OCT</span></li>
+</ul>
+</div>
+</sc-if>
+
+<sc-if value="{{ hasSongPage }}" hint-placeholder-val="{{ false }}">
+<div class="scroll" style="position: absolute; top: 0; left: 0; right: 0; bottom: 144px; z-index: 5; overflow-y: auto; background: #0C1015">
+<header style="padding: 52px 16px 18px; background: #000000; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+<button aria-label="{{ sp.backAria }}" onClick="{{ closeSong }}" style="display: flex; align-items: center; gap: 2px; min-height: 44px; padding: 0 8px 0 0; background: none; border: 0; font-size: 15px; font-weight: 600; color: #C3CDD7"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"></path></svg>{{ sp.back }}</button>
+<button aria-label="Show to the KJ" onClick="{{ songKJ }}" style="min-width: 64px; height: 44px; padding: 0 16px; border-radius: 10px; background: none; border: 1.5px solid {{ accent }}; font-size: 15px; font-weight: 600; color: #FFFFFF">KJ</button>
+</div>
+<p style="margin: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.08em; color: #A3B0BD">FOR THE KJ</p>
+<h1 style="margin: -4px 0 0; font-size: {{ sp.size }}px; font-weight: 700; line-height: 1.04; letter-spacing: -0.02em; color: #FFFFFF">{{ sp.title }}</h1>
+<p style="margin: 0; font-size: 24px; font-weight: 500; color: #DCE3EA">{{ sp.artist }}</p>
+<div style="display: flex; align-items: baseline; gap: 12px">
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px; letter-spacing: 0.08em; color: #A3B0BD">KEY</span>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 48px; font-weight: 600; line-height: 1; color: {{ accent }}">{{ sp.keyBig }}</span>
+<span style="font-size: 15px; color: #C3CDD7">{{ sp.keyWords }}</span>
+</div>
+</header>
+<div style="padding: 4px 16px 16px; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 10px; min-height: 60px; border-bottom: 1px solid #1E2731">
+<p id="bp-status" style="margin: 0; width: 64px; flex-shrink: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.06em; color: #9AA7B4">STATUS</p>
+<div aria-labelledby="bp-status" style="flex: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px">
+<sc-for list="{{ sp.status }}" as="b" hint-placeholder-count="3">
+<button aria-pressed="{{ b.pressed }}" onClick="{{ b.pick }}" style="height: 44px; border-radius: 10px; background: {{ b.bg }}; border: {{ b.bd }}; color: {{ b.fg }}; font-size: 15px; font-weight: 600">{{ b.label }}</button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; min-height: 60px; border-bottom: 1px solid #1E2731">
+<p id="bp-rate" style="margin: 0; width: 64px; flex-shrink: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.06em; color: #9AA7B4">RATING</p>
+<div aria-labelledby="bp-rate" style="flex: 1; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; font-family: 'IBM Plex Mono', ui-monospace, monospace">
+<sc-for list="{{ sp.rating }}" as="b" hint-placeholder-count="5">
+<button aria-label="{{ b.aria }}" aria-pressed="{{ b.pressed }}" onClick="{{ b.pick }}" style="height: 44px; border-radius: 10px; background: {{ b.bg }}; border: {{ b.bd }}; color: {{ b.fg }}; font-size: 16px; font-weight: 600">{{ b.n }}</button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; min-height: 60px; border-bottom: 1px solid #1E2731">
+<p style="margin: 0; width: 64px; flex-shrink: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.06em; color: #9AA7B4">KEY</p>
+<div style="display: flex; align-items: center; gap: 4px">
+<button aria-label="Key down a semitone" onClick="{{ sp.keyDown }}" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: #1C242D; border: 0; color: #E8EEF4"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12h14"></path></svg></button>
+<span style="min-width: 40px; text-align: center; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 18px; font-weight: 600">{{ sp.keyBig }}</span>
+<button aria-label="Key up a semitone" onClick="{{ sp.keyUp }}" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: #1C242D; border: 0; color: #E8EEF4"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></button>
+</div>
+<button aria-label="{{ sp.setAria }}" aria-pressed="{{ sp.setPressed }}" onClick="{{ sp.toggle }}" style="margin-left: auto; height: 44px; padding: 0 12px; border-radius: 10px; background: {{ sp.setBg }}; border: {{ sp.setBd }}; font-size: 14px; font-weight: 600; color: #E8EEF4; white-space: nowrap">{{ sp.setText }}</button>
+</div>
+<div style="display: flex; align-items: flex-start; gap: 10px; min-height: 64px; padding: 10px 0; border-bottom: 1px solid #1E2731">
+<p style="margin: 2px 0 0; width: 64px; flex-shrink: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.06em; color: #9AA7B4">NOTES</p>
+<p style="margin: 0; flex: 1; font-size: 15px; line-height: 1.4">{{ sp.notes }}</p>
+<button aria-label="Edit notes" style="width: 44px; height: 44px; margin: -10px -10px 0 0; display: flex; align-items: center; justify-content: center; background: none; border: 0; color: #C3CDD7"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"></path></svg></button>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; min-height: 58px; border-bottom: 1px solid #1E2731">
+<p style="margin: 0; width: 64px; flex-shrink: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.06em; color: #9AA7B4">TAGS</p>
+<div style="flex: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px">
+<sc-for list="{{ sp.tags }}" as="t" hint-placeholder-count="2"><span style="display: flex; align-items: center; height: 32px; padding: 0 10px; border-radius: 8px; background: #1C242D; font-size: 14px">{{ t.label }}</span></sc-for>
+<button aria-label="Add a tag" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: none; border: 1px dashed #4A5868; color: #C3CDD7"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></button>
+</div>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; min-height: 58px; border-bottom: 1px solid #1E2731">
+<p style="margin: 0; width: 64px; flex-shrink: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.06em; color: #9AA7B4">HERE</p>
+<p style="margin: 0; flex: 1; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: #E8EEF4">{{ sp.here }}<br><span style="color: #9AA7B4">{{ sp.meta }}</span></p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding-top: 12px">
+<button style="height: 44px; border-radius: 10px; background: none; border: 1px solid #33404D; font-size: 14px; font-weight: 600; color: #E8EEF4">Listen</button>
+<button style="height: 44px; border-radius: 10px; background: none; border: 1px solid #33404D; font-size: 14px; font-weight: 600; color: #E8EEF4">Edit</button>
+<button style="height: 44px; border-radius: 10px; background: none; border: 1px solid #33404D; font-size: 14px; font-weight: 600; color: #FFB4A8">Delete</button>
+</div>
+</div>
+</div>
+</sc-if>
+
+<div style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 10; padding: 10px 12px 30px; background: #0C1015; border-top: 1px solid #27313C; display: flex; flex-direction: column; gap: 8px">
+<sc-if value="{{ showTokens }}" hint-placeholder-val="{{ false }}">
+<div aria-label="Filters on" class="scroll" style="display: flex; gap: 6px; margin-right: -12px; overflow-x: auto">
+<sc-for list="{{ tokens }}" as="t" hint-placeholder-count="4">
+<button aria-label="{{ t.aria }}" onClick="{{ t.remove }}" style="flex-shrink: 0; display: flex; align-items: center; gap: 6px; height: 44px; padding: 0 10px 0 12px; border-radius: 10px; background: #102536; border: 1px solid {{ accent }}; color: #E8EEF4; font-size: 14px; font-weight: 500; white-space: nowrap">{{ t.label }}<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+</sc-for>
+</div>
+</sc-if>
+<div style="display: flex; gap: 8px; align-items: center">
+<div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 52px; padding: 0 4px 0 12px; border-radius: 12px; background: #1C242D; border: 1.5px solid {{ fieldBorder }}">
+<span style="display: flex; color: {{ fieldIcon }}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg></span>
+<label for="bp-q" class="vh">{{ placeholder }}</label>
+<input id="bp-q" type="search" value="{{ query }}" onChange="{{ onQuery }}" placeholder="{{ placeholder }}" style="flex: 1; min-width: 0; height: 48px; padding: 0; background: none; border: 0; outline: none; color: #E8EEF4; font-size: 17px; -webkit-appearance: none; appearance: none">
+<sc-if value="{{ hasQuery }}" hint-placeholder-val="{{ false }}"><button aria-label="Clear search" onClick="{{ clearQuery }}" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: none; border: 0; color: #9AA7B4"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></sc-if>
+</div>
+<button aria-label="{{ filterAria }}" style="position: relative; width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #1C242D; border: 1.5px solid {{ filterBorder }}; color: #E8EEF4"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></svg><sc-if value="{{ showBadge }}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; padding: 0 4px; border-radius: 10px; background: {{ accent }}; color: #04121D; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center">{{ filterCount }}</span></sc-if></button>
+</div>
+<nav aria-label="Scopes" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px">
+<sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+<button aria-current="{{ t.current }}" onClick="{{ t.select }}" style="height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 10px; border: 0; background: {{ t.bg }}; color: {{ t.fg }}; font-size: 14px; font-weight: {{ t.fw }}">{{ t.label }}<sc-if value="{{ t.on }}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="width: 18px; height: 3px; border-radius: 2px; background: {{ accent }}"></span></sc-if></button>
+</sc-for>
+</nav>
+</div>
+
+<sc-if value="{{ hasKJ }}" hint-placeholder-val="{{ false }}">
+<section class="kjp" aria-labelledby="bp-kj" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 20; background: #05070A">
+<div style="position: absolute; top: 40px; left: 0; right: 0; bottom: 0; box-sizing: border-box; padding: 8px 20px 34px; background: #000000; border-top: 1px solid #27313C; border-radius: 22px 22px 0 0; display: flex; flex-direction: column; gap: 12px">
+<span aria-hidden="true" style="align-self: center; width: 40px; height: 5px; border-radius: 3px; background: #3A4757"></span>
+<sc-if value="{{ showStrip }}" hint-placeholder-val="{{ true }}">
+<div role="status" style="display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 4px 0 12px; border-radius: 12px; background: #151B22; border: 1px solid #27313C">
+<span style="display: flex; color: {{ accent }}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<p style="margin: 0; flex: 1; min-width: 0; font-size: 14px; color: #C3CDD7">{{ loggedTitle }} logged at The Crown</p>
+<button aria-label="{{ kjUndoAria }}" onClick="{{ undo }}" style="display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 10px; border-radius: 8px; background: none; border: 0; font-size: 14px; font-weight: 600; color: {{ accent }}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"></path><path d="M4 9h11a5 5 0 010 10h-3"></path></svg>Undo</button>
+</div>
+</sc-if>
+<div style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 8px">
+<p style="margin: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; letter-spacing: 0.1em; color: #A3B0BD">{{ kj.label }}</p>
+<h1 id="bp-kj" style="margin: 0; font-size: {{ kj.size }}px; font-weight: 700; line-height: 1.02; letter-spacing: -0.02em; color: #FFFFFF">{{ kj.title }}</h1>
+<p style="margin: 4px 0 0; font-size: 32px; font-weight: 500; line-height: 1.1; color: #DCE3EA">{{ kj.artist }}</p>
+<div style="display: flex; align-items: flex-end; gap: 16px; margin-top: 22px; padding-top: 18px; border-top: 1px solid #27313C">
+<div style="display: flex; flex-direction: column">
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 15px; letter-spacing: 0.1em; color: #A3B0BD">KEY</span>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 110px; font-weight: 600; line-height: 0.9; letter-spacing: -0.04em; color: {{ accent }}">{{ kj.keyBig }}</span>
+</div>
+<span style="margin-bottom: 10px; font-size: 20px; line-height: 1.2; color: #C3CDD7">{{ kj.keyWords }}</span>
+</div>
+</div>
+<button onClick="{{ done }}" style="height: 60px; border-radius: 14px; background: none; border: 1.5px solid #E8EEF4; color: #FFFFFF; font-size: 18px; font-weight: 600">Done</button>
+</div>
+</section>
+<section class="kjl" aria-label="For the KJ" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 30; background: #000000; flex-direction: column; justify-content: center; gap: 2vh; padding: 4vh 5vw; box-sizing: border-box; color: #FFFFFF">
+<p style="margin: 0; font-size: {{ kj.lsize }}; font-weight: 700; line-height: 1.02; letter-spacing: -0.02em">{{ kj.title }}</p>
+<p style="margin: 0; font-size: min(10vh, 4.6vw); font-weight: 500; line-height: 1.1; color: #DCE3EA">{{ kj.artist }}</p>
+<p style="margin: 1vh 0 0; display: flex; align-items: baseline; gap: 2vw; font-family: 'IBM Plex Mono', ui-monospace, monospace; color: {{ accent }}"><span style="font-size: min(7vh, 3vw); letter-spacing: 0.1em; color: #A3B0BD">KEY</span><span style="font-size: min(26vh, 12vw); font-weight: 600; line-height: 0.9; letter-spacing: -0.04em">{{ kj.keyBig }}</span></p>
+</section>
+</sc-if>
+
+<sc-if value="{{ landPreview }}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 40; background: #05070A">
+<section aria-label="Landscape view for the KJ" style="position: absolute; left: -227px; top: 227px; width: 844px; height: 390px; transform: rotate(90deg); box-sizing: border-box; padding: 24px 48px; background: #000000; display: flex; flex-direction: column; justify-content: center; gap: 10px; color: #FFFFFF">
+<p style="margin: 0; font-size: {{ lp.size }}px; font-weight: 700; line-height: 1.02; letter-spacing: -0.02em">{{ lp.title }}</p>
+<p style="margin: 0; font-size: 40px; font-weight: 500; line-height: 1.1; color: #DCE3EA">{{ lp.artist }}</p>
+<p style="margin: 4px 0 0; display: flex; align-items: baseline; gap: 18px; font-family: 'IBM Plex Mono', ui-monospace, monospace; color: {{ accent }}"><span style="font-size: 24px; letter-spacing: 0.1em; color: #A3B0BD">KEY</span><span style="font-size: 100px; font-weight: 600; line-height: 0.9; letter-spacing: -0.04em">{{ lp.keyBig }}</span></p>
+</section>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#6CC4FF","options":["#6CC4FF","#B6F26B","#FFB86B","#D3A6FF"]},"landscapePreview":{"editor":"boolean","default":false},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(...args) {
+    super(...args);
+    var R = [
+      ["folsom", "Folsom Prison Blues", "Johnny Cash", 1955, "Country", -1, 4, "go", "crowd-pleaser,warm-up", 2, "2026-10-17", 1, 1, "Starts cold, so count yourself in. Take the last verse down an octave."],
+      ["moon", "Moondance", "Van Morrison", 1970, "Jazz pop", -2, 4, "go", "swing", 0, "", 1, 1, "Lay back behind the beat."],
+      ["common", "Common People", "Pulp", 1995, "Indie", 0, 4, "go", "upbeat,crowd-pleaser", 1, "2026-09-12", 1, 1, "Let the room shout the spoken bit."],
+      ["islands", "Islands in the Stream", "Kenny Rogers & Dolly Parton", 1983, "Country", 0, 3, "try", "duet,upbeat,crowd-pleaser", 0, "", 1, 1, "Duet: ask at the booth who takes Dolly's part."],
+      ["lovewill", "Love Will Tear Us Apart", "Joy Division", 1980, "Post-punk", 0, 4, "go", "upbeat", 0, "", 1, 1, ""],
+      ["ring", "Ring of Fire", "Johnny Cash", 1963, "Country", -1, 5, "go", "crowd-pleaser", 1, "2026-09-12", 1, 1, ""],
+      ["aint", "Ain't No Sunshine", "Bill Withers", 1971, "Soul", 0, 4, "go", "", 0, "", 1, 1, "Hold the last note longer than feels right."],
+      ["suspicious", "Suspicious Minds", "Elvis Presley", 1969, "Rock and roll", -1, 5, "go", "upbeat,crowd-pleaser", 3, "2026-10-31", 1, 1, ""],
+      ["browneyed", "Brown Eyed Girl", "Van Morrison", 1967, "Pop", 0, 4, "go", "upbeat,crowd-pleaser", 1, "2026-10-31", 1, 1, ""],
+      ["hallelujah", "Hallelujah", "Leonard Cohen", 1984, "Folk", 0, 4, "go", "ballad", 1, "2026-10-31", 1, 1, ""],
+      ["delilah", "Delilah", "Tom Jones", 1968, "Pop", -2, 4, "go", "crowd-pleaser", 1, "2026-10-17", 1, 1, ""],
+      ["sweetcar", "Sweet Caroline", "Neil Diamond", 1969, "Pop", 0, 4, "go", "upbeat,crowd-pleaser", 0, "", 1, 1, "Leave room for the crowd on the horns."],
+      ["sweethome", "Sweet Home Alabama", "Lynyrd Skynyrd", 1974, "Rock", 0, 3, "try", "upbeat", 1, "2026-07-04", 1, 1, ""],
+      ["sweetdreams", "Sweet Dreams (Are Made of This)", "Eurythmics", 1983, "Synth-pop", 0, 3, "try", "upbeat", 0, "", 1, 1, ""],
+      ["tainted", "Tainted Love", "Soft Cell", 1981, "Synth-pop", 0, 4, "go", "upbeat,crowd-pleaser", 0, "", 1, 1, ""],
+      ["justcant", "Just Can't Get Enough", "Depeche Mode", 1981, "Synth-pop", 0, 4, "go", "upbeat", 0, "", 0, 1, ""],
+      ["rain", "Here Comes the Rain Again", "Eurythmics", 1983, "Synth-pop", 0, 4, "go", "upbeat", 0, "", 1, 1, ""],
+      ["dontyou", "Don't You (Forget About Me)", "Simple Minds", 1985, "Rock", 0, 4, "go", "upbeat", 0, "", 0, 1, ""],
+      ["eileen", "Come On Eileen", "Dexys Midnight Runners", 1982, "Pop", 0, 4, "go", "upbeat,crowd-pleaser", 2, "2026-04-18", 1, 1, ""],
+      ["clash", "Should I Stay or Should I Go", "The Clash", 1982, "Punk", 0, 4, "go", "upbeat", 1, "2026-06-06", 0, 1, ""],
+      ["malice", "Town Called Malice", "The Jam", 1982, "Mod", 0, 4, "go", "upbeat,crowd-pleaser", 1, "2026-06-13", 0, 1, ""],
+      ["feeling", "Feeling Good", "Michael Bublé", 2005, "Swing", 0, 4, "go", "", 0, "", 0, 1, ""],
+      ["joker", "The Joker", "Steve Miller Band", 1973, "Rock", 0, 3, "try", "", 0, "", 1, 1, ""],
+      ["standby", "Stand by Me", "Ben E. King", 1961, "Soul", 0, 4, "go", "warm-up", 3, "2026-05-02", 1, 1, ""],
+      ["canthelp", "Can't Help Falling in Love", "Elvis Presley", 1961, "Pop", -1, 4, "go", "ballad,warm-up", 2, "2026-06-13", 0, 1, ""],
+      ["mack", "Mack the Knife", "Bobby Darin", 1959, "Swing", 0, 4, "go", "swing,warm-up", 1, "2026-07-04", 0, 1, ""],
+      ["heroes", "Heroes", "David Bowie", 1977, "Rock", -1, 4, "go", "", 0, "", 1, 1, ""],
+      ["space", "Space Oddity", "David Bowie", 1969, "Rock", 0, 3, "try", "", 0, "", 1, 1, ""],
+      ["creep", "Creep", "Radiohead", 1992, "Alternative", 0, 3, "ret", "", 2, "2026-02-14", 1, 1, ""],
+      ["wonderwall", "Wonderwall", "Oasis", 1995, "Britpop", 0, 3, "ret", "crowd-pleaser", 4, "2026-03-21", 1, 1, "Retired: every room has heard it."],
+      ["losing", "Losing My Religion", "R.E.M.", 1991, "Alternative", 0, 4, "go", "", 0, "", 1, 1, ""],
+      ["personal", "Personal Jesus", "Depeche Mode", 1989, "Synth-pop", 0, 4, "go", "upbeat", 0, "", 1, 1, ""],
+      ["enjoy", "Enjoy the Silence", "Depeche Mode", 1990, "Synth-pop", 0, 4, "go", "", 1, "2026-03-21", 1, 1, ""],
+      ["pressure", "Under Pressure", "Queen & David Bowie", 1981, "Rock", 0, 3, "try", "duet", 0, "", 1, 1, ""],
+      ["somebody", "Somebody That I Used to Know", "Gotye", 2011, "Pop", 0, 3, "try", "duet", 0, "", 1, 1, ""],
+      ["psycho", "Psycho Killer", "Talking Heads", 1977, "New wave", 0, 4, "go", "upbeat", 0, "", 0, 1, ""],
+      ["hurt", "Hurt", "Johnny Cash", 2002, "Country", -1, 5, "go", "ballad", 1, "2026-05-02", 1, 1, ""],
+      ["yoursong", "Your Song", "Elton John", 1970, "Pop", -2, 3, "try", "ballad", 0, "", 1, 1, ""],
+      ["valerie", "Valerie", "Mark Ronson ft. Amy Winehouse", 2007, "Soul", 0, 0, "", "", 0, "", 1, 0, "", "Soul · Pop"],
+      ["bright", "Mr. Brightside", "The Killers", 2004, "Rock", 0, 0, "", "", 0, "", 1, 0, "", "Rock · Indie"],
+      ["dark", "Dancing in the Dark", "Bruce Springsteen", 1984, "Rock", 0, 0, "", "", 0, "", 1, 0, "", "Rock · Pop"],
+      ["shutup", "Shut Up and Dance", "Walk the Moon", 2014, "Pop", 0, 0, "", "", 0, "", 1, 0, "", "Pop · Rock"],
+      ["unusual", "It's Not Unusual", "Tom Jones", 1965, "Pop", 0, 0, "", "", 0, "", 1, 0, "", "Pop · Swing"],
+      ["roads", "Take Me Home, Country Roads", "John Denver", 1971, "Country", 0, 0, "", "", 0, "", 1, 0, "", "Country · Folk"],
+      ["sweetchild", "Sweet Child O' Mine", "Guns N' Roses", 1987, "Rock", 0, 0, "", "", 0, "", 1, 0, "", "Rock · Hard rock"],
+      ["prayer", "Livin' on a Prayer", "Bon Jovi", 1986, "Rock", 0, 0, "", "", 0, "", 1, 0, "", "Rock"],
+      ["kiss", "Kiss", "Prince", 1986, "Funk", 0, 0, "", "", 0, "", 1, 0, "", "Funk · Pop"]
+    ];
+    this.lib = R.map(function (r) {
+      return { id: r[0], t: r[1], a: r[2], y: r[3], g: r[4], k: r[5], r: r[6], s: r[7], tags: r[8] ? r[8].split(",") : [], n: r[9], last: r[10], kf: !!r[11], mine: !!r[12], notes: r[13] || "", sty: r[14] || r[4] };
+    });
+    this.by = {};
+    var by = this.by;
+    this.lib.forEach(function (s) { by[s.id] = s; });
+    this.lists = [
+      { id: "crownsat", name: "Crown Saturdays", label: "FOR THE CROWN", ids: ["folsom", "moon", "common", "islands", "lovewill", "suspicious", "ring", "delilah", "standby", "feeling", "hallelujah", "browneyed"] },
+      { id: "crowd", name: "Crowd pleasers (up-tempo)", label: "ANY VENUE", ids: ["sweetcar", "common", "eileen", "islands", "malice", "tainted", "suspicious", "browneyed"] },
+      { id: "warmup", name: "Warm-up songs", label: "ANY VENUE", ids: ["folsom", "standby", "mack", "feeling", "canthelp", "browneyed"] },
+      { id: "duets", name: "Duets", label: "ANY VENUE", ids: ["islands", "pressure", "somebody"] },
+      { id: "rosies", name: "Rosie's rock night", label: "FOR ROSIE'S", ids: ["clash", "malice", "psycho", "heroes", "dontyou", "personal", "sweethome"] }
+    ];
+    this.state = {
+      scope: "tonight",
+      q: { tonight: "", songs: "", lists: "", history: "" },
+      set: ["folsom", "moon", "common", "islands", "lovewill"],
+      sung: ["ring", "aint"],
+      parked: [],
+      kj: null, kjFrom: null, logged: null,
+      songPage: null, listOpen: null, catalog: "mine",
+      filters: { since: true, eighties: true, upbeat: true, rated: true },
+      mine: {}, edits: {}
+    };
+  }
+
+  renderVals() {
+    var self = this, st = this.state, by = this.by;
+    var accent = this.props.accent != null ? this.props.accent : "#6CC4FF";
+    var landPreview = !!this.props.landscapePreview;
+    var TODAY = "2026-11-14";
+    var MON = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+    var NUM = ["", "one", "two", "three", "four", "five", "six"];
+    var fmt = function (d) { var p = d.split("-"); return parseInt(p[2], 10) + " " + MON[parseInt(p[1], 10) - 1]; };
+    var pad = function (n) { return n < 10 ? "0" + n : "" + n; };
+    var dec = function (y) { return String(Math.floor(y / 10) * 10).slice(2) + "s"; };
+    var isMine = function (id) { return by[id].mine || !!self.state.mine[id]; };
+    var ed = function (id) { return st.edits[id] || {}; };
+    var rateOf = function (id) { return ed(id).r != null ? ed(id).r : by[id].r; };
+    var statOf = function (id) { return ed(id).s != null ? ed(id).s : by[id].s; };
+    var keyOf = function (id) { return ed(id).k != null ? ed(id).k : by[id].k; };
+    var sungTonight = function (id) { return st.sung.indexOf(id) >= 0; };
+    var hereN = function (id) { return by[id].n + (sungTonight(id) ? 1 : 0); };
+    var lastHere = function (id) { return sungTonight(id) ? TODAY : by[id].last; };
+    var lastTxt = function (id) { return lastHere(id) === TODAY ? "TONIGHT" : fmt(lastHere(id)); };
+    var hereShort = function (id) { var n = hereN(id); return n ? n + "× · " + lastTxt(id) : "NEW HERE"; };
+    var hereLong = function (id) { var n = hereN(id); return n ? "HERE " + n + "× · LAST " + lastTxt(id) : "NEVER SUNG HERE"; };
+    var keyStr = function (k) { return k < 0 ? "−" + (-k) : (k > 0 ? "+" + k : "0"); };
+    var keyWords = function (k) { if (k === 0) return "original key"; var a = Math.abs(k); return NUM[a] + (a === 1 ? " semitone " : " semitones ") + (k < 0 ? "down" : "up"); };
+    var inSet = function (id) { return st.set.indexOf(id) >= 0; };
+
+    var toggleSet = function (id) {
+      return function () {
+        var s = self.state;
+        if (s.set.indexOf(id) >= 0) {
+          self.setState({ set: s.set.filter(function (x) { return x !== id; }) });
+        } else {
+          var mine = Object.assign({}, s.mine);
+          if (!by[id].mine) mine[id] = true;
+          self.setState({ set: s.set.concat([id]), mine: mine });
+        }
+      };
+    };
+    var tog = function (id) {
+      var on = inSet(id);
+      return { inSet: on, notInSet: !on, label: "Tonight's set: " + by[id].t, toggle: toggleSet(id) };
+    };
+    var openSong = function (id) { return function () { self.setState({ songPage: id }); }; };
+    var setEdit = function (id, patch) {
+      var e = Object.assign({}, self.state.edits);
+      e[id] = Object.assign({}, e[id] || {}, patch);
+      self.setState({ edits: e });
+    };
+
+    var sang = function () {
+      var s = self.state;
+      if (!s.set.length) return;
+      var id = s.set[0], rest = s.set.slice(1), next = rest.length ? rest[0] : null;
+      var q = Object.assign({}, s.q, { tonight: "" });
+      self.setState({ set: rest, sung: s.sung.concat([id]), logged: id, kj: next, kjFrom: next ? "sang" : null, songPage: null, q: q });
+    };
+    var undo = function () {
+      var s = self.state;
+      if (!s.sung.length) return;
+      var id = s.sung[s.sung.length - 1];
+      self.setState({ sung: s.sung.slice(0, -1), set: [id].concat(s.set.filter(function (x) { return x !== id; })), kj: null, kjFrom: null, logged: null });
+    };
+    var park = function () {
+      var s = self.state;
+      if (!s.set.length) return;
+      self.setState({ set: s.set.slice(1), parked: s.parked.concat([s.set[0]]) });
+    };
+    var upKJ = function () { var s = self.state; if (s.set.length) self.setState({ kj: s.set[0], kjFrom: "button" }); };
+    var songKJ = function () { var s = self.state; if (s.songPage) self.setState({ kj: s.songPage, kjFrom: "song" }); };
+    var done = function () {
+      if (self.state.kjFrom === "song") self.setState({ kj: null, kjFrom: null });
+      else self.setState({ kj: null, kjFrom: null, scope: "tonight", songPage: null });
+    };
+    var onQuery = function (e) {
+      var s = self.state, q = Object.assign({}, s.q);
+      q[s.scope] = e && e.target ? e.target.value : "";
+      self.setState({ q: q, songPage: null });
+    };
+    var clearQuery = function () {
+      var s = self.state, q = Object.assign({}, s.q);
+      q[s.scope] = "";
+      self.setState({ q: q });
+    };
+    var searchKF = function () {
+      var s = self.state, q = Object.assign({}, s.q, { songs: s.q.tonight });
+      self.setState({ scope: "songs", catalog: "kf", q: q, songPage: null });
+    };
+
+    var mineList = this.lib.filter(function (s) { return isMine(s.id); });
+
+    /* Tonight */
+    var upId = st.set.length ? st.set[0] : null;
+    var up = upId ? { title: by[upId].t, artist: by[upId].a, key: "KEY " + keyStr(keyOf(upId)), here: hereLong(upId) } : { title: "", artist: "", key: "", here: "" };
+    var after = st.set.slice(1).map(function (id, i) {
+      return { num: pad(i + 2), title: by[id].t, artist: by[id].a, here: hereShort(id), open: openSong(id), moveLabel: "Move " + by[id].t };
+    });
+    var tq = st.q.tonight.trim().toLowerCase();
+    var typing = tq.length > 0;
+    var allMatches = typing ? mineList.filter(function (s) { return (s.t + " " + s.a).toLowerCase().indexOf(tq) >= 0; }) : [];
+    var matches = allMatches.slice(0, 4).map(function (s) {
+      var i = s.t.toLowerCase().indexOf(tq);
+      return Object.assign({
+        pre: i >= 0 ? s.t.slice(0, i) : s.t,
+        mid: i >= 0 ? s.t.slice(i, i + tq.length) : "",
+        post: i >= 0 ? s.t.slice(i + tq.length) : "",
+        artist: s.a, here: hereShort(s.id)
+      }, tog(s.id));
+    });
+    var trayHeader = allMatches.length === 0 ? "NO SONGS MATCH" : ("ADD TO TONIGHT · " + allMatches.length + (allMatches.length === 1 ? " MATCH" : " MATCHES") + (allMatches.length > 4 ? " · TOP 4" : ""));
+    var showDock = !typing && !!upId;
+
+    /* Songs */
+    var F = st.filters;
+    var TOK = [["since", "not here since 1 Jul"], ["eighties", "80s"], ["upbeat", "upbeat"], ["rated", "rated 4+"]];
+    var tokens = TOK.filter(function (t) { return F[t[0]]; }).map(function (t) {
+      return { label: t[1], aria: "Remove filter: " + t[1], remove: function () { var f = Object.assign({}, self.state.filters); delete f[t[0]]; self.setState({ filters: f }); } };
+    });
+    var passF = function (s) {
+      return (!F.since || !hereN(s.id) || lastHere(s.id) < "2026-07-01") &&
+        (!F.eighties || dec(s.y) === "80s") &&
+        (!F.upbeat || s.tags.indexOf("upbeat") >= 0) &&
+        (!F.rated || rateOf(s.id) >= 4);
+    };
+    var sq = st.q.songs.trim().toLowerCase();
+    var textOk = function (s) { return !sq || (s.t + " " + s.a).toLowerCase().indexOf(sq) >= 0; };
+    var sortKey = function (s) { return (hereN(s.id) ? lastHere(s.id) : "0000") + s.t; };
+    var songIds = mineList.filter(function (s) { return passF(s) && textOk(s); }).sort(function (a, b) { return sortKey(a) < sortKey(b) ? -1 : 1; });
+    var songRows = songIds.map(function (s) {
+      return Object.assign({ title: s.t, sub: s.a + " · " + s.y, here: hereShort(s.id), kf: s.kf, open: openSong(s.id) }, tog(s.id));
+    });
+    var pick = function () { if (songIds.length) self.setState({ songPage: songIds[Math.floor(Math.random() * songIds.length)].id }); };
+    var kfList = this.lib.filter(function (s) { return s.kf && textOk(s); }).sort(function (a, b) { return a.t < b.t ? -1 : 1; });
+    var kfRows = kfList.map(function (s) {
+      var m = isMine(s.id);
+      return Object.assign({
+        title: s.t, sub: s.a + " · " + s.y + " · " + s.sty, isMine: m, notMine: !m,
+        addLabel: "Add " + s.t + " to my songs",
+        addMine: function () { var mm = Object.assign({}, self.state.mine); mm[s.id] = true; self.setState({ mine: mm }); }
+      }, tog(s.id));
+    });
+    var isKF = st.catalog === "kf";
+
+    /* Lists */
+    var mix = function (ids) {
+      var g = {}, d = {};
+      ids.forEach(function (id) { var s = by[id]; g[s.g] = (g[s.g] || 0) + 1; var dd = dec(s.y); d[dd] = (d[dd] || 0) + 1; });
+      var gs = Object.keys(g).sort(function (a, b) { return g[b] - g[a]; });
+      var gl = gs.slice(0, 3).map(function (k) { return k + " " + g[k]; }).join(" · ") + (gs.length > 3 ? " · +" + (gs.length - 3) + " more" : "");
+      var dl = ["50s", "60s", "70s", "80s", "90s", "00s", "10s"].filter(function (k) { return d[k]; }).map(function (k) { return k + " " + d[k]; }).join(" · ");
+      return { gl: gl, dl: dl };
+    };
+    var inSetCount = function (ids) { return ids.filter(inSet).length; };
+    var lq = st.q.lists.trim().toLowerCase();
+    var listRows = this.lists.filter(function (l) { return !lq || l.name.toLowerCase().indexOf(lq) >= 0; }).map(function (l) {
+      var m = mix(l.ids), n = inSetCount(l.ids);
+      return { name: l.name, label: l.label, count: l.ids.length + " SONGS", gl: m.gl, dl: m.dl, hasInSet: n > 0, inSetText: n + " IN TONIGHT'S SET", open: function () { self.setState({ listOpen: l.id }); } };
+    });
+    var loL = null;
+    for (var li = 0; li < this.lists.length; li++) { if (this.lists[li].id === st.listOpen) loL = this.lists[li]; }
+    var lo = { name: "", label: "", count: "", gl: "", dl: "", inSetText: "" };
+    var loRows = [];
+    if (loL) {
+      var lm = mix(loL.ids), ln = inSetCount(loL.ids);
+      lo = { name: loL.name, label: loL.label, count: loL.ids.length + " SONGS", gl: lm.gl, dl: lm.dl, inSetText: ln + " OF " + loL.ids.length + " IN TONIGHT'S SET" };
+      loRows = loL.ids.filter(function (id) { return !lq || (by[id].t + " " + by[id].a).toLowerCase().indexOf(lq) >= 0; }).map(function (id) {
+        return Object.assign({ title: by[id].t, sub: by[id].a, here: hereShort(id), open: openSong(id) }, tog(id));
+      });
+    }
+
+    /* Song page */
+    var spId = st.songPage;
+    var sp = { title: "", artist: "", size: 40, keyBig: "", keyWords: "", status: [], rating: [], tags: [], notes: "", here: "", meta: "", setText: "", setAria: "", setPressed: "false", setBg: "transparent", setBd: "0", back: "", backAria: "", keyDown: null, keyUp: null, toggle: null };
+    if (spId) {
+      var so = by[spId], k = keyOf(spId), r = rateOf(spId), stv = statOf(spId), pos = st.set.indexOf(spId);
+      var backName = st.scope === "tonight" ? "Tonight" : st.scope === "songs" ? "Songs" : st.scope === "lists" ? (loL ? loL.name : "Lists") : "History";
+      sp = {
+        title: so.t, artist: so.a, size: so.t.length <= 12 ? 40 : (so.t.length <= 20 ? 34 : 28),
+        keyBig: keyStr(k), keyWords: keyWords(k),
+        status: [["go", "Go-to"], ["try", "To try"], ["ret", "Retired"]].map(function (p) {
+          var on = stv === p[0];
+          return { label: p[1], pressed: on ? "true" : "false", bg: on ? "#102536" : "transparent", bd: on ? "1.5px solid " + accent : "1px solid #33404D", fg: on ? "#E8EEF4" : "#C3CDD7", pick: function () { setEdit(spId, { s: statOf(spId) === p[0] ? "" : p[0] }); } };
+        }),
+        rating: [1, 2, 3, 4, 5].map(function (n) {
+          var on = n <= r;
+          return { n: n, aria: "Rate " + n + " of 5", pressed: n === r ? "true" : "false", bg: on ? accent : "transparent", fg: on ? "#04121D" : "#C3CDD7", bd: on ? "0" : "1px solid #33404D", pick: function () { setEdit(spId, { r: n }); } };
+        }),
+        keyDown: function () { setEdit(spId, { k: Math.max(-6, keyOf(spId) - 1) }); },
+        keyUp: function () { setEdit(spId, { k: Math.min(6, keyOf(spId) + 1) }); },
+        tags: so.tags.map(function (t) { return { label: t }; }),
+        notes: so.notes || "No notes yet.",
+        here: hereLong(spId),
+        meta: so.y + " · " + so.g.toUpperCase() + (so.kf ? " · ON KARAFUN" : ""),
+        setText: pos >= 0 ? "On set · " + pad(pos + 1) : "Add to set",
+        setAria: "Tonight's set: " + so.t, setPressed: pos >= 0 ? "true" : "false",
+        setBg: pos >= 0 ? "#102536" : "transparent", setBd: pos >= 0 ? "1.5px solid " + accent : "1px solid #33404D",
+        toggle: toggleSet(spId),
+        back: backName, backAria: "Back to " + backName
+      };
+    }
+
+    /* KJ */
+    var kjS = st.kj ? by[st.kj] : null;
+    var kjLen = kjS ? kjS.t.length : 0;
+    var kj = kjS ? {
+      title: kjS.t, artist: kjS.a, keyBig: keyStr(keyOf(kjS.id)), keyWords: keyWords(keyOf(kjS.id)),
+      size: kjLen <= 10 ? 60 : (kjLen <= 20 ? 46 : 38),
+      lsize: kjLen <= 10 ? "min(30vh, 13vw)" : (kjLen <= 20 ? "min(20vh, 8.5vw)" : "min(15vh, 6.5vw)"),
+      label: st.kjFrom === "song" ? "FOR THE KJ" : "UP NEXT FOR THE KJ"
+    } : { title: "", artist: "", keyBig: "", keyWords: "", size: 60, lsize: "10vh", label: "" };
+    var lpS = kjS || (upId ? by[upId] : by.folsom);
+    var lp = { title: lpS.t, artist: lpS.a, keyBig: keyStr(keyOf(lpS.id)), size: lpS.t.length <= 10 ? 120 : (lpS.t.length <= 20 ? 76 : 58) };
+
+    /* Deck */
+    var scope = st.scope;
+    var query = st.q[scope];
+    var placeholder = scope === "tonight" ? "Add a song to tonight" : scope === "songs" ? (isKF ? "Search the KaraFun catalog" : "Search " + mineList.length + " songs") : scope === "lists" ? (loL ? "Search " + loL.name : "Search your lists") : "Search The Crown's history";
+    var showTokens = scope === "songs" && !isKF && tokens.length > 0 && !spId;
+    var showBadge = scope === "songs" && !isKF && tokens.length > 0;
+    var tabs = [["tonight", "Tonight"], ["songs", "Songs"], ["lists", "Lists"], ["history", "History"]].map(function (p) {
+      var on = scope === p[0];
+      return { label: p[1], on: on, current: on ? "page" : "false", bg: on ? "#1C242D" : "transparent", fg: on ? "#E8EEF4" : "#A3B0BD", fw: on ? "600" : "500", select: function () { self.setState({ scope: p[0], songPage: null }); } };
+    });
+    var lastSung = st.sung.length ? by[st.sung[st.sung.length - 1]].t : "";
+
+    return {
+      accent: accent,
+      landPreview: landPreview,
+      isTonight: scope === "tonight",
+      isSongs: scope === "songs",
+      isListsIndex: scope === "lists" && !loL,
+      isListOpen: scope === "lists" && !!loL,
+      isHistory: scope === "history",
+      tonightBottom: showDock ? 304 : 144,
+      hasSung: st.sung.length > 0,
+      sungCount: st.sung.length,
+      sungTitles: st.sung.map(function (id) { return by[id].t; }).join(", "),
+      undoLabel: "Undo last: " + lastSung + " goes back to the top of the set",
+      undo: undo,
+      hasAfter: after.length > 0,
+      afterCount: after.length,
+      after: after,
+      hasParked: st.parked.length > 0,
+      parkedCount: st.parked.length,
+      parkedTitles: st.parked.map(function (id) { return by[id].t; }).join(", "),
+      emptySet: st.set.length === 0,
+      showDock: showDock,
+      up: up,
+      sang: sang, upKJ: upKJ, park: park,
+      typing: typing,
+      trayHeader: trayHeader,
+      matches: matches,
+      showKF: typing && allMatches.length < 3,
+      tonightQuery: st.q.tonight.trim(),
+      searchKF: searchKF,
+      deckH: showTokens ? 196 : 144,
+      mineP: isKF ? "false" : "true", kfP: isKF ? "true" : "false",
+      mineBg: isKF ? "transparent" : "#27313C", mineFg: isKF ? "#A3B0BD" : "#E8EEF4",
+      kfBg: isKF ? "#27313C" : "transparent", kfFg: isKF ? "#E8EEF4" : "#A3B0BD",
+      toMine: function () { self.setState({ catalog: "mine" }); },
+      toKF: function () { self.setState({ catalog: "kf" }); },
+      isMineMode: !isKF, isKFMode: isKF,
+      songCount: songRows.length, libTotal: mineList.length,
+      pick: pick,
+      filterLabel: tokens.length === 0 ? "NO FILTERS" : tokens.length + (tokens.length === 1 ? " FILTER ON" : " FILTERS ON"),
+      hasFilters: tokens.length > 0,
+      clearFilters: function () { self.setState({ filters: {} }); },
+      songRows: songRows,
+      noSongs: songRows.length === 0,
+      kfRows: kfRows, kfCount: kfRows.length,
+      listRows: listRows,
+      lo: lo, loRows: loRows,
+      closeList: function () { self.setState({ listOpen: null }); },
+      hasSongPage: !!spId,
+      sp: sp,
+      closeSong: function () { self.setState({ songPage: null }); },
+      songKJ: songKJ,
+      showTokens: showTokens, tokens: tokens,
+      query: query, hasQuery: query.length > 0,
+      placeholder: placeholder,
+      onQuery: onQuery, clearQuery: clearQuery,
+      fieldBorder: query.length > 0 ? accent : "#33404D",
+      fieldIcon: query.length > 0 ? accent : "#9AA7B4",
+      filterAria: showBadge ? "Filters, " + tokens.length + " on" : "Filters",
+      filterBorder: showBadge ? accent : "#27313C",
+      showBadge: showBadge, filterCount: tokens.length,
+      tabs: tabs,
+      hasKJ: !!kjS,
+      kj: kj,
+      showStrip: st.kjFrom === "sang" && !!st.logged,
+      loggedTitle: st.logged ? by[st.logged].t : "",
+      kjUndoAria: "Undo: " + (st.logged ? by[st.logged].t : "") + " goes back to up next",
+      done: done,
+      lp: lp
+    };
+  }
+}
+</script>
+</body>
+</html>

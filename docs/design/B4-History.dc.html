@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>History scope</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0;background:#080B0F}
+button{font:inherit;color:inherit;cursor:pointer}
+input{font:inherit}
+input::placeholder{color:#8F9CA9}
+.vh{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+a{color:#6CC4FF}a:hover{color:#A8DCFF}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #0C1015; color: #E8EEF4; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 16px; line-height: 1.3">
+<main style="position: absolute; top: 0; left: 0; right: 0; padding: 52px 16px 0; display: flex; flex-direction: column; gap: 8px">
+
+<header style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+<h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.01em">History</h1>
+<div style="display: flex; gap: 6px">
+<button style="display: flex; align-items: center; gap: 6px; height: 44px; padding: 0 12px; border-radius: 10px; background: none; border: 1.5px solid {{accent}}; font-size: 14px; font-weight: 600; color: #E8EEF4"><span style="display: flex; color: {{accent}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></span>Log a sing</button>
+<button style="height: 44px; padding: 0 12px; border-radius: 10px; background: none; border: 1px solid #33404D; font-size: 14px; font-weight: 600; color: #E8EEF4">Venues</button>
+</div>
+</header>
+
+<div aria-label="Venue" style="display: flex; gap: 6px; margin-right: -16px; overflow: hidden">
+<button aria-pressed="true" style="flex-shrink: 0; height: 44px; padding: 0 14px; border-radius: 22px; background: {{accent}}; border: 0; color: #04121D; font-size: 15px; font-weight: 600">The Crown</button>
+<button aria-pressed="false" style="flex-shrink: 0; height: 44px; padding: 0 14px; border-radius: 22px; background: none; border: 1px solid #33404D; color: #C3CDD7; font-size: 15px; font-weight: 500">Rosie's</button>
+<button aria-pressed="false" style="flex-shrink: 0; height: 44px; padding: 0 14px; border-radius: 22px; background: none; border: 1px solid #33404D; color: #C3CDD7; font-size: 15px; font-weight: 500">Bar Nine</button>
+<button aria-pressed="false" style="flex-shrink: 0; height: 44px; padding: 0 14px; border-radius: 22px; background: none; border: 1px solid #33404D; color: #C3CDD7; font-size: 15px; font-weight: 500">All venues</button>
+</div>
+
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+<div aria-label="Group by" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; padding: 2px; border-radius: 10px; background: #151B22; border: 1px solid #27313C">
+<button aria-pressed="true" style="height: 40px; min-height: 44px; padding: 0 14px; border-radius: 8px; border: 0; background: #27313C; color: #E8EEF4; font-size: 14px; font-weight: 600">By song</button>
+<button aria-pressed="false" style="height: 40px; min-height: 44px; padding: 0 14px; border-radius: 8px; border: 0; background: none; color: #A3B0BD; font-size: 14px; font-weight: 500">By night</button>
+</div>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.06em; color: #9AA7B4">14 SONGS · RECENT FIRST</span>
+</div>
+
+<ul aria-label="Songs sung at The Crown" style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border-top: 1px solid #1E2731">
+<li style="display: flex; flex-direction: column; border-bottom: 1px solid #1E2731">
+<button aria-expanded="true" style="display: flex; align-items: center; gap: 10px; width: 100%; min-height: 58px; padding: 0; background: none; border: 0; text-align: left; color: #E8EEF4"><span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><span style="font-size: 16px; font-weight: 600">Ring of Fire</span><span style="font-size: 13px; color: #9AA7B4">Johnny Cash</span></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C3CDD7">2× · 14 NOV</span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9AA7B4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"></path></svg></button>
+<ul aria-label="Each sing of Ring of Fire at The Crown" style="list-style: none; margin: 0 0 10px; padding: 4px 4px 4px 12px; border-radius: 10px; background: #151B22; display: flex; flex-direction: column">
+<li style="display: flex; align-items: center; gap: 8px; min-height: 48px; border-bottom: 1px solid #1E2731"><span style="flex: 1; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px">SAT 14 NOV 2026 <span style="color: #9AA7B4">· TONIGHT</span></span><button aria-label="Delete the sing on Sat 14 Nov 2026" style="display: flex; align-items: center; gap: 6px; height: 44px; padding: 0 10px; border-radius: 8px; background: none; border: 0; font-size: 14px; font-weight: 600; color: #FFB4A8"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"></path></svg>Delete</button></li>
+<li style="display: flex; align-items: center; gap: 8px; min-height: 48px"><span style="flex: 1; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px">SAT 12 SEP 2026</span><button aria-label="Delete the sing on Sat 12 Sep 2026" style="display: flex; align-items: center; gap: 6px; height: 44px; padding: 0 10px; border-radius: 8px; background: none; border: 0; font-size: 14px; font-weight: 600; color: #FFB4A8"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"></path></svg>Delete</button></li>
+</ul>
+</li>
+<li style="border-bottom: 1px solid #1E2731"><button aria-expanded="false" style="display: flex; align-items: center; gap: 10px; width: 100%; min-height: 58px; padding: 0; background: none; border: 0; text-align: left; color: #E8EEF4"><span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><span style="font-size: 16px; font-weight: 600">Ain't No Sunshine</span><span style="font-size: 13px; color: #9AA7B4">Bill Withers</span></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C3CDD7">1× · 14 NOV</span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9AA7B4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></button></li>
+<li style="border-bottom: 1px solid #1E2731"><button aria-expanded="false" style="display: flex; align-items: center; gap: 10px; width: 100%; min-height: 58px; padding: 0; background: none; border: 0; text-align: left; color: #E8EEF4"><span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><span style="font-size: 16px; font-weight: 600">Suspicious Minds</span><span style="font-size: 13px; color: #9AA7B4">Elvis Presley</span></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C3CDD7">3× · 31 OCT</span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9AA7B4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></button></li>
+<li style="border-bottom: 1px solid #1E2731"><button aria-expanded="false" style="display: flex; align-items: center; gap: 10px; width: 100%; min-height: 58px; padding: 0; background: none; border: 0; text-align: left; color: #E8EEF4"><span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><span style="font-size: 16px; font-weight: 600">Brown Eyed Girl</span><span style="font-size: 13px; color: #9AA7B4">Van Morrison</span></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C3CDD7">1× · 31 OCT</span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9AA7B4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></button></li>
+<li style="border-bottom: 1px solid #1E2731"><button aria-expanded="false" style="display: flex; align-items: center; gap: 10px; width: 100%; min-height: 58px; padding: 0; background: none; border: 0; text-align: left; color: #E8EEF4"><span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><span style="font-size: 16px; font-weight: 600">Hallelujah</span><span style="font-size: 13px; color: #9AA7B4">Leonard Cohen</span></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C3CDD7">1× · 31 OCT</span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9AA7B4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></button></li>
+<li style="border-bottom: 1px solid #1E2731"><button aria-expanded="false" style="display: flex; align-items: center; gap: 10px; width: 100%; min-height: 58px; padding: 0; background: none; border: 0; text-align: left; color: #E8EEF4"><span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><span style="font-size: 16px; font-weight: 600">Folsom Prison Blues</span><span style="font-size: 13px; color: #9AA7B4">Johnny Cash</span></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C3CDD7">2× · 17 OCT</span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9AA7B4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></button></li>
+<li style="border-bottom: 1px solid #1E2731"><button aria-expanded="false" style="display: flex; align-items: center; gap: 10px; width: 100%; min-height: 58px; padding: 0; background: none; border: 0; text-align: left; color: #E8EEF4"><span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><span style="font-size: 16px; font-weight: 600">Delilah</span><span style="font-size: 13px; color: #9AA7B4">Tom Jones</span></span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C3CDD7">1× · 17 OCT</span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9AA7B4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></button></li>
+</ul>
+</main>
+
+<div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 12px 30px; background: #0C1015; border-top: 1px solid #27313C; box-shadow: 0 -12px 28px rgba(0,0,0,0.55); display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; gap: 8px; align-items: center">
+<div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 52px; padding: 0 12px; border-radius: 12px; background: #1C242D; border: 1.5px solid #33404D">
+<span style="display: flex; color: #9AA7B4"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg></span>
+<label for="b4-q" class="vh">Search history at The Crown</label>
+<input id="b4-q" type="search" placeholder="Search The Crown's history" style="flex: 1; min-width: 0; height: 48px; padding: 0; background: none; border: 0; outline: none; color: #E8EEF4; font-size: 17px; -webkit-appearance: none; appearance: none">
+</div>
+<button aria-label="Filters, none on" style="width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #1C242D; border: 1px solid #27313C; color: #E8EEF4"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></svg></button>
+</div>
+<nav aria-label="Scopes" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px">
+<button style="height: 44px; border-radius: 10px; border: 0; background: none; color: #A3B0BD; font-size: 14px; font-weight: 500">Tonight</button>
+<button style="height: 44px; border-radius: 10px; border: 0; background: none; color: #A3B0BD; font-size: 14px; font-weight: 500">Songs</button>
+<button style="height: 44px; border-radius: 10px; border: 0; background: none; color: #A3B0BD; font-size: 14px; font-weight: 500">Lists</button>
+<button aria-current="page" style="height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 10px; border: 0; background: #1C242D; color: #E8EEF4; font-size: 14px; font-weight: 600">History<span aria-hidden="true" style="width: 18px; height: 3px; border-radius: 2px; background: {{accent}}"></span></button>
+</nav>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#6CC4FF","options":["#6CC4FF","#B6F26B","#FFB86B","#D3A6FF"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const a = this.props.accent ?? '#6CC4FF';
+    return { accent: a };
+  }
+}
+</script>
+</body>
+</html>
