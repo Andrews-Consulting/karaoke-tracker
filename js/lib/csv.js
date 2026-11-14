@@ -32,60 +32,75 @@ export class CsvError extends Error {
 // CRLF, LF or CR. A leading UTF-8 BOM is dropped and blank lines are skipped.
 // A quote inside an unquoted field is kept as a literal character. Throws
 // CsvError when a quoted field is never closed.
-export function parseCsv(text) {
+// `delimiter` is one character: ';' reads the KaraFun catalog (R66).
+export function parseCsv(text, options = {}) {
+  return [...csvRows(text, options)];
+}
+
+const QUOTE = 34;
+const CR = 13;
+const LF = 10;
+
+// parseCsv() one row at a time, so a large file (the 7 MB KaraFun catalog,
+// R66) can be read in chunks with the page repainting in between. An unclosed
+// quote throws when the reader reaches it. Plain text is copied in runs with
+// slice() rather than a character at a time, which keeps it fast.
+export function* csvRows(text, { delimiter = ',' } = {}) {
   const src = String(text ?? '').replace(/^﻿/, '');
-  const rows = [];
+  const delim = delimiter.charCodeAt(0);
   let row = [];
-  let field = '';
+  let field = ''; // the current field's text before `start`
+  let start = 0; // where the current field's uncopied text begins
   let atFieldStart = true;
   let inQuotes = false;
   let line = 1;
   let quoteLine = 0;
 
-  const endField = () => {
-    row.push(field);
-    field = '';
-    atFieldStart = true;
-  };
-  const endRow = () => {
-    endField();
-    if (!(row.length === 1 && row[0] === '')) rows.push(row);
-    row = [];
-  };
-
   for (let i = 0; i < src.length; i += 1) {
-    const ch = src[i];
+    const c = src.charCodeAt(i);
     if (inQuotes) {
-      if (ch === '"') {
-        if (src[i + 1] === '"') {
+      if (c === QUOTE) {
+        field += src.slice(start, i);
+        if (src.charCodeAt(i + 1) === QUOTE) {
           field += '"';
           i += 1;
         } else {
           inQuotes = false;
         }
-      } else {
-        if (ch === '\n') line += 1;
-        field += ch;
+        start = i + 1;
+      } else if (c === LF) {
+        line += 1;
       }
-    } else if (ch === '"' && atFieldStart) {
+    } else if (c === QUOTE && atFieldStart) {
       inQuotes = true;
       atFieldStart = false;
       quoteLine = line;
-    } else if (ch === ',') {
-      endField();
-    } else if (ch === '\r' || ch === '\n') {
-      if (ch === '\r' && src[i + 1] === '\n') i += 1;
-      endRow();
+      start = i + 1;
+    } else if (c === delim) {
+      row.push(field + src.slice(start, i));
+      field = '';
+      start = i + 1;
+      atFieldStart = true;
+    } else if (c === CR || c === LF) {
+      row.push(field + src.slice(start, i));
+      field = '';
+      if (c === CR && src.charCodeAt(i + 1) === LF) i += 1;
+      if (!(row.length === 1 && row[0] === '')) yield row; // blank lines are skipped
+      row = [];
+      start = i + 1;
+      atFieldStart = true;
       line += 1;
     } else {
-      field += ch;
       atFieldStart = false;
     }
   }
 
   if (inQuotes) throw new CsvError(`A quoted value starting on line ${quoteLine} is never closed.`);
-  if (field !== '' || row.length > 0) endRow();
-  return rows;
+  const last = field + src.slice(start);
+  if (last !== '' || row.length > 0) {
+    row.push(last);
+    if (!(row.length === 1 && row[0] === '')) yield row;
+  }
 }
 
 // "1984", "1980s" (a decade) or a date such as "1984-05-01" give the 4-digit

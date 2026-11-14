@@ -790,3 +790,12 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
 .list li.starting-fresh { margin-top: 16px; padding: 12px 16px; border-bottom: 0; }
 .list li.starting-fresh p { margin: 0; }
 @media print { .starting-fresh { display: none !important; } }
+
+/* ---- KaraFun catalog in Settings (R66) ---- */
+
+/* The link to KaraFun's song list sizes to its text, like the card's other buttons. */
+.karafun-card a.btn { display: inline-flex; }
+/* Load and Remove sit side by side when they fit, and wrap with a gap when not. */
+.karafun-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+/* The file button while a catalog is loading. */
+.file-btn:has(> .file-input:disabled) { opacity: 0.5; cursor: default; }

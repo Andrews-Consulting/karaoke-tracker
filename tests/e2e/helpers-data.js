@@ -98,7 +98,7 @@ export function answerNextDialog(page, accept) {
 export function songRecord(id, title, artist, extra = {}) {
   return {
     id, title, artist, genre: '', year: null, key: '', notes: '', rating: null,
-    status: 'go-to', tags: [], createdAt: '2026-10-01T19:00:00.000Z', ...extra,
+    status: 'go-to', tags: [], createdAt: '2026-10-01T19:00:00.000Z', karafunId: null, ...extra,
   };
 }
 
