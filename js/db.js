@@ -3,7 +3,7 @@
 // Stores (every record has exactly these fields; build songs with makeSong() in js/lib/song.js)
 //   songs     { id, title, artist, genre, year, key, notes, rating, status, tags[], createdAt }
 //               genre/key/notes: '' when empty.  year: number or null.  rating: 1-5 or null.
-//               status: 'go-to' | 'want-to-try' | 'retired'.  createdAt: ISO timestamp.
+//               status: 'go-to' | 'want-to-try' | 'retired' | '' (not set, R64).  createdAt: ISO timestamp.
 //   venues    { id, name }                              name trimmed, non-empty
 //   sings     { id, songId, venueId, date }             one row per time a song is sung (R8)
 //               date is a local calendar day 'YYYY-MM-DD' (what the user picked, no time zone shifts)

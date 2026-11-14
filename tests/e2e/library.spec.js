@@ -46,7 +46,7 @@ test.describe('Library', () => {
     await expect(details(page)).toContainText('Amy Winehouse');
     await expect(shown(page, 'Genre')).toHaveText('Soul');
     await expect(shown(page, 'Year')).toHaveText('2006');
-    await expect(shown(page, 'Status')).toHaveText('Go-to');
+    await expect(shown(page, 'Status')).toHaveText('—'); // not set until chosen (R64)
     await expect(shown(page, 'Rating')).toHaveText('—');
     await expect(shown(page, 'Key')).toHaveText('—');
     for (const name of ['Back to list', 'Edit', 'Delete']) {
@@ -293,7 +293,7 @@ test.describe('Library', () => {
     await addSong(page, { title: 'Valerie', artist: 'Amy Winehouse' });
 
     await startEditing(page, 'Valerie');
-    await expect(editForm(page).getByLabel('Status')).toHaveValue('go-to');
+    await expect(editForm(page).getByLabel('Status')).toHaveValue(''); // not set (R64)
     await expect(editForm(page).getByLabel('Rating')).toHaveValue('');
     await editForm(page).getByLabel('Tags').fill('duet, Crowd-pleaser, DUET, ');
     await editForm(page).getByLabel('Key').fill('-2');

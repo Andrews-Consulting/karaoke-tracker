@@ -19,15 +19,15 @@ import { db, request } from '../db.js';
 import { el, viewEl, confirmAction, openScreen, closeScreen } from '../ui.js';
 import {
   makeSong, updateSong, validateSong, planSongDelete, describeSongDelete, songKey,
-  SONG_STATUSES, STATUS_LABELS, RATINGS, statusLabel, formatRating, formatTags,
+  SONG_STATUSES, STATUS_LABELS, NO_STATUS_LABEL, RATINGS, statusLabel, formatRating, formatTags,
 } from '../lib/song.js';
 import { pickRandom } from '../lib/pick.js';
-import { createSuggester } from '../musicbrainz.js';
+import { createSuggester, fetchArtistGenres } from '../musicbrainz.js';
 import { singStats, sortVenues, todayLocalISO } from '../lib/stats.js';
 import { filterSongs } from '../lib/search.js';
 import {
   SUNG_NOT_SINCE, SORT_MENU, MIN_RATING_OPTIONS, defaultFilters, decadeLabel, filterChoices, sungOptions,
-  countActiveFilters, applyFind, sungParts, titleOrder, sungFilterActive,
+  countActiveFilters, applyFind, sungParts, titleOrder, sungFilterActive, NO_STATUS_FILTER,
 } from '../lib/find.js';
 import {
   makeSetlist, addSongId, removeSongId, moveSongId, moveSongIdBy, setlistSongs, sungFlags, tonightSing,
@@ -40,6 +40,13 @@ import {
 
 // The meta record that remembers the list's venue across visits and reloads (R37).
 const VENUE_KEY = 'findVenueId';
+
+// Opens Settings at the Backup card (R65). The tab button is the one way to
+// switch views from inside a view without a circular import of app.js.
+export function goToBackup() {
+  document.querySelector('.tabs button[data-view="settings"]')?.click();
+  setTimeout(() => document.getElementById('backup-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 250);
+}
 
 // How many rows the list draws at first, and adds with each "Show more" (R34).
 // The count line always gives the full number that match.
@@ -499,6 +506,18 @@ export async function renderSongs({
         items.push(noMatch);
       } else if (songs.length === 0) {
         items.push(el('li', { class: 'muted', text: 'No songs yet. Add your first one below.' }));
+        // A fresh install: the data from Safari does not come over by itself (R65).
+        items.push(el('li', { class: 'card stack starting-fresh' },
+          el('strong', { text: 'Starting fresh?' }),
+          el('p', {
+            class: 'muted',
+            text: 'If you used Mic Jaunt in Safari before adding it to the Home Screen, your songs stayed in Safari. '
+              + 'Back up there (Settings → Share backup → Save to Files), then restore here.',
+          }),
+          el('button', {
+            type: 'button', class: 'btn', text: 'Restore a backup',
+            onclick: () => goToBackup(),
+          })));
       } else {
         items.push(el('li', { class: 'muted', text: 'No songs match the search and filters.' }));
       }
@@ -930,7 +949,7 @@ export async function renderSongs({
     if (sinceInput.value !== f.since) sinceInput.value = f.since; // never disturb a date being typed
     sinceField.hidden = f.sung !== SUNG_NOT_SINCE;
     fillSelect(tagSelect, [['', 'Any tag'], ...choices.tags.map((t) => [t, t])], f.tag);
-    fillSelect(statusSelect, [['', 'Any status'], ...SONG_STATUSES.map((s) => [s, STATUS_LABELS[s]])], f.status);
+    fillSelect(statusSelect, [['', 'Any status'], ...SONG_STATUSES.map((s) => [s, STATUS_LABELS[s]]), [NO_STATUS_FILTER, NO_STATUS_LABEL]], f.status);
     fillSelect(ratingSelect, [['', 'Any rating'], ...MIN_RATING_OPTIONS.map(([r, text]) => [String(r), text])],
       f.minRating == null ? '' : String(f.minRating));
     fillSelect(genreSelect, [['', 'Any genre'], ...choices.genres.map((g) => [g, g])], f.genre);
@@ -997,16 +1016,26 @@ export async function renderSongs({
     duplicateText,
     el('button', { type: 'button', class: 'btn', text: 'Open it', onclick: openDuplicate }));
   const submitButton = el('button', { class: 'btn primary', type: 'submit', text: 'Add song' });
+  // Genres MusicBrainz knows for the artist, offered as one-tap chips (R63).
+  // (Its labels avoid the word "genre", so the Genre field's label stays unique.)
+  const genreChips = el('div', { class: 'genre-chips', role: 'group', 'aria-label': 'From MusicBrainz', hidden: '' });
+  const addStatus = el('select', { name: 'status' },
+    ...[['', NO_STATUS_LABEL], ...SONG_STATUSES.map((s) => [s, STATUS_LABELS[s]])]
+      .map(([value, text]) => el('option', { value, text })));
   const form = el('form', { class: 'stack', 'aria-label': 'Add a song' },
     textField('Title', { name: 'title', required: '' }),
     suggestionList,
     textField('Artist', { name: 'artist', required: '' }),
     el('div', { class: 'row' }, textField('Genre', { name: 'genre' }), yearField()),
+    genreChips,
+    el('label', { text: 'Status' }, addStatus), // not set by default (R64)
     errorBox,
     duplicateBox,
     submitButton);
   const titleInput = form.elements.namedItem('title');
   const artistInput = form.elements.namedItem('artist');
+  const genreInput = form.elements.namedItem('genre');
+  const yearInput = form.elements.namedItem('year');
 
   // R9: the first song in the library with the typed title and artist, ignoring case.
   const songsByKey = new Map();
@@ -1040,44 +1069,71 @@ export async function renderSongs({
     artistInput.focus();
   }
 
-  // R35: suggestions under the title; taking one fills title and artist.
+  // R35: suggestions under the title; taking one fills title and artist, and
+  // the year and genre MusicBrainz knows (R63). The list scrolls into view so
+  // the keyboard does not hide it.
   function showSuggestions(suggestions) {
     if (!form.isConnected) return;
     suggestionList.replaceChildren(...suggestions.map((s) => el('li', {},
       el('button', {
         type: 'button', class: 'suggestion', 'aria-label': `Use ${s.title} by ${s.artist}`,
         onclick: () => useSuggestion(s),
-      }, s.title, el('span', { class: 'by', text: ` — ${s.artist}` })))));
+      }, s.title, el('span', { class: 'by', text: ` — ${s.artist}` }),
+      s.year ? el('span', { class: 'by', text: ` (${s.year})` }) : null))));
     suggestionList.hidden = suggestions.length === 0;
+    if (suggestions.length) suggestionList.scrollIntoView({ block: 'nearest' });
+  }
+
+  function showGenreChips(genres) {
+    genreChips.replaceChildren(...genres.map((g) => el('button', {
+      type: 'button', class: 'btn chip', text: g, 'aria-label': `Use ${g}`,
+      onclick: () => { genreInput.value = g; },
+    })));
+    genreChips.hidden = genres.length === 0;
   }
 
   const suggester = createSuggester(showSuggestions, () => form.isConnected);
 
-  function useSuggestion(s) {
+  async function useSuggestion(s) {
     suggester.cancel();
     titleInput.value = s.title;
     artistInput.value = s.artist;
+    if (!yearInput.value && s.year) yearInput.value = String(s.year); // earliest release (R63)
     showSuggestions([]);
     checkDuplicate();
     submitButton.focus({ preventScroll: true });
+    const genres = await fetchArtistGenres(s.artistId);
+    if (!form.isConnected || titleInput.value !== s.title) return; // moved on meanwhile
+    if (!genreInput.value && genres.length) genreInput.value = genres[0];
+    showGenreChips(genres);
+  }
+
+  function clearHints() {
+    showSuggestions([]);
+    showGenreChips([]);
   }
 
   titleInput.addEventListener('input', () => {
     suggester.update(titleInput.value, artistInput.value);
+    if (!titleInput.value.trim()) showGenreChips([]);
     checkDuplicate();
   });
-  artistInput.addEventListener('input', checkDuplicate);
+  artistInput.addEventListener('input', () => {
+    suggester.update(titleInput.value, artistInput.value); // the artist narrows the search (R63)
+    checkDuplicate();
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     suggester.cancel();
-    showSuggestions([]);
+    clearHints();
     const data = new FormData(form);
     const fields = {
       title: data.get('title'),
       artist: data.get('artist'),
       genre: data.get('genre'),
       year: data.get('year'),
+      status: data.get('status'), // '' = not set (R64)
     };
     if (showErrors(form, errorBox, validateSong(fields))) return;
     await db.add('songs', makeSong(fields));
@@ -1259,7 +1315,7 @@ function renderEditSong(song, back) {
         select('rating', [['', 'No rating'], ...RATINGS.map((r) => [String(r), String(r)])],
           song.rating == null ? '' : String(song.rating)))),
     el('label', { text: 'Status' },
-      select('status', SONG_STATUSES.map((s) => [s, STATUS_LABELS[s]]), song.status)),
+      select('status', [['', NO_STATUS_LABEL], ...SONG_STATUSES.map((s) => [s, STATUS_LABELS[s]])], song.status)),
     textField('Tags (comma-separated)', { name: 'tags', value: formatTags(song.tags), placeholder: 'e.g. duet, slow, 80s' }),
     el('label', { text: 'Notes' }, notes),
     errorBox,

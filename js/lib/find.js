@@ -129,7 +129,11 @@ export function sungFilterActive(filters) {
   return filters.sung === SUNG_NEVER || (filters.sung === SUNG_NOT_SINCE && isISODate(filters.since));
 }
 
-const statusOf = (song) => (SONG_STATUSES.includes(song.status) ? song.status : 'go-to');
+// A song's status, '' when not set or unknown (R64). The Status filter's
+// "Not set" choice is the value NO_STATUS_FILTER, since '' means "any" there.
+const statusOf = (song) => (SONG_STATUSES.includes(song.status) ? song.status : '');
+export const NO_STATUS_FILTER = 'none';
+const statusFilterActive = (status) => SONG_STATUSES.includes(status) || status === NO_STATUS_FILTER;
 
 // How many filters narrow the list; the sort order does not count.
 export function countActiveFilters(filters = defaultFilters()) {
@@ -137,7 +141,7 @@ export function countActiveFilters(filters = defaultFilters()) {
   return [
     sungFilterActive(f),
     fold(f.tag) !== '',
-    SONG_STATUSES.includes(f.status),
+    statusFilterActive(f.status),
     normalizeRating(f.minRating) !== null,
     fold(f.genre) !== '',
     decadeOf(f.decade) !== null,
@@ -159,7 +163,9 @@ export function matchesFilters(song, stats, filters = defaultFilters()) {
   const tag = fold(f.tag);
   if (tag && !tagsOf(song).some((t) => fold(t) === tag)) return false;
 
-  if (SONG_STATUSES.includes(f.status) && statusOf(song) !== f.status) return false;
+  if (f.status === NO_STATUS_FILTER ? statusOf(song) !== '' : SONG_STATUSES.includes(f.status) && statusOf(song) !== f.status) {
+    return false;
+  }
 
   const minRating = normalizeRating(f.minRating);
   if (minRating !== null) {
