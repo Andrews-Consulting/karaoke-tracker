@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseCsv, planImport, importSummary, csvDate, CsvError } from '../../js/lib/csv.js';
+import { parseCsv, csvRows, planImport, importSummary, csvDate, CsvError } from '../../js/lib/csv.js';
 import { makeSong } from '../../js/lib/song.js';
 import { toCsvField, songsToCsv, csvFileName } from '../../js/lib/csv.js';
 import { sortByTitle } from '../../js/lib/search.js';
@@ -36,6 +36,22 @@ describe('parseCsv (R22)', () => {
 
   it('keeps line breaks inside quoted fields', () => {
     expect(parseCsv('"line one\r\nline two",b\nc,d')).toEqual([['line one\r\nline two', 'b'], ['c', 'd']]);
+  });
+
+  it('splits on another delimiter when asked, keeping commas as text (R66)', () => {
+    expect(parseCsv('Id;Title;"Date Added"\r\n1;"Hello, ""you""; there";a,b\r\n', { delimiter: ';' }))
+      .toEqual([['Id', 'Title', 'Date Added'], ['1', 'Hello, "you"; there', 'a,b']]);
+  });
+
+  it('keeps text around and after a closed quote, as before the speed-up', () => {
+    expect(parseCsv('"ab"cd,e"f"\n,\n""')).toEqual([['abcd', 'e"f"'], ['', '']]);
+  });
+
+  it('gives the same rows one at a time through csvRows, throwing at an unclosed quote', () => {
+    const rows = csvRows('a;b\r\n\r\n"c;d";e\n"open', { delimiter: ';' });
+    expect(rows.next().value).toEqual(['a', 'b']);
+    expect(rows.next().value).toEqual(['c;d', 'e']);
+    expect(() => rows.next()).toThrow(CsvError);
   });
 
   it('strips a UTF-8 BOM', () => {
