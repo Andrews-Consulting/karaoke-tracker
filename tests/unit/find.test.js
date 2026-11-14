@@ -5,7 +5,10 @@ import {
   countActiveFilters, matchesFilters, sortSongs, applyFind, sungParts, NO_STATUS_FILTER,
 } from '../../js/lib/find.js';
 import { singStats } from '../../js/lib/stats.js';
-import { SORT_MENU, titleOrder } from '../../js/lib/find.js';
+import {
+  SORT_MENU, titleOrder, KARAFUN_IN, KARAFUN_OUT, KARAFUN_FILTER_OPTIONS, distinctText, distinctDecades, newestFirst,
+  compareFor,
+} from '../../js/lib/find.js';
 import { sortByTitle } from '../../js/lib/search.js';
 
 // A complete song record, like makeSong() builds, with an id.
@@ -298,6 +301,57 @@ describe('R37 applyFind: search, venue stats, filters and sort together', () => 
 
   it('works without a stats map', () => {
     expect(titles(applyFind(library, undefined, filters({ sung: SUNG_NEVER })))).toEqual(['Africa', 'Dancing Queen', 'Rehab', 'Valerie']);
+  });
+});
+
+describe('R68 the KaraFun filter', () => {
+  const inKarafun = song({ title: 'Valerie', karafunId: 104 });
+  const notIn = song({ title: 'Mystery', karafunId: null });
+  const older = song({ title: 'Saved before karafunId' }); // no karafunId field at all
+
+  it('is off by default, offers Any, In KaraFun and Not in KaraFun, and counts when on', () => {
+    expect(defaultFilters().karafun).toBe('');
+    expect(KARAFUN_FILTER_OPTIONS).toEqual([['', 'Any'], [KARAFUN_IN, 'In KaraFun'], [KARAFUN_OUT, 'Not in KaraFun']]);
+    expect(countActiveFilters(filters({ karafun: KARAFUN_IN }))).toBe(1);
+    expect(countActiveFilters(filters({ karafun: KARAFUN_OUT, genre: 'Pop' }))).toBe(2);
+    expect(countActiveFilters(filters({ karafun: 'maybe' }))).toBe(0);
+  });
+
+  it('keeps songs with a KaraFun id, or songs without one', () => {
+    expect(matchesFilters(inKarafun, undefined, filters({ karafun: KARAFUN_IN }))).toBe(true);
+    expect(matchesFilters(notIn, undefined, filters({ karafun: KARAFUN_IN }))).toBe(false);
+    expect(matchesFilters(older, undefined, filters({ karafun: KARAFUN_IN }))).toBe(false);
+    expect(matchesFilters(inKarafun, undefined, filters({ karafun: KARAFUN_OUT }))).toBe(false);
+    expect(matchesFilters(notIn, undefined, filters({ karafun: KARAFUN_OUT }))).toBe(true);
+    expect(matchesFilters(older, undefined, filters({ karafun: KARAFUN_OUT }))).toBe(true);
+    for (const s of [inKarafun, notIn, older]) expect(matchesFilters(s, undefined, filters({ karafun: '' }))).toBe(true);
+  });
+
+  it('combines with the search and the other filters', () => {
+    const library = [inKarafun, notIn, older, song({ title: 'Valerie (live)', karafunId: 9, genre: 'Soul' })];
+    expect(titles(applyFind(library, new Map(), filters({ karafun: KARAFUN_IN }), 'valerie'))).toEqual(['Valerie', 'Valerie (live)']);
+    expect(titles(applyFind(library, new Map(), filters({ karafun: KARAFUN_IN, genre: 'soul' })))).toEqual(['Valerie (live)']);
+    expect(titles(applyFind(library, new Map(), filters({ karafun: KARAFUN_OUT })))).toEqual(['Mystery', 'Saved before karafunId']);
+  });
+});
+
+describe('helpers shared with the KaraFun catalog (R67)', () => {
+  it('distinctText and distinctDecades build the menus as for my songs', () => {
+    expect(distinctText(['Rock', ' rock ', '', null, 'Alternative'])).toEqual(['Alternative', 'Rock']);
+    expect(distinctDecades([1985, null, '1972', 1989, 2001])).toEqual([1970, 1980, 2000]);
+  });
+
+  it('newestFirst puts the latest date first and blanks last', () => {
+    expect(['2020-01-01', '', '2024-05-05', null, '2019-12-31'].sort(newestFirst))
+      .toEqual(['2024-05-05', '2020-01-01', '2019-12-31', '', null]);
+  });
+
+  it('compareFor gives the comparator sortSongs uses, or null for title order', () => {
+    expect(compareFor('title')).toBeNull();
+    expect(compareFor('nope')).toBeNull();
+    expect(compareFor('toString')).toBeNull();
+    const byDecade = compareFor('decade');
+    expect([{ year: 1999 }, { year: null }, { year: 1975 }].sort(byDecade).map((s) => s.year)).toEqual([1975, 1999, null]);
   });
 });
 

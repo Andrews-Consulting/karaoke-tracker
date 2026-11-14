@@ -7,7 +7,10 @@
 //     the set, and "Add a song" at the bottom (R1), with suggestions from
 //     MusicBrainz (R35) and a warning about a song already there (R9). Stays
 //     quick with 1,000 songs (R34): rows are built once and at most PAGE_SIZE
-//     are drawn at a time.
+//     are drawn at a time. Songs the KaraFun catalog has carry a KaraFun mark
+//     and can be filtered on (R68). Once a catalog is loaded, a "My songs |
+//     KaraFun" switch searches the catalog instead, with its own filters, and
+//     each catalog row adds the song to my songs or straight into the set (R67).
 //   List (R49): the set in order, with move up and down, "Sang it" and "Next time".
 //   Sung (R50): what was sung at the venue by date, with Undo for today.
 // Under Overall there is a set too (R56): + and List work, with Remove in
@@ -15,7 +18,7 @@
 // "Find songs" on a setlist (R57) opens this tab in Find with that set.
 // One song's detail has a video search link (R38), an edit form and delete
 // (R2, R3, R36; the edit form also holds tags, key, status and rating).
-import { db, request } from '../db.js';
+import { db, request, CATALOG_STORE } from '../db.js';
 import { el, viewEl, confirmAction, openScreen, closeScreen } from '../ui.js';
 import {
   makeSong, updateSong, validateSong, planSongDelete, describeSongDelete, songKey,
@@ -27,8 +30,13 @@ import { singStats, sortVenues, todayLocalISO } from '../lib/stats.js';
 import { filterSongs } from '../lib/search.js';
 import {
   SUNG_NOT_SINCE, SORT_MENU, MIN_RATING_OPTIONS, defaultFilters, decadeLabel, filterChoices, sungOptions,
-  countActiveFilters, applyFind, sungParts, titleOrder, sungFilterActive, NO_STATUS_FILTER,
+  countActiveFilters, applyFind, sungParts, titleOrder, sungFilterActive, NO_STATUS_FILTER, KARAFUN_FILTER_OPTIONS,
 } from '../lib/find.js';
+import {
+  CATALOG_SORT_MENU, CATALOG_DUET_OPTIONS, CATALOG_EXPLICIT_OPTIONS, defaultCatalogFilters, countCatalogFilters,
+  catalogMayList, formatCount, prepareCatalog, catalogChoices, catalogSearcher, rowStyles, songFromCatalog,
+  libraryIndex, librarySongFor,
+} from '../lib/catalog.js';
 import {
   makeSetlist, addSongId, removeSongId, moveSongId, moveSongIdBy, setlistSongs, sungFlags, tonightSing,
 } from '../lib/setlist.js';
@@ -229,8 +237,9 @@ function fillSelect(select, options, value) {
 
 // A find control with its label beside it rather than around it, so the
 // control's name is just the label, not the label plus every option's text.
-function findField(labelText, control) {
-  control.id = `find-${control.name}`;
+// The catalog's controls (R67) take the prefix 'catalog'.
+function findField(labelText, control, prefix = 'find') {
+  control.id = `${prefix}-${control.name}`;
   return el('div', { class: 'find-field' }, el('label', { for: control.id, text: labelText }), control);
 }
 
@@ -268,6 +277,13 @@ function sungLine(parts, never = false) {
   return el('span', { class: never ? 'sung never' : 'sung' }, ...children);
 }
 
+// Small marks after a row's details: "KaraFun" on my songs (R68), "Duet" and
+// "Explicit" on catalog rows (R67). False labels are skipped. Each follows a
+// space, so the line reads "Amy Winehouse · Soul · 2006 KaraFun".
+function marks(...labels) {
+  return labels.filter(Boolean).flatMap((label) => [' ', el('span', { class: `mark mark-${label.toLowerCase()}`, text: label })]);
+}
+
 // The filters and sort the owner last used, kept across tabs and reloads (R53).
 const FILTERS_KEY = 'findFilters';
 
@@ -289,8 +305,81 @@ function saveFilters(filters) {
 }
 
 // The search box text, kept while the app is open so another tab and back
-// does not lose it (R53). A reload starts with an empty search.
+// does not lose it (R53). A reload starts with an empty search. My songs and
+// the KaraFun catalog share it, so a song not in my songs can be looked up in
+// the catalog with one tap.
 let rememberedQuery = '';
+
+// ---------- The KaraFun catalog in Find (R67) ----------
+
+// What Find searches: my songs, or the KaraFun catalog once one is loaded.
+// Kept while the app is open; a reload starts with my songs.
+const SOURCES = [['mine', 'My songs'], ['karafun', 'KaraFun']];
+let source = 'mine';
+
+// The catalog filters and sort, kept apart from my songs' (R53 style).
+const CATALOG_FILTERS_KEY = 'catalogFilters';
+
+function loadSavedCatalogFilters() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CATALOG_FILTERS_KEY) || 'null');
+    return saved && typeof saved === 'object' ? { ...defaultCatalogFilters(), ...saved } : defaultCatalogFilters();
+  } catch {
+    return defaultCatalogFilters();
+  }
+}
+
+function saveCatalogFilters(filters) {
+  try {
+    localStorage.setItem(CATALOG_FILTERS_KEY, JSON.stringify(filters));
+  } catch {
+    // Storage blocked: the filters last for this visit only.
+  }
+}
+
+// Settings writes this meta record last after loading or replacing the
+// catalog (R66), so a different value means the copy in memory is stale.
+const CATALOG_LOADED_KEY = 'karafunLoadedAt';
+
+// The catalog in memory: read with one getAll the first time the KaraFun
+// source shows, prepared once (about 100,000 rows), and kept until the
+// catalog is replaced or removed. { loadedAt, prepared, search }.
+let catalog = null;
+let catalogLoading = null; // { loadedAt, promise } while a read is under way
+
+// Called on every render of the Songs tab with what is stored now.
+function forgetStaleCatalog(hasCatalog, loadedAt) {
+  if (!hasCatalog) {
+    catalog = null;
+    catalogLoading = null;
+    source = 'mine';
+  } else if (catalog && catalog.loadedAt !== loadedAt) {
+    catalog = null;
+  }
+}
+
+// Resolves with the catalog in memory for `loadedAt`, reading it first if
+// need be. Quick taps share one read.
+function loadCatalog(loadedAt) {
+  if (catalog && catalog.loadedAt === loadedAt) return Promise.resolve(catalog);
+  if (!catalogLoading || catalogLoading.loadedAt !== loadedAt) {
+    const loading = { loadedAt, promise: null };
+    loading.promise = db.getAll(CATALOG_STORE).then((rows) => {
+      const prepared = prepareCatalog(rows);
+      const made = { loadedAt, prepared, search: catalogSearcher(prepared) };
+      if (catalogLoading === loading) {
+        catalog = made;
+        catalogLoading = null;
+      }
+      return made;
+    }, (err) => {
+      if (catalogLoading === loading) catalogLoading = null;
+      throw err;
+    });
+    catalogLoading = loading;
+  }
+  return catalogLoading.promise;
+}
 
 // The Songs tab. Coming back from a song passes back what the screen showed,
 // so it is restored: the search (`query`), the venue (`venueId`; undefined
@@ -305,18 +394,25 @@ export async function renderSongs({
   // Nothing passed means "as the owner left it": saved filters, remembered search (R53).
   if (query === undefined) query = rememberedQuery;
   if (filters === undefined) filters = loadSavedFilters();
-  const [songRecords, venueRecords, singRecords, setlistRecords, metaRecords] = await Promise.all([
+  const [songRecords, venueRecords, singRecords, setlistRecords, metaRecords, catalogCount] = await Promise.all([
     db.getAll('songs'),
     db.getAll('venues'),
     db.getAll('sings'),
     db.getAll('setlists'),
     db.getAll('meta'),
+    db.count(CATALOG_STORE),
   ]);
   if (!stillCurrent(token)) return;
-  const songs = titleOrder(songRecords);
+  // Songs added from the KaraFun catalog join these while the screen is up (R67).
+  let songs = titleOrder(songRecords);
   const songsById = new Map(songs.map((s) => [s.id, s]));
+  let library = libraryIndex(songs); // which catalog rows are in my songs
   const venues = sortVenues(venueRecords);
   const meta = new Map(metaRecords.map((r) => [r.key, r.value])); // kept in step with what is saved
+  // A catalog is loaded when its store has rows (R66); the switch shows only then (R67).
+  const hasCatalog = catalogCount > 0;
+  const catalogLoadedAt = meta.get(CATALOG_LOADED_KEY) ?? null;
+  forgetStaleCatalog(hasCatalog, catalogLoadedAt);
   // Kept in step with every sing and setlist this screen saves.
   let sings = singRecords;
   let setlists = setlistRecords;
@@ -327,6 +423,7 @@ export async function renderSongs({
     query,
     venueId: venues.some((v) => v.id === wanted) ? wanted : null,
     filters: { ...defaultFilters(), ...filters },
+    catalogFilters: loadSavedCatalogFilters(), // the KaraFun source's own (R67)
     set: null, // the set open at the venue or under Overall (R47, R56); id null while Overall's is unsaved
   };
   rememberedQuery = state.query;
@@ -375,9 +472,10 @@ export async function renderSongs({
   });
   const pickNote = el('p', { class: 'muted pick-note', text: 'Nothing to pick from.', hidden: '' });
 
-  // What the search, filters and sort give (`shown`), how many of those rows
-  // are drawn (`limit`), and each song's row, built the first time it is
-  // drawn and reused until its sing line changes (a new venue or a new sing).
+  // What the search, filters and sort give (`shown`: songs, or catalog rows
+  // in the KaraFun source), how many of those rows are drawn (`limit`), and
+  // each song's row, built the first time it is drawn and reused until its
+  // sing line changes (a new venue or a new sing).
   // Each row has a + that adds the song to the set (R48, under Overall too,
   // R56); those are kept by song id so they follow the set as it changes.
   let shown = [];
@@ -386,6 +484,7 @@ export async function renderSongs({
   const toggles = new Map();
 
   function rowFor(s) {
+    if (source === 'karafun') return catalogItemFor(s);
     let item = rows.get(s.id);
     if (!item) {
       item = songItem(s);
@@ -408,7 +507,7 @@ export async function renderSongs({
       list.append(...added);
       showMoreButton();
       // Focus moves to the first new row, where the button was.
-      added[0]?.querySelector('.song-row').focus({ preventScroll: true });
+      added[0]?.querySelector('button')?.focus({ preventScroll: true });
     },
   });
 
@@ -418,14 +517,167 @@ export async function renderSongs({
     moreButton.textContent = left > 0 ? `Show ${Math.min(left, PAGE_SIZE)} more` : '';
   }
 
+  // A song KaraFun has carries a KaraFun mark after its details (R68).
   function songItem(s) {
     const details = [s.artist, s.genre, s.year].filter(Boolean).join(' · ');
     return el('li', { class: 'song-item', 'data-song-id': s.id },
       el('button', { type: 'button', class: 'song-row', onclick: () => openSong(s.id) },
         el('span', { class: 'title', text: s.title }),
-        el('span', { class: 'sub', text: details }),
+        el('span', { class: 'sub' }, details, ...marks(s.karafunId != null && 'KaraFun')),
         sungLine(sungParts(stats.get(s.id), state.venueId != null), !stats.get(s.id))),
       toggleFor(s));
+  }
+
+  // ---- KaraFun catalog rows (R67) ----
+
+  // Each catalog row's parts, built the first time it is drawn:
+  // { row, item, action, toggle }, by catalog id.
+  const catalogItems = new Map();
+  const adding = new Map(); // catalog id -> the song being added for it, so quick taps add it once
+
+  function catalogItemFor(row) {
+    let entry = catalogItems.get(row.id);
+    if (!entry) {
+      entry = catalogItem(row);
+      catalogItems.set(row.id, entry);
+    }
+    drawCatalogItem(entry); // my songs or the set may have changed since it was drawn
+    return entry.item;
+  }
+
+  // The title; artist, year, styles and the Duet and Explicit marks; "Add to
+  // my songs", or "In my songs" once it is there; and the + that adds it to
+  // the set. No sing line or status: those are for my songs.
+  function catalogItem(row) {
+    const details = [row.artist, row.year, ...rowStyles(row)].filter(Boolean).join(' · ');
+    const entry = {
+      row,
+      action: el('div', { class: 'catalog-action' }),
+      toggle: el('button', { type: 'button', class: 'btn set-toggle', onclick: () => catalogToggle(entry) }),
+    };
+    entry.item = el('li', { class: 'song-item catalog-item', 'data-karafun-id': row.id },
+      el('div', { class: 'catalog-text' },
+        el('span', { class: 'title', text: row.title }),
+        el('span', { class: 'sub' }, details, ...marks(row.duet && 'Duet', row.explicit && 'Explicit')),
+        entry.action),
+      entry.toggle);
+    return entry;
+  }
+
+  function drawCatalogItem(entry) {
+    const song = librarySongFor(library, entry.row);
+    const shows = song ? 'in' : 'out';
+    if (entry.action.dataset.shows !== shows) {
+      entry.action.dataset.shows = shows;
+      entry.action.replaceChildren(song
+        ? el('span', { class: 'in-library' }, el('span', { 'aria-hidden': 'true', text: '✓ ' }), 'In my songs')
+        : el('button', {
+          type: 'button', class: 'btn catalog-add', text: 'Add to my songs',
+          'aria-label': `Add ${entry.row.title} to my songs`,
+          onclick: () => addCatalogSong(entry),
+        }));
+    }
+    // A row not in my songs cannot be in the set: a + that adds it.
+    drawToggle(entry.toggle, song || { id: null, title: entry.row.title });
+  }
+
+  // The song in my songs for a catalog row, added first when it is not there:
+  // title, artist, year, genre, the catalog id (R68) and a duet tag. It joins
+  // this screen's songs at once, so My songs and List show it.
+  function catalogSong(row) {
+    const known = librarySongFor(library, row);
+    if (known) return Promise.resolve(known);
+    if (!adding.has(row.id)) {
+      const fields = makeSong(songFromCatalog(row));
+      adding.set(row.id, db.add('songs', fields).then((id) => {
+        const song = { id, ...fields };
+        songs = titleOrder([...songs, song]);
+        songsById.set(id, song);
+        if (!songsByKey.has(songKey(song))) songsByKey.set(songKey(song), song);
+        library = libraryIndex(songs);
+        return song;
+      }).finally(() => adding.delete(row.id)));
+    }
+    return adding.get(row.id);
+  }
+
+  async function addCatalogSong(entry) {
+    let song;
+    try {
+      song = await catalogSong(entry.row);
+    } catch (err) {
+      failed(err);
+      return;
+    }
+    if (!root.isConnected) return;
+    drawCatalogItem(entry);
+    say(`Added “${song.title}” to your songs.`);
+  }
+
+  // + on a catalog row: into my songs first when need be, then into the set;
+  // ✓ takes it out of the set, as in my songs (R48).
+  async function catalogToggle(entry) {
+    if (adding.has(entry.row.id)) return; // the first tap is still adding it
+    const isNew = !librarySongFor(library, entry.row);
+    let song;
+    try {
+      song = await catalogSong(entry.row);
+    } catch (err) {
+      failed(err);
+      return;
+    }
+    if (!root.isConnected) return;
+    drawCatalogItem(entry);
+    await toggleInSet(song);
+    if (isNew) say(`Added “${song.title}” to your songs and the set.`);
+  }
+
+  // The KaraFun source: nothing until two characters or a filter, then the
+  // matching catalog rows, 200 at a time as for my songs.
+  const catalogHint = el('li', {
+    class: 'muted catalog-hint',
+    text: 'Type two or more letters, or choose a filter, to search the KaraFun catalog.',
+  });
+  const catalogLoadingItem = el('li', { class: 'muted catalog-hint', text: 'Loading the catalog…' });
+  let catalogWait = null; // the read this screen waits on, so it draws once when the rows arrive
+
+  // The catalog in memory, when it is the one stored now.
+  const readyCatalog = () => (catalog && catalog.loadedAt === catalogLoadedAt ? catalog : null);
+
+  function drawCatalog() {
+    rememberedQuery = state.query;
+    list.classList.remove('hide-never');
+    const ready = readyCatalog();
+    if (!ready) {
+      shown = [];
+      count.textContent = '';
+      setChildren(list, [catalogLoadingItem]);
+      showMoreButton();
+      catalogWait ||= loadCatalog(catalogLoadedAt).then(() => {
+        catalogWait = null;
+        if (!root.isConnected) return;
+        syncCatalogFilters(); // the menus' choices come from the rows
+        if (source === 'karafun' && mode === 'find') draw();
+      }, (err) => {
+        catalogWait = null;
+        if (root.isConnected && source === 'karafun' && mode === 'find') {
+          setChildren(list, [el('li', { class: 'error', text: `Could not read the KaraFun catalog: ${err.message}` })]);
+        }
+      });
+      return;
+    }
+    const f = state.catalogFilters;
+    const total = formatCount(ready.prepared.size);
+    if (!catalogMayList(f, state.query)) {
+      shown = [];
+      count.textContent = `${total} songs in the KaraFun catalog`;
+      setChildren(list, [catalogHint]);
+      showMoreButton();
+      return;
+    }
+    shown = ready.search(f, state.query);
+    count.textContent = `${formatCount(shown.length)} of ${total} songs`;
+    drawRows(PAGE_SIZE);
   }
 
   // + adds the song to the end of the set; ✓ shows it is there, and takes it out (R48).
@@ -477,13 +729,24 @@ export async function renderSongs({
     return savingOverall;
   }
 
-  // Inline, where the list would be, when nothing in the library matches the search (R48).
+  // Inline, where the list would be, when nothing in the library matches the
+  // search (R48); with a catalog loaded, the same search can go to it (R67).
   const noMatchText = el('p', { class: 'muted' });
   const addFromSearchButton = el('button', { type: 'button', class: 'btn', onclick: addFromSearch });
-  const noMatch = el('li', { class: 'no-match' }, noMatchText, addFromSearchButton);
+  const searchCatalogButton = hasCatalog
+    ? el('button', {
+      type: 'button', class: 'btn no-match-catalog', text: 'Search the KaraFun catalog',
+      onclick: () => switchSource('karafun'),
+    })
+    : null;
+  const noMatch = el('li', { class: 'no-match' }, noMatchText, addFromSearchButton, searchCatalogButton);
 
   // Runs the search, filters and sort again and draws the first page of rows.
   function draw() {
+    if (source === 'karafun') {
+      drawCatalog();
+      return;
+    }
     shown = applyFind(songs, stats, state.filters, state.query);
     rememberedQuery = state.query;
     // With a sung filter on, every row would say "never sung here": hide those lines (R52).
@@ -500,7 +763,9 @@ export async function renderSongs({
     const items = shown.slice(0, limit).map(rowFor);
     if (shown.length === 0) {
       const text = state.query.trim();
-      if (text && filterSongs(songs, text).length === 0) {
+      if (source === 'karafun') {
+        items.push(el('li', { class: 'muted', text: 'No KaraFun songs match the search and filters.' }));
+      } else if (text && filterSongs(songs, text).length === 0) {
         noMatchText.textContent = `No match for “${text}”.`;
         addFromSearchButton.textContent = `Add “${text}”`;
         items.push(noMatch);
@@ -618,10 +883,12 @@ export async function renderSongs({
     syncSet();
   }
 
-  // What shows the set outside List mode: the List (N) count and every + in Find.
+  // What shows the set outside List mode: the List (N) count and every + in
+  // Find, my songs' and the catalog's (R67).
   function syncSet() {
     syncModes();
     for (const [songId, button] of toggles) drawToggle(button, songsById.get(songId));
+    for (const entry of catalogItems.values()) drawCatalogItem(entry);
   }
 
   // ---- Modes (R47) ----
@@ -938,8 +1205,16 @@ export async function renderSongs({
   const ratingSelect = el('select', { name: 'minRating' });
   const genreSelect = el('select', { name: 'genre' });
   const decadeSelect = el('select', { name: 'decade' });
+  const karafunSelect = el('select', { name: 'karafun' }); // In KaraFun or not (R68)
+  const karafunField = findField('KaraFun', karafunSelect);
   const sortSelect = el('select', { name: 'sort' });
   const summary = el('summary');
+
+  // "Filters (N)" for the source showing: my songs' filters or the catalog's (R67).
+  function syncSummary() {
+    const active = source === 'karafun' ? countCatalogFilters(state.catalogFilters) : countActiveFilters(state.filters);
+    summary.textContent = active ? `Filters (${active})` : 'Filters';
+  }
 
   // Shows the state in every control: after a change, Clear filters or a new venue.
   function syncFilters() {
@@ -955,9 +1230,12 @@ export async function renderSongs({
     fillSelect(genreSelect, [['', 'Any genre'], ...choices.genres.map((g) => [g, g])], f.genre);
     fillSelect(decadeSelect, [['', 'Any decade'], ...choices.decades.map((d) => [String(d), decadeLabel(d)])],
       f.decade == null ? '' : String(f.decade));
+    fillSelect(karafunSelect, KARAFUN_FILTER_OPTIONS, f.karafun || '');
+    // Shown when it can narrow anything: a catalog is loaded or a song carries a
+    // KaraFun id; and while it is on, so a filter in use never hides (R68).
+    karafunField.hidden = !(hasCatalog || f.karafun || songs.some((s) => s.karafunId != null));
     fillSelect(sortSelect, SORT_MENU, f.sort);
-    const active = countActiveFilters(f);
-    summary.textContent = active ? `Filters (${active})` : 'Filters';
+    syncSummary();
   }
 
   function setFilter(key, value) {
@@ -981,6 +1259,7 @@ export async function renderSongs({
   onChange(ratingSelect, numberOrNull);
   onChange(genreSelect, text);
   onChange(decadeSelect, numberOrNull);
+  onChange(karafunSelect, text);
   onChange(sortSelect, text);
 
   const filtersForm = el('form', { class: 'stack find-form', 'aria-label': 'Filters' },
@@ -991,6 +1270,7 @@ export async function renderSongs({
       findField('Rating', ratingSelect),
       findField('Genre', genreSelect),
       findField('Decade', decadeSelect),
+      karafunField,
       findField('Sort by', sortSelect)),
     el('button', {
       type: 'button', class: 'btn', text: 'Clear filters',
@@ -1006,6 +1286,105 @@ export async function renderSongs({
   const filtersBox = el('details', { class: 'card find-filters' }, summary, filtersForm);
   filtersBox.open = filtersOpen;
   syncFilters();
+
+  // ---- The catalog's filters and sort (R67), in the same card ----
+
+  const catalogSelects = {
+    genre: el('select', { name: 'genre' }),
+    decade: el('select', { name: 'decade' }),
+    duet: el('select', { name: 'duet' }),
+    explicit: el('select', { name: 'explicit' }),
+    language: el('select', { name: 'language' }),
+    sort: el('select', { name: 'sort' }),
+  };
+  const NO_CHOICES = { genres: [], languages: [], decades: [] }; // until the rows are read
+
+  function syncCatalogFilters() {
+    const f = state.catalogFilters;
+    const ready = readyCatalog();
+    const choices = catalogChoices(ready ? ready.prepared : NO_CHOICES, f);
+    const s = catalogSelects;
+    fillSelect(s.genre, [['', 'Any genre'], ...choices.genres.map((g) => [g, g])], f.genre);
+    fillSelect(s.decade, [['', 'Any decade'], ...choices.decades.map((d) => [String(d), decadeLabel(d)])],
+      f.decade == null ? '' : String(f.decade));
+    fillSelect(s.duet, CATALOG_DUET_OPTIONS, f.duet);
+    fillSelect(s.explicit, CATALOG_EXPLICIT_OPTIONS, f.explicit);
+    fillSelect(s.language, [['', 'Any language'], ...choices.languages.map((l) => [l, l])], f.language);
+    fillSelect(s.sort, CATALOG_SORT_MENU, f.sort);
+    syncSummary();
+  }
+
+  function setCatalogFilters(filters) {
+    state.catalogFilters = filters;
+    saveCatalogFilters(filters);
+    syncCatalogFilters();
+    draw();
+  }
+
+  for (const [key, select] of Object.entries(catalogSelects)) {
+    select.addEventListener('change', () => setCatalogFilters({
+      ...state.catalogFilters, [key]: key === 'decade' ? numberOrNull(select.value) : select.value,
+    }));
+  }
+
+  const catalogForm = el('form', { class: 'stack find-form', 'aria-label': 'Filters' },
+    el('div', { class: 'find-grid' },
+      findField('Genre', catalogSelects.genre, 'catalog'),
+      findField('Decade', catalogSelects.decade, 'catalog'),
+      findField('Duet', catalogSelects.duet, 'catalog'),
+      findField('Explicit', catalogSelects.explicit, 'catalog'),
+      findField('Language', catalogSelects.language, 'catalog'),
+      findField('Sort by', catalogSelects.sort, 'catalog')),
+    el('button', {
+      type: 'button', class: 'btn', text: 'Clear filters',
+      onclick: () => setCatalogFilters(defaultCatalogFilters()),
+    }));
+  catalogForm.addEventListener('submit', (e) => e.preventDefault());
+  syncCatalogFilters();
+
+  // ---- What Find searches: my songs or the KaraFun catalog (R67) ----
+
+  const sourceButtons = new Map(SOURCES.map(([key, label]) => [key, el('button', {
+    type: 'button', class: 'source', role: 'radio', text: label, onclick: () => switchSource(key),
+  })]));
+  const sourceSwitch = el('div', { class: 'source-switch', role: 'radiogroup', 'aria-label': 'Search in' },
+    ...sourceButtons.values());
+  // Arrow keys move between the two, as in any radio group.
+  sourceSwitch.addEventListener('keydown', (e) => {
+    const step = { ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1 }[e.key];
+    if (!step) return;
+    const keys = SOURCES.map(([key]) => key);
+    const next = keys[(keys.indexOf(source) + step + keys.length) % keys.length];
+    e.preventDefault();
+    switchSource(next);
+    sourceButtons.get(next).focus();
+  });
+
+  // Shows the source in the switch and the Find panel: the catalog has its own
+  // filters, and no Pick for me or Add a song (nor Starting fresh, which is a row).
+  function syncSource() {
+    const karafun = source === 'karafun';
+    for (const [key, button] of sourceButtons) {
+      button.setAttribute('aria-checked', String(key === source));
+      button.tabIndex = key === source ? 0 : -1;
+    }
+    const form = karafun ? catalogForm : filtersForm;
+    if (filtersBox.lastElementChild !== form) filtersBox.replaceChildren(summary, form);
+    search.placeholder = karafun ? 'Search the KaraFun catalog' : 'Search title or artist';
+    pickButton.hidden = karafun;
+    if (karafun) pickNote.hidden = true; // drawing my songs sets it again
+    addCard.hidden = karafun;
+    syncSummary();
+  }
+
+  function switchSource(key) {
+    if (key === source || !hasCatalog) return;
+    source = key;
+    say('');
+    syncSource();
+    draw();
+    viewEl.scrollTop = 0;
+  }
 
   // ---- Add a song, with suggestions (R35) and a duplicate warning (R9) ----
 
@@ -1144,7 +1523,9 @@ export async function renderSongs({
   // Adding a song is occasional, so it waits at the bottom of the list (R48).
   const addCard = el('details', { class: 'card add-song' }, el('summary', { text: 'Add a song' }), form);
 
+  // The My songs | KaraFun switch heads Find once a catalog is loaded (R67).
   const findPanel = el('div', { class: 'stack', role: 'tabpanel', 'aria-labelledby': 'mode-find' },
+    hasCatalog ? sourceSwitch : null,
     search,
     filtersBox,
     el('div', { class: 'pick-row' }, count, pickButton, pickNote),
@@ -1163,9 +1544,11 @@ export async function renderSongs({
   viewEl.replaceChildren(root);
   fillSetSelect();
   syncModes();
+  syncSource();
   showMode();
 
-  if (focusId != null) {
+  // Only my songs open a song screen, so only they have a row to come back to.
+  if (focusId != null && !(mode === 'find' && source === 'karafun')) {
     let row = null;
     if (mode === 'find') {
       // Coming back from a song further down than the first page draws enough pages to reach it.
@@ -1234,7 +1617,8 @@ async function renderSong(id, back) {
           field('Rating', formatRating(song.rating)),
           field('Genre', song.genre),
           field('Year', song.year == null ? '' : String(song.year)),
-          field('Tags', formatTags(song.tags))),
+          field('Tags', formatTags(song.tags)),
+          field('KaraFun', song.karafunId != null ? 'Yes' : 'No')), // R68
         errorBox,
         el('button', {
           type: 'button', class: 'btn kj-button', text: 'Show to the KJ',

@@ -790,3 +790,57 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
 .list li.starting-fresh { margin-top: 16px; padding: 12px 16px; border-bottom: 0; }
 .list li.starting-fresh p { margin: 0; }
 @media print { .starting-fresh { display: none !important; } }
+
+/* ---- KaraFun catalog in Find (R67, R68) ---- */
+
+/* My songs | KaraFun at the top of Find: a pill, the source showing filled
+   with the accent like the selected bottom tab (R58). */
+.source-switch {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+}
+.source-switch > .source {
+  flex: 1 1 0;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--text);
+}
+.source-switch > .source[aria-checked="true"] { background: var(--accent); color: var(--accent-text); font-weight: 700; }
+.source-switch > .source:active { opacity: 0.6; }
+
+/* A catalog row: the song, then "Add to my songs" or "In my songs" under it,
+   and the + at the right as in my songs (R48). */
+.catalog-text { flex: 1 1 0; min-width: 0; padding: 10px 0; }
+.catalog-text .title, .catalog-text .sub { display: block; overflow-wrap: anywhere; }
+.catalog-action { margin-top: 6px; }
+.catalog-action .btn { padding: 8px 12px; }
+.in-library { display: inline-block; color: var(--accent); font-size: 0.875rem; font-weight: 600; }
+.list li.catalog-hint { border-bottom: 0; }
+.no-match > .no-match-catalog { display: block; margin-top: 8px; }
+.find-grid > .find-field:has(> #catalog-sort) { grid-column: 1 / -1; }
+
+/* Small marks after a row's details: KaraFun on my songs (R68), Duet and
+   Explicit on catalog rows (R67). */
+.mark {
+  display: inline-block;
+  padding: 0 6px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.mark-karafun { color: var(--accent); }
+
+@media print {
+  .source-switch, .catalog-action { display: none !important; }
+  .mark { padding: 0; border: 0; font-style: italic; }
+}
