@@ -1,20 +1,28 @@
 // IndexedDB wrapper (R18). All data stays on this device.
 //
 // Stores (every record has exactly these fields; build songs with makeSong() in js/lib/song.js)
-//   songs     { id, title, artist, genre, year, key, notes, rating, status, tags[], createdAt }
+//   songs     { id, title, artist, genre, year, key, notes, rating, status, tags[], createdAt, karafunId }
 //               genre/key/notes: '' when empty.  year: number or null.  rating: 1-5 or null.
 //               status: 'go-to' | 'want-to-try' | 'retired' | '' (not set, R64).  createdAt: ISO timestamp.
+//               karafunId: the song's id in the loaded KaraFun catalog, or null (R68).
 //   venues    { id, name }                              name trimmed, non-empty
 //   sings     { id, songId, venueId, date }             one row per time a song is sung (R8)
 //               date is a local calendar day 'YYYY-MM-DD' (what the user picked, no time zone shifts)
 //   setlists  { id, name, venueId|null, songIds[] }     venueId is a label (R56), null = any venue;
 //               songIds in setlist order, no duplicates within one setlist
 //   meta      { key, value }                            e.g. { key: 'lastBackupAt', value: ISO } (R25)
+//   catalog   { id, title, artist, year, duet, explicit, added, styles[], languages[], key }
+//               one row per song in the KaraFun catalog the owner loaded from its CSV (R66);
+//               id is KaraFun's own number. key is songKey() of title and artist, for matching
+//               the owner's songs (R68). year: number or null. duet/explicit: booleans.
+//               added: 'YYYY-MM-DD'. Not part of a backup: it is reloaded from the file.
 //
 // Indexes: songs.artist, songs.genre, songs.year, sings.songId, sings.venueId,
-// setlists.venueId (setlists for any venue have null venueId and so are not in it).
+// setlists.venueId (setlists for any venue have null venueId and so are not in it),
+// catalog.key.
 // At this app's scale (hundreds of songs, thousands of sings) reading a whole
-// store with getAll() and working in memory is fine and keeps views simple.
+// store with getAll() and working in memory is fine and keeps views simple. The
+// catalog is the exception at about 100,000 rows: read it once and keep rows lean.
 //
 // Referential integrity is the caller's job: deleting a song must also delete its
 // sings and remove it from every setlist; deleting a venue must deal with its sings
@@ -24,9 +32,13 @@
 // Never edit an existing block, or installed copies will not be migrated.
 
 const DB_NAME = 'mic-jaunt';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
+// The owner's data: what a backup holds (R20) and a restore replaces (R21).
 export const STORES = ['songs', 'venues', 'sings', 'setlists', 'meta'];
+
+// The loaded KaraFun catalog (R66) lives beside the owner's data, outside backups.
+export const CATALOG_STORE = 'catalog';
 
 let dbPromise;
 
@@ -55,6 +67,11 @@ function open() {
           setlists.createIndex('venueId', 'venueId');
 
           db.createObjectStore('meta', { keyPath: 'key' });
+        }
+
+        if (oldVersion < 2) {
+          const catalog = db.createObjectStore('catalog', { keyPath: 'id' });
+          catalog.createIndex('key', 'key');
         }
       };
 

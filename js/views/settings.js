@@ -1,5 +1,6 @@
 // Settings view: persistent storage (R19), CSV import (R22, with sings R46),
-// CSV export (R23), JSON backup (R20) and restore (R21).
+// CSV export (R23), JSON backup (R20) and restore (R21), and the KaraFun
+// catalog (R66).
 import { db, request } from '../db.js';
 import { el, viewEl, confirmAction } from '../ui.js';
 import {
@@ -13,10 +14,19 @@ import { suggestionsEnabled, setSuggestionsEnabled } from '../musicbrainz.js';
 import {
   buildBackup, backupFileName, validateBackup, countRecords, formatCounts, restoreMessage, backupCheckMessage,
 } from '../lib/backup.js';
+import { loadCatalog, removeCatalog, catalogStatus } from '../karafun.js';
+import {
+  KARAFUN_LIST_URL, catalogStatusText, loadProgressText, loadResultMessage,
+} from '../lib/karafun.js';
 
 export const APP_VERSION = '0.2.0';
 
 const errorText = (err) => (err && err.message) || String(err);
+
+// A KaraFun catalog load in progress (R66): { name, promise, show(text) }. It
+// can take a while on a phone and outlives a re-render of Settings, so coming
+// back to the tab picks up its progress instead of offering a second load.
+let karafunLoad = null;
 
 // A live region for results and errors. It stays until the view is re-rendered.
 function messageArea() {
@@ -268,6 +278,92 @@ export async function renderSettings() {
     }
   }
 
+  // ---- R66: the KaraFun catalog, loaded from the CSV the owner downloads ----
+  const catalogMsg = messageArea();
+  const catalogLine = el('p', { class: 'karafun-status', text: 'Checking for a catalog…' });
+  const catalogPicker = filePicker('Load catalog file', '.csv,text/csv', startCatalogLoad);
+  const catalogInput = catalogPicker.querySelector('input');
+  const removeCatalogBtn = el('button', {
+    class: 'btn danger', type: 'button', text: 'Remove catalog', hidden: '', onclick: removeKarafun,
+  });
+
+  function setCatalogBusy(busy) {
+    catalogInput.disabled = busy;
+    removeCatalogBtn.disabled = busy;
+  }
+
+  async function refreshCatalog() {
+    if (karafunLoad) {
+      catalogLine.textContent = 'Loading a new catalog…';
+      return;
+    }
+    try {
+      const current = await catalogStatus();
+      catalogLine.textContent = catalogStatusText(current);
+      removeCatalogBtn.hidden = current.count === 0;
+    } catch (err) {
+      catalogLine.textContent = `Could not read the catalog. ${errorText(err)}`;
+    }
+  }
+
+  // Shows a load's progress and result in this render of the card.
+  function watchCatalogLoad(load) {
+    load.show = (text) => catalogMsg.show(text);
+    setCatalogBusy(true);
+    load.promise
+      .then(
+        (result) => catalogMsg.show(loadResultMessage(result)),
+        (err) => catalogMsg.show(`Could not load ${load.name}. ${errorText(err)} ${err && err.catalogRemoved
+          ? 'The part loaded was removed; load the file again.'
+          : 'The catalog was not changed.'}`, { error: true }))
+      .finally(() => {
+        setCatalogBusy(false);
+        refreshCatalog();
+      });
+  }
+
+  function startCatalogLoad(file) {
+    if (karafunLoad) return;
+    catalogMsg.show(`Reading ${file.name}…`);
+    const load = { name: file.name, show: () => {} };
+    load.promise = loadCatalog(file, (done, total) => load.show(loadProgressText(done, total)))
+      .finally(() => { if (karafunLoad === load) karafunLoad = null; });
+    karafunLoad = load;
+    watchCatalogLoad(load);
+    refreshCatalog();
+  }
+
+  async function removeKarafun() {
+    if (!confirmAction('Remove the KaraFun catalog from this phone? Browsing KaraFun from Find stops until you '
+      + 'load the file again. Your songs stay marked as in KaraFun.')) return;
+    try {
+      await removeCatalog();
+      catalogMsg.show('Removed the KaraFun catalog. Your songs stay marked as in KaraFun.');
+    } catch (err) {
+      catalogMsg.show(`Could not remove the catalog. ${errorText(err)}`, { error: true });
+    }
+    refreshCatalog();
+  }
+
+  const karafunCard = el('div', { class: 'card stack karafun-card', id: 'karafun-card' },
+    el('strong', { text: 'KaraFun catalog' }),
+    el('p', {
+      class: 'muted',
+      text: 'Browse KaraFun\'s songs from Find, and see which of your songs KaraFun has. '
+        + 'Download the catalog CSV from KaraFun (on an iPhone, Save to Files), load it here, '
+        + 'and load a fresh one every six months or so.',
+    }),
+    el('a', {
+      class: 'btn', href: KARAFUN_LIST_URL, target: '_blank', rel: 'noopener', text: 'Get the catalog from KaraFun',
+    }),
+    catalogLine,
+    el('div', { class: 'karafun-actions' }, catalogPicker, removeCatalogBtn),
+    catalogMsg.node);
+  if (karafunLoad) {
+    catalogMsg.show(`Still loading ${karafunLoad.name}…`);
+    watchCatalogLoad(karafunLoad);
+  }
+
   viewEl.replaceChildren(
     el('div', { class: 'stack' },
       appearance,
@@ -320,6 +416,8 @@ export async function renderSettings() {
         }),
         filePicker('Restore from backup', '.json,application/json', restoreBackup),
         backupMsg.node),
+      karafunCard,
       el('p', { class: 'count', text: `Version ${APP_VERSION}` })));
   refresh();
+  refreshCatalog();
 }

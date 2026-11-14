@@ -29,6 +29,7 @@ Then open <http://localhost:8000>. The VS Code "Live Server" extension works too
 | `js/ui.js` | The `el()` DOM helper, confirmations and other shared UI |
 | `js/lib/` | Pure logic (search, song records, later CSV and backup formats): no DOM, no IndexedDB, unit-tested |
 | `js/db.js` | IndexedDB wrapper, schema and record shapes |
+| `js/karafun.js` | Stores, replaces and removes the KaraFun catalog and flags the songs it has (R66, R68); parsing and matching are in `js/lib/karafun.js` |
 | `sw.js` | Service worker: offline cache |
 | `manifest.webmanifest` | Install settings (name, icons, colors) |
 | `icons/` | App icons; regenerate with `python3 tools/make_icons.py` |
@@ -64,10 +65,11 @@ npm run test:e2e    # Playwright, tests/e2e/, mobile Chromium + mobile WebKit
 - Installable shell with offline cache (R26, R27, R29)
 - Songs tab, built around a night out (R47–R50): the venue and the set you are working sit at the top, with three modes. **Find** searches and filters the library, shows times sung and last sung at the venue, and adds a song to the set with one tap. **List** is the set in order: move up and down, "Sang it" logs the sing and takes the song off, "Next time" parks it on the venue's Next time list. **Sung** shows what you sang here by date, with Undo for today
 - Library: add (at the bottom of Find, or straight from a search that matched nothing), open, edit every field (notes, genre, year, key, tags, status, rating), delete with confirmation (R1, R10, R2, R3, R36, R4–R7); title, artist, year and genre suggestions from MusicBrainz while typing, matching word prefixes, with an off switch in Settings (R35, R63); a new song's status starts as "Not set" (R64); a warning when the song is already there (R9); "Pick for me" (R13)
-- Find filters: never sung here / not since a date, tag, status, rating, genre and decade; sort by title, artist, rating, last sung, date added, genre or decade (R37, R41, R11, R42, R12). Fast with 1,000 songs (R34); each song has a video search link (R38)
+- Find filters: never sung here / not since a date, tag, status, rating, genre, decade and In KaraFun; sort by title, artist, rating, last sung, date added, genre or decade (R37, R41, R11, R42, R12, R68). Fast with 1,000 songs (R34); each song has a video search link (R38)
+- KaraFun catalog in Find: once a catalog is loaded, a "My songs | KaraFun" switch searches it by genre, decade, duet, explicit and language, and each row adds the song to my songs or straight into the set with + (R67); songs KaraFun has carry a KaraFun mark (R68)
 - Setlists tab, for building and tidying lists: each list is labelled "For a venue" or "Any venue" and can be opened at any venue (R56); create, edit, delete; "Find songs" jumps to the Songs tab to add with + (R57); remove and drag to reorder; "Merge into…" moves a list's songs onto the end of another (R59); "Sung here" flags; a Mix card counts genres and decades; "Suggest songs" fills a set with never-sung songs spread across genres and decades (R14, R15, R43, R16, R44, R45)
 - No title bar: the selected bottom tab is an accent pill, and content starts at the top edge (R58). The Setlists tab reopens the setlist you were on if you come back within five minutes (R60); List mode has the same drag handle as the setlist screen (R61)
-- Settings: CSV import of songs and, via a venue column, sings; CSV export; JSON backup by download or, on a phone, the share sheet; "Check a backup file"; restore (R22, R46, R23, R20, R62, R21). In Safari on an iPhone a banner explains that data does not follow the app to the Home Screen, and a fresh install offers to restore (R65)
+- Settings: CSV import of songs and, via a venue column, sings; CSV export; JSON backup by download or, on a phone, the share sheet; "Check a backup file"; restore (R22, R46, R23, R20, R62, R21). The KaraFun catalog: load KaraFun's CSV, see when and how many, replace or remove it; loading marks which of your songs KaraFun has (R66, R68). In Safari on an iPhone a banner explains that data does not follow the app to the Home Screen, and a fresh install offers to restore (R65)
 - Print-friendly song list, setlist and venue history from the browser's print menu (R24); new-version banner with Reload (R30); iPhone icon and status-bar tags (R29); a reminder when the last backup is over 30 days old (R25)
 - Venues: add, rename, delete when unused; log a sing with date and venue; times sung and last sung per venue and overall (R40, R8)
 - Data stored in IndexedDB, with a persistent-storage request (R18, R19)
@@ -78,7 +80,7 @@ npm run test:e2e    # Playwright, tests/e2e/, mobile Chromium + mobile WebKit
 
 ## Still to build
 
-Every requirement is built except R28 (hosting, which is yours to do; see Deploy below). See [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
+Every requirement so far is built, R28 (hosting) included: the app lives at <https://micjaunt.app>. See [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
 
 ## Two things to remember
 

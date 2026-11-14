@@ -80,7 +80,16 @@ export function makeSong(fields = {}, now = new Date()) {
     status,
     tags: normalizeTags(fields.tags),
     createdAt: fields.createdAt || now.toISOString(),
+    karafunId: normalizeKarafunId(fields.karafunId),
   };
+}
+
+// The song's id in the KaraFun catalog (R68): a positive whole number, or null
+// when missing or invalid.
+export function normalizeKarafunId(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
 }
 
 // Case-insensitive "same song" key, for duplicate checks (R9, CSV import).
