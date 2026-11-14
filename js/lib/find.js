@@ -1,5 +1,7 @@
-// Find on the Songs list (R37, R41, R11, R42, R12): filters and sort orders, on
-// top of the R10 text search. Pure: no DOM, no IndexedDB, so Vitest can test it.
+// Find on the Songs list (R37, R41, R11, R42, R12, and "In KaraFun", R68):
+// filters and sort orders, on top of the R10 text search. Pure: no DOM, no
+// IndexedDB, so Vitest can test it. The KaraFun catalog's own filters (R67)
+// are in catalog.js and reuse the helpers exported here.
 //
 // Filters are a plain object; defaultFilters() lists every field. Sing stats
 // come from singStats() in stats.js: Map songId -> { count, lastSung }, for the
@@ -37,15 +39,24 @@ export const SORT_MENU = [
 // Minimum rating choices (R11) as [value, label], highest first.
 export const MIN_RATING_OPTIONS = [[5, '5'], [4, '4+'], [3, '3+'], [2, '2+'], [1, '1+']];
 
+// The "KaraFun" filter (R68): songs the loaded KaraFun catalog has (a
+// karafunId), or songs it does not.
+export const KARAFUN_IN = 'in';
+export const KARAFUN_OUT = 'out';
+export const KARAFUN_FILTER_OPTIONS = [['', 'Any'], [KARAFUN_IN, 'In KaraFun'], [KARAFUN_OUT, 'Not in KaraFun']];
+
 // No filters, title order. Empty strings and nulls mean "any".
 //   sung: SUNG_ANY | SUNG_NEVER | SUNG_NOT_SINCE    since: 'YYYY-MM-DD' or ''
 //   tag, genre: '' or a value (matched ignoring case)    status: '' or a SONG_STATUSES value
 //   minRating: 1-5 or null    decade: e.g. 1980, or null    sort: a SORT_OPTIONS value
+//   karafun: '' | KARAFUN_IN | KARAFUN_OUT
 export function defaultFilters() {
   return {
-    sung: SUNG_ANY, since: '', tag: '', status: '', minRating: null, genre: '', decade: null, sort: 'title',
+    sung: SUNG_ANY, since: '', tag: '', status: '', minRating: null, genre: '', decade: null, karafun: '', sort: 'title',
   };
 }
+
+const karafunFilterActive = (value) => value === KARAFUN_IN || value === KARAFUN_OUT;
 
 const fold = (text) => String(text ?? '').trim().toLowerCase();
 
@@ -72,8 +83,8 @@ export function decadeLabel(decade) {
 // ---------- Choices for the filter menus ----------
 
 // Distinct non-empty values ignoring case (the first spelling seen wins),
-// sorted ignoring case.
-function distinctText(values) {
+// sorted ignoring case. Also builds the KaraFun catalog's menus (R67).
+export function distinctText(values) {
   const byKey = new Map();
   for (const raw of values) {
     const value = String(raw ?? '').trim();
@@ -83,7 +94,8 @@ function distinctText(values) {
   return [...byKey.values()].sort(compareText);
 }
 
-function distinctDecades(values) {
+// Distinct decades of the given years, oldest first.
+export function distinctDecades(values) {
   const decades = new Set(values.map(decadeOf).filter((d) => d !== null));
   return [...decades].sort((a, b) => a - b);
 }
@@ -145,6 +157,7 @@ export function countActiveFilters(filters = defaultFilters()) {
     normalizeRating(f.minRating) !== null,
     fold(f.genre) !== '',
     decadeOf(f.decade) !== null,
+    karafunFilterActive(f.karafun),
   ].filter(Boolean).length;
 }
 
@@ -179,6 +192,10 @@ export function matchesFilters(song, stats, filters = defaultFilters()) {
   const decade = decadeOf(f.decade);
   if (decade !== null && decadeOf(song.year) !== decade) return false;
 
+  // A song saved before karafunId existed has none, like null (R68).
+  if (f.karafun === KARAFUN_IN && song.karafunId == null) return false;
+  if (f.karafun === KARAFUN_OUT && song.karafunId != null) return false;
+
   return true;
 }
 
@@ -199,7 +216,8 @@ function textBlankLast(ta, tb) {
 
 // A date-like string (a 'YYYY-MM-DD' sing date or an ISO createdAt), newest
 // first, compared as strings; null and blanks are missing and sort last.
-function newestFirst(a, b) {
+// Also orders the KaraFun catalog by the day a song was added to it (R67).
+export function newestFirst(a, b) {
   if (!a || !b) return !a - !b;
   return a < b ? 1 : a > b ? -1 : 0;
 }
@@ -244,6 +262,13 @@ const COMPARE = {
   },
 };
 
+// The comparator for one sort order, (a, b, stats) => number, or null for
+// title order and unknown keys. The KaraFun catalog reuses the decade orders,
+// which read only `year` (R67).
+export function compareFor(sortKey) {
+  return Object.hasOwn(COMPARE, sortKey) ? COMPARE[sortKey] : null;
+}
+
 // A copy in title order: the same order as sortByTitle() in search.js (title,
 // then artist, ignoring case), but compared with one collator built up front.
 // localeCompare() with options builds a new collator on every call, which
@@ -261,7 +286,7 @@ export function titleOrder(songs) {
 // without it every song counts as never sung.
 export function sortSongs(songs, sortKey = 'title', stats = new Map()) {
   const byTitle = titleOrder(songs);
-  const compare = Object.hasOwn(COMPARE, sortKey) ? COMPARE[sortKey] : null;
+  const compare = compareFor(sortKey);
   return compare ? byTitle.sort((a, b) => compare(a, b, stats)) : byTitle;
 }
 
