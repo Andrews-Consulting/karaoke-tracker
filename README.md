@@ -6,7 +6,7 @@ The internal id is `mic-jaunt` too: the IndexedDB name, the cache prefix, the ba
 
 No build step, no dependencies, no server. Plain HTML, CSS and JavaScript modules.
 
-Requirements live in [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
+Requirements live in [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md), which describes the app as it is; [docs/USER-STORIES.md](docs/USER-STORIES.md) says the same as what the singer wants and why, without reference to the screens.
 
 ## Run it locally
 
