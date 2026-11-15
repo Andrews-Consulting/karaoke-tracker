@@ -9,7 +9,7 @@
 //   After that (R49, R61): the rest of the set in order, each with its sings
 //     here, a drag handle, and "…" for Park (the venue's Next time list),
 //     Remove and Details.
-//   Up next, docked above the field (R49, R54, R74): the first song with its
+//   Up next, at the head of the set (R49, R54, R74): the first song with its
 //     key and sings here, "Sang it" (logs the sing, takes the song off the set
 //     and shows the next one to the KJ, all in one tap) and "KJ".
 //   Typing in the dock's field lists matching songs above the card, each
@@ -427,9 +427,14 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
     el('p', { text: 'Nothing in tonight\'s set yet. Type a song below, or open Lists.' }),
     el('button', { type: 'button', class: 'btn', text: 'Open Lists', onclick: () => dock.scope('lists') }));
 
+  // Up next heads the set in the page, so it reads 01, 02, 03 from the top and
+  // sits where a thumb rests after unlocking the phone; the field stays docked.
+  const upBox = el('div', { class: 'up-box' });
+
   function drawSet() {
     const all = setSongs();
     const rest = all.slice(1);
+    upBox.replaceChildren(...(all[0] ? [upNextCard(all[0])] : []));
     afterHead.textContent = `After that · ${rest.length}`;
     afterHead.hidden = rest.length === 0;
     afterList.hidden = rest.length === 0;
@@ -555,7 +560,7 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
     openSongScreen(song.id, { label: 'Back to Tonight', render: (extra) => renderTonight(extra) });
   }
 
-  // ---- Up next, docked above the field (R49, R54, R74) ----
+  // ---- Up next, at the head of the set (R49, R54, R74) ----
 
   function upNextCard(song) {
     const key = keyParts(song.key);
@@ -658,17 +663,17 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
         : null);
   }
 
-  // The slot above the field: the matches while typing, otherwise Up next.
-  // Not both: with the keyboard up there is room for one, and the matches
-  // belong right above the field (the prototype's B1).
+  // The slot above the field: the matches while typing, right above the field
+  // where the keyboard leaves room (the prototype's B1); nothing otherwise.
   const dockBox = el('div', { class: 'tonight-dock' });
   function drawDock() {
-    const first = setSongs()[0] || null;
-    const parts = [];
-    if (query.trim()) parts.push(matchesPanel());
-    else if (first) parts.push(upNextCard(first));
-    dockBox.replaceChildren(...parts);
-    dock.slot(parts.length ? dockBox : null);
+    if (query.trim()) {
+      dockBox.replaceChildren(matchesPanel());
+      dock.slot(dockBox);
+    } else {
+      dockBox.replaceChildren();
+      dock.slot(null);
+    }
   }
 
   function drawAll() {
@@ -704,7 +709,7 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
         el('span', { class: 'cap', text: 'Set' }),
         el('span', { class: 'menu-line' }, setText, icon(ICONS.chevron, { size: 16 }))),
       setSelect));
-  const root = el('div', { class: 'tonight' }, header, status, strip, afterHead, afterList, empty);
+  const root = el('div', { class: 'tonight' }, header, status, strip, upBox, afterHead, afterList, empty);
 
   viewEl.replaceChildren(root);
   dock.search(searchOptions);

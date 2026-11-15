@@ -8,7 +8,7 @@ One **dock** sits at the bottom of every scope, from the bottom up:
 
 1. **Scope bar:** Tonight · Songs · Lists · History, plus a gear button at the right end for Settings. Replaces the Songs / Setlists / Venues / Settings tabs. The selected scope is an accent pill like today's selected tab.
 2. **Search field** with a filter button beside it. The field belongs to the scope showing: Tonight "Add a song to tonight", Songs "Search N songs" (or "Search the KaraFun catalog"), Lists "Search lists" or "Search <list name>", History "Search <venue>'s history". The filter button opens the Filters panel as a sheet, shows a badge with the active count, and hides where no filters apply (Lists, History).
-3. **Up next card** (Tonight only), docked above the field; see Tonight.
+3. **A slot** above the field for Tonight's matches while typing. (Up next was docked here at first; on 2026-11-15 it moved to the head of the set in the page, so the set reads 01, 02, 03 from the top and the card sits where a thumb rests after unlocking the phone.)
 
 Detail screens (a song, a list's songs, the KJ view, Settings, venues) stack on top with the existing `openScreen`/`closeScreen` history mechanism (R31), so the back gesture still returns within the app. The dock stays visible under detail screens except the KJ view, which takes the whole screen.
 
@@ -27,7 +27,7 @@ The home scope. Header: venue name with a menu (every venue, Overall, "Manage ve
 
 - **Sung strip:** "SUNG · N  Ring of Fire, Ain't No S…  Undo last". Tap the strip to open tonight's sings grouped by date (R50) as a sheet with Undo per entry for today. Undo puts the song back on top of the set.
 - **After that:** the rest of the set in order, each row: position, title, artist, "N× · last date" or "NEW HERE" in monospace, a drag handle (R61), and a `…` button that opens an inline action row under it: **Park** (to the venue's Next time list, R49), **Remove** from tonight, **Details**. Park is not offered on Up next: the KJ already has that song.
-- **Up next card**, docked: "UP NEXT · 01", key badge, title, artist with "HERE 2× · LAST 17 OCT", and two buttons: **Sang it** and **KJ**. Sang it is a plain button at rest and fills with the accent only while pressed. Sang it logs the sing at the venue today, removes the song from the set, and opens the **KJ view for the next song at once** (R74: one tap). Under Overall, Sang it is absent and the card shows KJ only.
+- **Up next card**, at the head of the set, above After that: "UP NEXT · 01", key badge, title, artist with "HERE 2× · LAST 17 OCT", and two buttons: **Sang it** and **KJ**. Sang it is a plain button at rest and fills with the accent only while pressed. Sang it logs the sing at the venue today, removes the song from the set, and opens the **KJ view for the next song at once** (R74: one tap). Under Overall, Sang it is absent and the card shows KJ only.
 - **Typing** in the field shows matches above the card: up to 8 rows with title, artist, "here" stats and a `+` that becomes `✓`; "Search the KaraFun catalog for “…”" under them when fewer than three match and a catalog is loaded, which jumps to Songs scope with the catalog source and the query. Clearing the field returns to the set. This replaces today's Find mode inside the Songs tab for the quick add; the full search with filters is the Songs scope.
 - **Empty states:** no venue yet → the venue menu offers "Add a venue…"; empty set → "Nothing in tonight's set yet. Type a song above, or open Lists."
 
