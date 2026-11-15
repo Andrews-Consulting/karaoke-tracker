@@ -130,23 +130,29 @@ const SCREENS = [
   }],
   ['songs', async (page) => { await tab(page, 'Songs'); await page.getByText(/of \d+ songs/).waitFor(); }],
   ['songs-filters', async (page) => {
-    await page.locator('details.find-filters > summary').click();
+    await page.locator('#dock .dock-filter').click();
     await page.getByRole('form', { name: 'Filters' }).getByLabel('Sung', { exact: true }).selectOption('never');
   }],
+  ['songs-tokens', async (page) => {
+    await page.locator('.sheet-done').click();
+    await page.getByRole('group', { name: 'Filters on' }).waitFor();
+  }],
   ['songs-add', async (page) => {
-    await page.locator('details.find-filters > summary').click();
     await page.getByText('Add a song', { exact: true }).click();
     await page.getByRole('form', { name: 'Add a song' }).getByLabel('Title').fill('Sweet Caroline');
   }],
   ['song', async (page) => {
     // Filters persist across reloads (R53), so drop the "never sung" one set above.
     await page.evaluate(() => localStorage.removeItem('findFilters'));
-    await page.reload(); // closes the Add form; a reload keeps the scope
+    await page.reload(); // closes the Add sheet; a reload keeps the scope
     await page.getByText(/of \d+ songs/).waitFor();
     await page.getByRole('listitem').filter({ hasText: 'Come and Get Your Love' }).locator('button.song-row').click();
     await heading(page, 'Come and Get Your Love', 2);
   }],
-  ['song-edit', async (page) => { await page.getByRole('button', { name: 'Edit' }).click(); await page.getByRole('button', { name: 'Save' }).waitFor(); }],
+  ['song-edit', async (page) => {
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await page.getByRole('button', { name: 'Save' }).waitFor();
+  }],
   ['history', async (page) => { await tab(page, 'History'); await page.getByRole('form', { name: 'Add a venue' }).waitFor(); }],
   ['venue', async (page) => {
     await page.getByRole('button', { name: 'Open Viking', exact: true }).click();

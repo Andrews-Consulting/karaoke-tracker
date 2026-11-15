@@ -41,8 +41,8 @@ test.describe('CSV import of sings', () => {
     // The Songs list, at that venue (picked on Tonight), shows the stats.
     await openSongs(page);
     await chooseVenue(page, 'Viking');
-    await expect(songItem(page, 'Come and Get Your Love')).toContainText('Sung 1 time · last 2026-10-15');
-    await expect(songItem(page, 'Beginnings')).toContainText('Never sung here');
+    await expect(songItem(page, 'Come and Get Your Love')).toContainText('1× · 15 Oct');
+    await expect(songItem(page, 'Beginnings')).toContainText('New here');
 
     // Importing the same file again adds nothing.
     await openSettings(page);

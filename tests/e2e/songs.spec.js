@@ -23,7 +23,9 @@ test.describe('Songs', () => {
     const form = page.getByRole('form', { name: 'Add a song' });
     await form.getByLabel('Title').fill('Only a title');
     await form.getByRole('button', { name: 'Add song' }).click();
-    // The browser blocks submit on the empty required Artist field.
+    // The browser blocks submit on the empty required Artist field; Cancel adds nothing.
+    await expect(form).toBeVisible();
+    await form.getByRole('button', { name: 'Cancel' }).click();
     await expect(page.getByText('0 of 0 songs')).toBeVisible();
     await expect(page.getByRole('listitem').filter({ hasText: 'Only a title' })).toHaveCount(0);
   });
@@ -39,6 +41,9 @@ test.describe('Songs', () => {
 
     await search.fill('amy');
     await expect(page.getByText('2 of 3 songs')).toBeVisible();
+    // The field shows its focus on the dock's frame, with no second ring inside it.
+    await expect(search).toBeFocused();
+    await expect(search).toHaveCSS('outline-style', 'none');
     await expect(page.getByRole('listitem').filter({ hasText: 'Dancing Queen' })).toHaveCount(0);
     await expect(page.getByRole('listitem').filter({ hasText: 'Valerie' })).toBeVisible();
     await expect(page.getByRole('listitem').filter({ hasText: 'Back to Black' })).toBeVisible();

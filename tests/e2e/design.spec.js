@@ -4,7 +4,7 @@
 import { test, expect } from '@playwright/test';
 import { openApp, openSong, openScope, expectTab, scopeBar } from './helpers.js';
 import {
-  seed, songRow, sungLine, openFilters, filter, choose, filtersSummary, chooseVenue,
+  seed, songRow, sungLine, openFilters, closeFilters, filter, choose, expectFilterCount, chooseVenue, hereText,
 } from './helpers-find.js';
 
 const VALERIE = { title: 'Valerie', artist: 'Amy Winehouse', genre: 'Soul', year: 2006, tags: ['duet'], key: '-2' };
@@ -28,7 +28,7 @@ test.describe('Design pass 1', () => {
     await seedCrown(page);
     await chooseVenue(page, 'The Crown');
     await expect(sungLine(page, 'Dancing Queen')).toBeVisible();
-    await expect(sungLine(page, 'Dancing Queen')).toHaveText('Never sung here');
+    await expect(sungLine(page, 'Dancing Queen')).toHaveText('New here');
 
     await openFilters(page);
     await choose(page, 'Sung', 'Never at this venue');
@@ -41,7 +41,7 @@ test.describe('Design pass 1', () => {
     await filter(page, 'Since').fill('2026-11-01');
     await expect(page.getByText('3 of 3 songs')).toBeVisible();
     await expect(sungLine(page, 'Valerie')).toBeVisible();
-    await expect(sungLine(page, 'Valerie')).toHaveText('Sung 1 time · last 2026-10-01');
+    await expect(sungLine(page, 'Valerie')).toHaveText(hereText(1, '1 Oct'));
     await expect(sungLine(page, 'Dancing Queen')).toBeHidden();
 
     await choose(page, 'Sung', 'Any');
@@ -53,18 +53,19 @@ test.describe('Design pass 1', () => {
     await seedCrown(page);
     await openFilters(page);
     await choose(page, 'Genre', 'Rock');
+    await closeFilters(page);
     await search(page).fill('bright');
     await expect(page.getByText('1 of 3 songs')).toBeVisible();
 
     await openScope(page, 'History');
     await openScope(page, 'Songs');
-    await expect(filtersSummary(page)).toHaveText('Filters (1)');
+    await expectFilterCount(page, 1);
     await expect(search(page)).toHaveValue('bright');
     await expect(page.getByText('1 of 3 songs')).toBeVisible();
 
     await page.reload(); // the filter is still on, so one of three shows
     await expect(page.getByText('1 of 3 songs')).toBeVisible();
-    await expect(filtersSummary(page)).toHaveText('Filters (1)');
+    await expectFilterCount(page, 1);
     await expect(search(page)).toHaveValue('');
     await openFilters(page);
     await expect(filter(page, 'Genre')).toHaveValue('Rock');
@@ -72,7 +73,7 @@ test.describe('Design pass 1', () => {
     await filter(page, 'Genre').selectOption(''); // back to any genre
     await page.reload();
     await expect(page.getByText('3 of 3 songs')).toBeVisible();
-    await expect(filtersSummary(page)).toHaveText('Filters');
+    await expectFilterCount(page, 0);
   });
 
   test('R54: KJ shows a song full screen, from the Up next card and from the song screen', async ({ page }) => {

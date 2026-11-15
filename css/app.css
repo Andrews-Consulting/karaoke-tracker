@@ -345,42 +345,7 @@ label > input, label > select { margin-top: 4px; color: var(--text); }
 .message ul { margin: 4px 0 0; padding-left: 20px; }
 .message.error { color: var(--error); }
 
-/* ---- Songs view (Wave 1 A) ---- */
-
-/* Each list row is one full-width button, so the whole row is the tap target (R31). */
-.list li.song-item { padding: 0; }
-
-.song-row {
-  display: block;
-  width: 100%;
-  min-height: var(--tap);
-  padding: 10px 0;
-  border: 0;
-  background: none;
-  text-align: left;
-  cursor: pointer;
-}
-
-.song-row .title, .song-row .sub { display: block; }
-
-.song-detail h2 { margin: 0; font-size: 1.25rem; overflow-wrap: anywhere; }
-.song-detail h3 { margin: 0 0 4px; font-size: 0.875rem; font-weight: 600; color: var(--muted); }
-.song-detail .artist { margin: 0; color: var(--muted); }
-
-.song-notes { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-
-.song-fields { margin: 0; }
-
-.song-fields .field {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 6px 0;
-  border-top: 1px solid var(--border);
-}
-
-.song-fields dt { color: var(--muted); font-size: 0.875rem; }
-.song-fields dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+/* ---- Song forms ---- */
 
 label > textarea { margin-top: 4px; color: var(--text); resize: vertical; }
 
@@ -394,12 +359,7 @@ label > textarea { margin-top: 4px; color: var(--text); resize: vertical; }
 
 /* ---- Find (Wave 2 D) ---- */
 
-/* A song row's sing line under the artist line (R8, R37); dates never break at their hyphens. */
-.song-row .sung { display: block; color: var(--muted); font-size: 0.875rem; }
-.song-row .nowrap { white-space: nowrap; }
-
 /* Filters (R41, R11, R42): menus in two columns so they fit a phone screen. */
-.find-filters .find-form { margin-top: 4px; padding-bottom: 4px; }
 .find-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 8px; }
 .find-form [hidden] { display: none; }
 .find-form .btn { width: 100%; }
@@ -477,7 +437,7 @@ label > textarea { margin-top: 4px; color: var(--text); resize: vertical; }
   /* One thin rule between rows, and no row split across pages. */
   .list li { padding: 3pt 0; border-bottom: 0.5pt solid #999; break-inside: avoid; }
   .song-row { padding: 3pt 0; color: #000; }
-  .list .sub, .song-row .sung, .count, .muted { color: #333; font-size: 11pt; }
+  .list .sub, .row-meta, .count, .muted { color: #333; font-size: 11pt; }
 
   /* A venue's history: the summary prints as plain text, and closed entries
      print too where the browser supports ::details-content (elsewhere they
@@ -578,14 +538,6 @@ a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .duplicate > p { flex: 1 1 12em; margin: 0; color: var(--accent); overflow-wrap: anywhere; }
 .duplicate > .btn { flex: none; }
 
-/* The count line with "Pick for me" beside it (R13). */
-.pick-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; }
-.pick-row > .count { margin: 0; }
-.pick-row > .pick { flex: none; }
-.pick-row > .pick-note { flex-basis: 100%; margin: 0; font-size: 0.875rem; }
-.pick-row > .pick-note[hidden] { display: none; }
-.pick-row > .pick:disabled { opacity: 0.5; cursor: not-allowed; }
-
 /* A checkbox with its label beside it, the box a full tap target (Settings, R35). */
 label.check { display: flex; align-items: center; gap: 12px; color: var(--text); font-size: 1rem; }
 label.check > input[type="checkbox"] {
@@ -617,22 +569,23 @@ label.check > input[type="checkbox"] {
 .night-status, .tonight-status { color: var(--accent); overflow-wrap: anywhere; }
 .night-status:empty, .tonight-status:empty { display: none; }
 
-/* Find (R48): a + at the right of each row, a ✓ once the song is in the set. */
-.list li.song-item { display: flex; align-items: center; gap: 8px; }
-.song-item > .song-row { flex: 1 1 0; min-width: 0; }
+/* + at the right of a row adds the song to tonight's set; ✓, filled with
+   the accent, takes it out (R48). Songs rows and Tonight's matches alike. */
 .set-toggle {
   flex: none;
   width: var(--tap);
   min-width: var(--tap);
   height: var(--tap);
   padding: 0;
-  border-color: var(--accent);
-  color: var(--accent);
+  border: 1.5px solid var(--outline);
+  border-radius: 10px;
+  background: none;
+  color: var(--text);
   font-size: 1.25rem;
   font-weight: 700;
   line-height: 1;
 }
-.set-toggle.in-set { background: var(--accent); color: var(--accent-text); }
+.set-toggle.in-set { border-color: var(--accent); background: var(--accent); color: var(--accent-text); }
 
 /* A search that matches nothing offers to add it. */
 .list li.no-match { border-bottom: 0; }
@@ -885,6 +838,320 @@ label.check > input[type="checkbox"] {
   .tonight .here { color: #333; }
 }
 
+/* ---- Songs scope (Design B, step 2; js/views/find.js) ---- */
+
+/* The dock's field shows focus on its frame; the input inside draws no ring of its own. */
+.dock-field > input:focus-visible { outline: none; }
+
+.songs-view { display: flex; flex-direction: column; gap: 6px; }
+/* Whatever a rule below lays out, a [hidden] control stays hidden. */
+.songs-view [hidden], .song-page [hidden] { display: none !important; }
+
+/* My songs | KaraFun (R67): two halves, the source showing raised. */
+.source-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.source-switch > .source {
+  min-height: var(--tap);
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--muted);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+.source-switch > .source[aria-checked="true"] { background: var(--border); color: var(--text); }
+
+/* "38 of 412 songs", the number large, with Pick one beside it (R13). */
+.pick-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; margin-top: 4px; }
+.pick-row > .count { margin: 0; color: var(--muted); font-size: 0.9375rem; }
+.count-big { font: 600 2.125rem/1.1 var(--mono); letter-spacing: -0.02em; color: var(--text); }
+.pick-row > .pick {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+.pick-row > .pick:disabled { opacity: 0.5; cursor: not-allowed; }
+.pick-row > .pick-note { flex-basis: 100%; margin: 0; font-size: 0.875rem; }
+
+/* "2 filters on · Clear all" and the sort token (R69). */
+.filter-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.filter-on { display: flex; align-items: center; gap: 2px; min-height: var(--tap); }
+.clear-all {
+  min-height: var(--tap);
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.sort-token {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--tap);
+  max-width: 62%;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: none;
+  color: var(--text);
+  font: 500 0.75rem/1.25 var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: left;
+}
+.sort-token svg, .token svg { flex: none; }
+
+/* The filters on, each with its × (R69). */
+.tokens { display: flex; flex-wrap: wrap; gap: 6px; }
+.token {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--tap);
+  max-width: 100%;
+  padding: 0 10px 0 12px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.clear-all:active, .sort-token:active, .token:active, .song-row:active { opacity: 0.6; }
+
+/* Rows (R48, R68): the song, its sings here and the KaraFun mark at the
+   right in monospace, then the +. The whole song is one button (R31). */
+.song-list { margin-top: 2px; border-top: 1px solid var(--line); }
+.list.song-list > li { border-bottom-color: var(--line); }
+.list li.song-item { display: flex; align-items: center; gap: 10px; min-height: 62px; padding: 0; }
+.song-row {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.row-text .title, .row-text .sub { display: block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-text .sub { font-size: 0.8125rem; }
+.row-meta {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.row-meta .sung { font-size: 0.75rem; }
+.row-meta .mark { font-size: 0.6875rem; color: var(--muted); }
+
+/* Catalog rows (R67): the song, then "Add to my songs" or "In my songs". */
+.catalog-text { flex: 1 1 0; min-width: 0; padding: 8px 0 6px; }
+.catalog-text .title, .catalog-text .sub { display: block; overflow-wrap: anywhere; }
+.catalog-action { margin-top: 4px; }
+.catalog-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border-color: var(--outline);
+  border-radius: 10px;
+  background: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.in-library {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  font: 0.75rem var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.in-library > span { color: var(--accent); }
+
+/* Duet and Explicit after a catalog row's details (R67). */
+.sub .mark {
+  display: inline-block;
+  padding: 0 6px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+/* Add a song, at the end of the list (R1). */
+.btn.add-open {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 6px;
+  border: 1px dashed var(--outline);
+  border-radius: 10px;
+  background: none;
+  font-weight: 600;
+}
+.add-song h2 { margin: 0; font-size: 1.5rem; }
+
+/* The Filters sheet: over the list, which stays live behind a dimmed
+   backdrop; js/views/find.js sizes the layer to the screen above the dock. */
+.sheet-layer { position: fixed; top: 0; left: 0; right: 0; z-index: 4; display: flex; flex-direction: column; justify-content: flex-end; }
+.sheet-backdrop { position: absolute; inset: 0; background: rgb(0 0 0 / 0.55); }
+.sheet {
+  position: relative;
+  width: 100%;
+  max-width: 720px;
+  max-height: calc(100% - 48px); /* a strip of the list always shows, to tap and close it */
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: 16px 16px 0 0;
+  background: var(--surface);
+  box-shadow: 0 -12px 28px rgb(0 0 0 / 0.45);
+  outline: none;
+}
+.sheet-head { margin: 0; padding: 14px 16px 4px; font-size: 1.125rem; }
+.sheet-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 4px 16px 12px; }
+.sheet-foot { padding: 8px 16px 12px; border-top: 1px solid var(--border); }
+.sheet-done { width: 100%; }
+
+@media print {
+  .filter-line, .tokens, .sheet-layer, .add-open { display: none !important; }
+}
+
+/* ---- The song page (Design B, R70; js/views/song.js) ---- */
+
+/* The header is for the KJ: black, edge to edge, the title as large as fits. */
+.song-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: calc(-1 * (env(safe-area-inset-top) + 16px)) -16px 0;
+  padding: calc(env(safe-area-inset-top) + 8px) 16px 18px;
+  background: #000;
+  color: #fff;
+}
+:root[data-theme="light"] .song-head { background: var(--surface-2); color: var(--text); }
+.song-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.back-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--tap);
+  padding: 0 8px 0 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+.back-mark { font-size: 1.5rem; line-height: 1; }
+.song-head .kj-button {
+  min-width: 64px;
+  padding: 0 16px;
+  border: 1.5px solid var(--accent);
+  border-radius: 10px;
+  background: none;
+  color: inherit;
+  font-weight: 600;
+}
+.song-for { letter-spacing: 0.08em; }
+.song-title { margin: -2px 0 0; font-weight: 700; line-height: 1.04; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.song-short .song-title { font-size: 2.5rem; }
+.song-medium .song-title { font-size: 2.125rem; }
+.song-long .song-title { font-size: 1.75rem; }
+.song-artist { margin: 0; font-size: 1.5rem; font-weight: 500; overflow-wrap: anywhere; }
+.song-key { margin: 0; display: flex; align-items: baseline; gap: 12px; }
+.song-key[hidden] { display: none; }
+.song-key .cap { font-size: 0.875rem; letter-spacing: 0.08em; }
+.song-key-big { font: 600 3rem/1 var(--mono); color: var(--accent); }
+.song-key-words { font-size: 0.9375rem; color: var(--muted); }
+
+/* Below it, a labelled line each: status, rating, key and the set, notes, tags. */
+.song-body { display: flex; flex-direction: column; padding-top: 4px; }
+.song-line { display: flex; align-items: center; gap: 10px; min-height: 60px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.song-label { flex: none; width: 64px; }
+.toggles { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.toggles.rates { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.toggle {
+  min-height: var(--tap);
+  padding: 2px 6px;
+  border: 1px solid var(--outline);
+  border-radius: 10px;
+  background: none;
+  color: var(--text);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.15;
+}
+.toggle[aria-pressed="true"], .set-button.on { border: 1.5px solid var(--accent); background: var(--accent-soft); font-weight: 600; }
+.toggle.rate { font-family: var(--mono); font-size: 1rem; font-weight: 600; }
+.toggle.rate.lit { border-color: var(--accent); background: var(--accent); color: var(--accent-text); }
+.stepper { display: flex; align-items: center; gap: 4px; }
+.step, .icon-btn {
+  flex: none;
+  width: var(--tap);
+  height: var(--tap);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+}
+.step:disabled { opacity: 0.4; cursor: default; }
+.key-value { min-width: 40px; text-align: center; font: 600 1.125rem var(--mono); }
+.set-button { margin-left: auto; display: flex; align-items: center; gap: 6px; padding: 0 12px; font-size: 0.875rem; font-weight: 600; white-space: nowrap; }
+.set-button.on svg { color: var(--accent); }
+.song-notes { flex: 1; min-width: 0; margin: 0; font-size: 0.9375rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.icon-btn { background: none; color: var(--muted); }
+.song-tags { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.tag-chip { display: flex; align-items: center; min-height: 32px; padding: 0 10px; border-radius: 8px; background: var(--surface-2); font-size: 0.875rem; overflow-wrap: anywhere; }
+.icon-btn.add-tag { border: 1px dashed var(--outline); }
+.toggle:active, .step:active, .icon-btn:active, .back-link:active { opacity: 0.6; }
+
+/* Here, all venues, genre, year and KaraFun (R8, R36, R68), in monospace. */
+.song-fields { margin: 0; }
+.song-fields .field { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 44px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.song-fields dt { font: 500 0.75rem var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.song-fields dd { margin: 0; text-align: right; font: 0.8125rem var(--mono); text-transform: uppercase; overflow-wrap: anywhere; }
+.song-body > .error { padding-top: 8px; }
+
+/* Listen, Edit and Delete side by side, within thumb reach. */
+.song-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 12px 0 4px; }
+.song-actions .btn { padding: 0 8px; border-color: var(--outline); border-radius: 10px; background: none; font-size: 0.875rem; font-weight: 600; }
+
 /* ---- Design pass 1: sung filter (R52) ---- */
 
 /* With a sung filter on, every row would read "never sung here" (R52). */
@@ -978,9 +1245,6 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
   .kj-key-big { font-size: min(26vh, 12vw); }
 }
 
-/* The song screen's KJ button (R54). */
-.kj-button { width: 100%; }
-
 /* ---- Setlist labels, Find songs and merge (R56, R57, R59) ---- */
 
 /* Under the label line: Find songs and Merge into…, with why merging is off. */
@@ -1007,54 +1271,11 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
 .list li.starting-fresh p { margin: 0; }
 @media print { .starting-fresh { display: none !important; } }
 
-/* ---- KaraFun catalog in Find (R67, R68) ---- */
+/* ---- KaraFun catalog in Songs (R67, R68) ---- */
 
-/* My songs | KaraFun at the top of Find: a pill, the source showing filled
-   with the accent like the selected bottom tab (R58). */
-.source-switch {
-  display: flex;
-  gap: 4px;
-  padding: 3px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface);
-}
-.source-switch > .source {
-  flex: 1 1 0;
-  min-width: var(--tap);
-  min-height: var(--tap);
-  padding: 0 12px;
-  border: 0;
-  border-radius: 999px;
-  background: none;
-  color: var(--text);
-}
-.source-switch > .source[aria-checked="true"] { background: var(--accent); color: var(--accent-text); font-weight: 700; }
-.source-switch > .source:active { opacity: 0.6; }
-
-/* A catalog row: the song, then "Add to my songs" or "In my songs" under it,
-   and the + at the right as in my songs (R48). */
-.catalog-text { flex: 1 1 0; min-width: 0; padding: 10px 0; }
-.catalog-text .title, .catalog-text .sub { display: block; overflow-wrap: anywhere; }
-.catalog-action { margin-top: 6px; }
-.catalog-action .btn { padding: 8px 12px; }
-.in-library { display: inline-block; color: var(--accent); font-size: 0.875rem; font-weight: 600; }
 .list li.catalog-hint { border-bottom: 0; }
 .no-match > .no-match-catalog { display: block; margin-top: 8px; }
 .find-grid > .find-field:has(> #catalog-sort) { grid-column: 1 / -1; }
-
-/* Small marks after a row's details: KaraFun on my songs (R68), Duet and
-   Explicit on catalog rows (R67). */
-.mark {
-  display: inline-block;
-  padding: 0 6px;
-  border: 1px solid currentColor;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  line-height: 1.4;
-  white-space: nowrap;
-}
-.mark-karafun { color: var(--accent); }
 
 @media print {
   .source-switch, .catalog-action { display: none !important; }
