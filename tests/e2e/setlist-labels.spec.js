@@ -12,6 +12,7 @@ import {
 } from './helpers-setlists.js';
 import { openVenues, venueRow, venueRows } from './helpers-venues.js';
 import { tonightListName } from '../../js/lib/night.js';
+import { swipeOpen } from './helpers-tonight.js';
 
 const VALERIE = { title: 'Valerie', artist: 'Amy Winehouse', genre: 'Soul', year: 2006 };
 const QUEEN = { title: 'Dancing Queen', artist: 'ABBA', genre: 'Pop', year: 1976 };
@@ -47,11 +48,11 @@ async function expectSet(page, titles) {
   else await expect(afterList(page)).toBeHidden();
 }
 
-// Opens a row's "…" and taps one of its actions: 'Park', 'Remove' or 'Details'.
+// Swipes a row open and taps one of its actions: 'Park' or 'Remove'.
 async function rowAction(page, title, action) {
-  const more = button(page, `More for ${title}`);
-  if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
-  const names = { Park: `Park ${title} for next time`, Remove: `Remove ${title} from tonight`, Details: `Details for ${title}` };
+  const row = afterRow(page, title);
+  if (!/\bopen\b/.test((await row.getAttribute('class')) || '')) await swipeOpen(page, row);
+  const names = { Park: `Park ${title} for next time`, Remove: `Remove ${title} from tonight` };
   await button(page, names[action]).click();
 }
 
@@ -283,8 +284,8 @@ test.describe('Setlist labels, Find songs and merge', () => {
     await expect(upNext(page).getByRole('button')).toHaveText(['KJ']);
     await expect(page.getByRole('button', { name: /^Sang it/ })).toHaveCount(0);
     await expect(sungStrip(page)).toBeHidden();
-    await button(page, 'More for Dancing Queen').click();
-    await expect(afterRow(page, 'Dancing Queen').locator('.after-actions').getByRole('button')).toHaveText(['Remove', 'Details']);
+    await swipeOpen(page, afterRow(page, 'Dancing Queen'));
+    await expect(afterRow(page, 'Dancing Queen').locator('.after-actions').getByRole('button')).toHaveText(['Remove']);
     await expectAllTapTargets(page, 'Tonight\'s set, Overall');
     await button(page, 'Move Mr. Brightside').focus();
     await page.keyboard.press('ArrowUp');

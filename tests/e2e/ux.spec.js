@@ -8,6 +8,7 @@ import {
 import { seed, chooseVenue } from './helpers-find.js';
 import { openVenues, openVenue, openOverall } from './helpers-venues.js';
 import { openSetlists, openSetlist } from './helpers-setlists.js';
+import { swipeOpen } from './helpers-tonight.js';
 import {
   listsHeading, historyHeading, openLogSing, groupHistory, openSongMenu,
 } from './helpers-lists.js';
@@ -163,7 +164,7 @@ test.describe('UX', () => {
     await page.getByRole('button', { name: 'Add Africa to the set' }).click();
     await page.getByRole('button', { name: 'Add Dancing Queen to the set' }).click();
     await openScope(page, 'Tonight');
-    await page.getByRole('button', { name: 'More for Africa' }).click();
+    await swipeOpen(page, page.getByRole('list', { name: 'The rest of tonight\'s set' }).locator('li[data-song-id]').filter({ hasText: 'Africa' }));
     await page.getByRole('searchbox', { name: 'Add a song to tonight\'s set' }).fill('a');
     await expectTapTargets(page, 'Tonight');
     await page.getByRole('searchbox', { name: 'Add a song to tonight\'s set' }).fill('');

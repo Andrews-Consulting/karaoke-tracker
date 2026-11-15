@@ -31,6 +31,7 @@ import {
   OVERALL_LIST_NAME, nextSetlistFor, putBackOnTop, groupSingsByDate,
 } from '../lib/night.js';
 import { dragToReorder } from '../drag.js';
+import { swipeToReveal } from '../swipe.js';
 import {
   VENUE_KEY, openCurrentSet, startList, openSongScreen, findInSongs,
 } from './songs.js';
@@ -442,10 +443,12 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
     empty.hidden = all.length > 0;
   }
 
-  // A song after the first: its place, title and artist (which open its
-  // Details), its sings here, a drag handle, and "…" for Park, Remove and Details.
+  // A song after the first: a drag handle at the far left, its place, title
+  // and artist (which open its Details) and its sings here. Swipe the row left
+  // for Park and Remove, which wait behind it (js/swipe.js).
   function afterRow(song, position) {
     const open = state.open === song.id;
+    const canPark = state.venueId != null && !(nextTimeList() && nextTimeList().id === state.set.id);
     const handle = el('button', {
       type: 'button', class: 'handle', 'aria-label': `Move ${song.title}`,
       onkeydown: (e) => {
@@ -455,25 +458,37 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
         moveTo(song, setSongs().findIndex((s) => s.id === song.id) + delta, true);
       },
     }, icon(ICONS.grip, { width: 3 }));
-    const li = el('li', { class: `after-row${open ? ' open' : ''}`, 'data-song-id': song.id },
-      el('div', { class: 'after-main' },
-        el('span', { class: 'pos', text: pad(position) }),
-        el('button', { type: 'button', class: 'after-open', onclick: () => details(song) },
-          el('span', { class: 'title', text: song.title }),
-          el('span', { class: 'sub', text: song.artist })),
-        el('span', { class: 'here', text: short(song) }),
-        handle,
-        el('button', {
-          type: 'button', class: 'row-more', 'aria-label': `More for ${song.title}`, 'aria-expanded': String(open),
-          onclick: (e) => toggleActions(song, document.activeElement === e.currentTarget),
-        }, icon(ICONS.more, { width: 3.2 }))),
-      open ? actionRow(song) : null);
+    // The handle sits at the far left, away from where a thumb scrolls the page.
+    const surface = el('div', { class: 'after-main' },
+      handle,
+      el('span', { class: 'pos', text: pad(position) }),
+      el('button', { type: 'button', class: 'after-open', onclick: () => details(song) },
+        el('span', { class: 'title', text: song.title }),
+        el('span', { class: 'sub', text: song.artist })),
+      el('span', { class: 'here', text: short(song) }));
+    const panel = actionRow(song, canPark);
+    const li = el('li', {
+      class: `after-row${open ? ' open' : ''}`, 'data-song-id': song.id, style: `--reveal: ${canPark ? 180 : 110}px`,
+    }, surface, panel);
     dragToReorder({
       list: afterList, li, handle,
       onDrop: (index, hadFocus) => moveTo(song, index + 1, hadFocus),
       onCancel: drawSet,
     });
+    swipeToReveal({
+      li, surface, panel,
+      isOpen: () => state.open === song.id,
+      onOpen: () => setOpen(song.id),
+      onClose: () => setOpen(null),
+    });
     return li;
+  }
+
+  // The row swiped open, if any; one at a time.
+  function setOpen(songId) {
+    if (state.open === songId) return;
+    state.open = songId;
+    drawSet();
   }
 
   // The venue's Next time list, when it has one (R49).
@@ -481,32 +496,19 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
     return nextSetlistFor(setlists, state.venueId, meta.get(nextSetlistKey(state.venueId)));
   }
 
-  function actionRow(song) {
-    const next = nextTimeList();
-    const canPark = state.venueId != null && !(next && next.id === state.set.id); // never onto itself
-    return el('div', { class: 'after-actions' },
+  // Park (never onto the Next time list itself) and Remove, behind the row.
+  function actionRow(song, canPark) {
+    return el('div', { class: 'after-actions', role: 'group', 'aria-label': `Actions for ${song.title}` },
       canPark
         ? el('button', {
-          type: 'button', class: 'btn', text: 'Park', 'aria-label': `Park ${song.title} for next time`,
+          type: 'button', class: 'btn park', text: 'Park', 'aria-label': `Park ${song.title} for next time`,
           onclick: () => park(song),
         })
         : null,
       el('button', {
-        type: 'button', class: 'btn', text: 'Remove', 'aria-label': `Remove ${song.title} from tonight`,
+        type: 'button', class: 'btn danger remove', text: 'Remove', 'aria-label': `Remove ${song.title} from tonight`,
         onclick: () => remove(song),
-      }),
-      el('button', {
-        type: 'button', class: 'btn', text: 'Details', 'aria-label': `Details for ${song.title}`,
-        onclick: () => details(song),
       }));
-  }
-
-  function toggleActions(song, refocus) {
-    state.open = state.open === song.id ? null : song.id;
-    drawSet();
-    const row = afterList.querySelector(`[data-song-id="${song.id}"]`);
-    if (state.open != null) row?.scrollIntoView({ block: 'nearest' });
-    if (refocus) row?.querySelector('.row-more')?.focus();
   }
 
   // A drop or an arrow key (R61): the song goes to `index` in the set, but
