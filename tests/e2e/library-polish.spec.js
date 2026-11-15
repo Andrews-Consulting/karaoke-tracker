@@ -1,22 +1,19 @@
-// Library polish on the Songs tab (Wave 3 F): more sort orders (R12), a video
-// search link on a song (R38) and speed with 1,000 songs (R34).
+// Library polish on the Songs scope (Wave 3 F): more sort orders (R12), a
+// video search link on a song (R38) and speed with 1,000 songs (R34).
 import { test, expect } from '@playwright/test';
 import { filterSongs, sortByTitle } from '../../js/lib/search.js';
 import { openApp, openSong } from './helpers.js';
 import {
-  seed, seedBigLibrary, filtersForm, filtersSummary, openFilters, filter, choose, shownTitles, songRow,
-  expectTapTarget, chooseVenue,
+  seed, seedBigLibrary, filtersForm, openFilters, closeFilters, filter, choose, shownTitles, songRow,
+  expectTapTarget, chooseVenue, songSearch, backToSongs, expectFilterCount, hereText,
 } from './helpers-find.js';
 
-const search = (page) => page.getByRole('searchbox', { name: 'Search songs' });
+const search = songSearch;
 const countLine = (page) => page.locator('#view p.count');
 const songRows = (page) => page.locator('li.song-item');
 const moreButton = (page) => page.getByRole('button', { name: /^Show \d+ more$/ });
-
-async function backToList(page) {
-  await page.getByRole('button', { name: 'Back to list' }).click();
-  await expect(search(page)).toBeVisible();
-}
+const sortToken = (page, label) => page.getByRole('button', { name: `Sort: ${label}. Change sort` });
+const backToList = backToSongs;
 
 const VALERIE = { title: 'Valerie', artist: 'Amy Winehouse', genre: 'Soul', year: 2006 };
 const QUEEN = { title: 'Dancing Queen', artist: 'ABBA', genre: 'Pop', year: 1976 };
@@ -50,7 +47,7 @@ test.describe('Library polish', () => {
     await expect(shownTitles(page)).toHaveText(
       ['Dancing Queen', 'Rehab', 'Valerie', 'Mr. Brightside', 'Africa', 'Mystery Song']);
     // A sort order is not a filter.
-    await expect(filtersSummary(page)).toHaveText('Filters');
+    await expectFilterCount(page, 0);
     await expect(page.getByText('6 of 6 songs')).toBeVisible();
 
     // 5 down to 1, ties by title, unrated last.
@@ -64,22 +61,29 @@ test.describe('Library polish', () => {
       ['Africa', 'Dancing Queen', 'Valerie', 'Rehab', 'Mr. Brightside', 'Mystery Song']);
 
     // Combines with the search and a filter, and survives a trip to a song.
+    await closeFilters(page);
+    await expect(sortToken(page, 'Date added, newest first')).toBeVisible();
     await search(page).fill('amy');
     await expect(shownTitles(page)).toHaveText(['Valerie', 'Rehab']);
+    await openFilters(page);
     await choose(page, 'Sort by', 'Artist');
     await expect(shownTitles(page)).toHaveText(['Rehab', 'Valerie']);
     await choose(page, 'Rating', '4+');
     await expect(shownTitles(page)).toHaveText(['Valerie']);
     await choose(page, 'Rating', 'Any rating');
+    await closeFilters(page);
     await openSong(page, 'Valerie');
     await backToList(page);
-    await expect(filter(page, 'Sort by')).toHaveValue('artist');
+    await expect(sortToken(page, 'Artist')).toBeVisible();
     await expect(shownTitles(page)).toHaveText(['Rehab', 'Valerie']);
 
     // Clear filters puts the sort back to Title and keeps the search.
+    await sortToken(page, 'Artist').click();
     await filtersForm(page).getByRole('button', { name: 'Clear filters' }).click();
     await expect(filter(page, 'Sort by')).toHaveValue('title');
     await expect(shownTitles(page)).toHaveText(['Rehab', 'Valerie']);
+    await closeFilters(page);
+    await expect(search(page)).toHaveValue('amy');
     await search(page).fill('');
     await expect(shownTitles(page)).toHaveText(
       ['Africa', 'Dancing Queen', 'Mr. Brightside', 'Mystery Song', 'Rehab', 'Valerie']);
@@ -102,7 +106,7 @@ test.describe('Library polish', () => {
     // Overall: across every venue; never sung last.
     await choose(page, 'Sort by', 'Last sung, most recent first');
     await expect(shownTitles(page)).toHaveText(['Valerie', 'Mr. Brightside', 'Dancing Queen', 'Africa']);
-    await expect(filtersSummary(page)).toHaveText('Filters');
+    await expectFilterCount(page, 0);
 
     // Longest ago first puts never sung first: those are the ones to pick.
     await choose(page, 'Sort by', 'Last sung, longest ago first');
@@ -111,7 +115,8 @@ test.describe('Library polish', () => {
     // A new venue (picked on Tonight) re-sorts by the sings there, and each row says so.
     await chooseVenue(page, 'The Crown');
     await expect(shownTitles(page)).toHaveText(['Africa', 'Mr. Brightside', 'Dancing Queen', 'Valerie']);
-    await expect(songRow(page, 'Mr. Brightside').locator('.sung')).toHaveText('Never sung here');
+    await expect(songRow(page, 'Mr. Brightside').locator('.sung')).toHaveText('New here');
+    await expect(sortToken(page, 'Last sung, longest ago first')).toBeVisible();
     await openFilters(page);
     await expect(filter(page, 'Sort by')).toHaveValue('last-sung-oldest');
 
@@ -120,14 +125,14 @@ test.describe('Library polish', () => {
 
     await chooseVenue(page, 'Anchor');
     await expect(shownTitles(page)).toHaveText(['Valerie', 'Mr. Brightside', 'Africa', 'Dancing Queen']);
-    await expect(songRow(page, 'Valerie').locator('.sung')).toHaveText('Sung 1 time · last 2026-11-05');
+    await expect(songRow(page, 'Valerie').locator('.sung')).toHaveText(hereText(1, '5 Nov'));
 
     // With the "never at this venue" filter, the sort still applies to what is left.
     await openFilters(page);
     await choose(page, 'Sung', 'Never at this venue');
     await choose(page, 'Sort by', 'Last sung, longest ago first');
     await expect(shownTitles(page)).toHaveText(['Africa', 'Dancing Queen']);
-    await expect(filtersSummary(page)).toHaveText('Filters (1)');
+    await expectFilterCount(page, 1);
 
     await filtersForm(page).getByRole('button', { name: 'Clear filters' }).click();
     await expect(filter(page, 'Sort by')).toHaveValue('title');
@@ -142,11 +147,11 @@ test.describe('Library polish', () => {
     await openApp(page);
     await seed(page, { songs: [VALERIE, { title: 'Rock & Roll', artist: 'Led Zeppelin' }] });
 
-    // Only on the song's screen, not in the list.
-    await expect(page.getByRole('link', { name: 'Search video' })).toHaveCount(0);
+    // Only on the song page, not in the list.
+    await expect(page.getByRole('link', { name: 'Listen' })).toHaveCount(0);
 
     await openSong(page, 'Rock & Roll');
-    const link = page.getByRole('link', { name: 'Search video' });
+    const link = page.getByRole('link', { name: 'Listen' });
     await expect(link).toBeVisible();
     await expect(link).toHaveAttribute('href',
       'https://www.youtube.com/results?search_query=Rock%20%26%20Roll%20Led%20Zeppelin');
@@ -156,14 +161,15 @@ test.describe('Library polish', () => {
     expect(box.height).toBeGreaterThanOrEqual(44);
     expect(box.width).toBeGreaterThanOrEqual(44);
 
-    // Within thumb reach: just above Edit and Delete at the bottom of the card.
-    const edit = await page.getByRole('button', { name: 'Edit' }).boundingBox();
-    expect(box.y + box.height).toBeLessThanOrEqual(edit.y);
-    expect(edit.y - (box.y + box.height)).toBeLessThan(24);
+    // Within thumb reach: beside Edit and Delete at the bottom of the page.
+    const edit = await page.getByRole('button', { name: 'Edit', exact: true }).boundingBox();
+    expect(Math.abs(box.y - edit.y)).toBeLessThan(2);
+    expect(box.x + box.width).toBeLessThanOrEqual(edit.x);
+    expect(edit.x - (box.x + box.width)).toBeLessThan(24);
 
     await backToList(page);
     await openSong(page, 'Valerie');
-    await expect(page.getByRole('link', { name: 'Search video' })).toHaveAttribute('href',
+    await expect(page.getByRole('link', { name: 'Listen' })).toHaveAttribute('href',
       `https://www.youtube.com/results?search_query=${encodeURIComponent('Valerie Amy Winehouse')}`);
 
     // The app itself never fetched anything from the video site.
@@ -196,7 +202,7 @@ test.describe('Library polish', () => {
     const box = search(page);
     await box.focus();
     await page.evaluate(() => {
-      const input = document.querySelector('#view input[type="search"]');
+      const input = document.querySelector('#dock input[type="search"]');
       const count = document.querySelector('#view p.count');
       let down = 0;
       window.r34Timings = [];

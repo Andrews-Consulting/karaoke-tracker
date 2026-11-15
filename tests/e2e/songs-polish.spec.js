@@ -1,11 +1,11 @@
-// Songs tab polish (Wave 4 I): title and artist suggestions from MusicBrainz
-// (R35), a warning when adding a song already in the library (R9) and "Pick
-// for me" (R13). Every test answers MusicBrainz itself (mockMusicBrainz), so
-// none reaches the real site.
+// Songs scope polish (Wave 4 I): title and artist suggestions from
+// MusicBrainz (R35), a warning when adding a song already in the library
+// (R9) and "Pick one" (R13). Every test answers MusicBrainz itself
+// (mockMusicBrainz), so none reaches the real site.
 import { test, expect } from '@playwright/test';
 import { openApp, openScope, openSettings } from './helpers.js';
 import {
-  seed, openFilters, choose, filter, shownTitles, expectTapTarget,
+  seed, openFilters, closeFilters, choose, filterTokens, shownTitles, expectTapTarget,
   openAddForm, mbRecording, mockMusicBrainz, suggestionList, suggestionsSwitch,
 } from './helpers-find.js';
 
@@ -30,7 +30,7 @@ async function showTab(page, name) {
 }
 
 async function backToList(page) {
-  await page.getByRole('button', { name: 'Back to list' }).click();
+  await page.getByRole('button', { name: 'Back to Songs' }).click();
   await expect(search(page)).toBeVisible();
 }
 
@@ -227,17 +227,18 @@ test.describe('Duplicates', () => {
   });
 });
 
-test.describe('Pick for me', () => {
+test.describe('Pick one', () => {
   test('R13: picks a random song from the current filter and opens it', async ({ page }) => {
     await mockMusicBrainz(page);
     await openApp(page);
     await seed(page, { songs: [VALERIE, QUEEN, BRIGHTSIDE, AFRICA] });
-    const pick = page.getByRole('button', { name: 'Pick for me' });
+    const pick = page.getByRole('button', { name: 'Pick one' });
     await expectTapTarget(pick);
 
     // A filter that leaves one song: that is the pick.
     await openFilters(page);
     await choose(page, 'Genre', 'Soul');
+    await closeFilters(page);
     await expect(page.getByText('1 of 4 songs')).toBeVisible();
     await pick.click();
     await expect(page.getByRole('heading', { level: 2, name: 'Valerie' })).toBeVisible();
@@ -245,11 +246,13 @@ test.describe('Pick for me', () => {
     // Back returns to the same filtered list.
     await backToList(page);
     await expect(page.getByText('1 of 4 songs')).toBeVisible();
-    await expect(filter(page, 'Genre')).toHaveValue('Soul');
+    await expect(filterTokens(page)).toHaveText(['Soul']);
     await expect(shownTitles(page)).toHaveText(['Valerie']);
 
     // With two shown, the pick is one of those two, chosen by Math.random.
+    await openFilters(page);
     await choose(page, 'Genre', 'Rock');
+    await closeFilters(page);
     await expect(shownTitles(page)).toHaveText(['Africa', 'Mr. Brightside']);
     await page.evaluate(() => { Math.random = () => 0.99; });
     await pick.click();

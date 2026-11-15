@@ -87,7 +87,7 @@ test.describe('UX', () => {
     await openApp(page);
     await addSong(page, { title: 'Valerie', artist: 'Amy Winehouse' });
     await openSong(page, 'Valerie');
-    await page.getByRole('button', { name: 'Back to list' }).click();
+    await page.getByRole('button', { name: 'Back to Songs' }).click();
     await expect(page.getByText('1 of 1 songs')).toBeVisible();
 
     // The list is the only screen again, so one more back leaves the page.
@@ -99,12 +99,19 @@ test.describe('UX', () => {
     await openApp(page);
     await seedEverything(page);
 
-    // Songs list with the add form and all filters showing.
-    await page.getByText('Add a song', { exact: true }).click();
-    await page.locator('details.find-filters > summary').click();
+    // The Songs list, then with the Filters sheet open and every filter showing,
+    // then the Add a song sheet.
+    await expectTapTargets(page, 'Songs list');
+    await page.locator('#dock .dock-filter').click();
     await page.getByRole('form', { name: 'Filters' }).getByLabel('Sung', { exact: true }).selectOption('not-since');
     await expect(page.getByLabel('Since', { exact: true })).toBeVisible();
-    await expectTapTargets(page, 'Songs list');
+    await expectTapTargets(page, 'Songs with the Filters sheet');
+    await page.getByRole('form', { name: 'Filters' }).getByLabel('Sung', { exact: true }).selectOption('any');
+    await page.goBack();
+    await page.getByText('Add a song', { exact: true }).click();
+    await expect(page.getByRole('form', { name: 'Add a song' })).toBeVisible();
+    await expectTapTargets(page, 'Add a song');
+    await page.getByRole('button', { name: 'Cancel' }).click();
 
     await openSong(page, 'Valerie');
     await expectTapTargets(page, 'Song detail');

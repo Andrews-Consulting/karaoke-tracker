@@ -1,19 +1,22 @@
-// Song detail, edit and delete (R2), notes (R3), genre and year (R36), and the
-// extra fields the edit form holds: tags (R5), key (R6), status (R7), rating (R4).
+// The song page (R70): detail, edit and delete (R2), notes (R3), genre and
+// year (R36), and the fields the edit form holds too: tags (R5), key (R6),
+// status (R7), rating (R4); key, status, rating and tonight's set also
+// change in place.
 import { test, expect } from '@playwright/test';
 import { openApp, addSong, openSong, putRecords, readStore } from './helpers.js';
+import {
+  seed, chooseVenue, songRow, songSearch, backToSongs, songPage, songField, statusToggle, rateToggle, keyValue,
+  tagChips, hereText,
+} from './helpers-find.js';
 
-const details = (page) => page.getByRole('region', { name: 'Song details' });
+const details = songPage;
 const editForm = (page) => page.getByRole('form', { name: 'Edit song' });
 const listRow = (page, title) => page.getByRole('listitem').filter({ hasText: title });
-
-// The value shown next to a label in the song's details, e.g. Key → "-2".
-const shown = (page, label) =>
-  details(page).getByText(label, { exact: true }).locator('xpath=following-sibling::dd[1]');
+const button = (page, name) => page.getByRole('button', { name, exact: true });
 
 async function startEditing(page, title) {
   await openSong(page, title);
-  await details(page).getByRole('button', { name: 'Edit' }).click();
+  await button(page, 'Edit').click();
   await expect(editForm(page)).toBeVisible();
 }
 
@@ -22,15 +25,37 @@ async function save(page) {
   await expect(details(page)).toBeVisible();
 }
 
-async function backToList(page) {
-  await page.getByRole('button', { name: 'Back to list' }).click();
-  await expect(page.getByRole('searchbox', { name: 'Search songs' })).toBeVisible();
-}
+const backToList = backToSongs;
 
 async function expectTapTarget(locator) {
   const box = await locator.boundingBox();
   expect(box.height).toBeGreaterThanOrEqual(44);
 }
+
+// Every visible control on the page under 44 px either way (R31), as in ux.spec.js.
+async function expectAllTapTargets(page, screen) {
+  const small = await page.evaluate(() => [...document.querySelectorAll('button, input, select, textarea, a[href]')]
+    .map((node) => {
+      const r = node.getBoundingClientRect();
+      return { name: (node.getAttribute('aria-label') || node.textContent).trim(), width: r.width, height: r.height };
+    })
+    .filter((b) => b.width > 0 && b.height > 0 && (b.width < 44 || b.height < 44)));
+  expect(small, `${screen}: controls under 44 px`).toEqual([]);
+}
+
+// None of the status toggles is pressed, or only `label`.
+async function expectStatus(page, label) {
+  for (const name of ['Go-to', 'Want to try', 'Retired']) {
+    await expect(statusToggle(page, name)).toHaveAttribute('aria-pressed', String(name === label));
+  }
+}
+
+// None of the rating toggles is pressed, or only `n`.
+async function expectRating(page, n) {
+  for (let i = 1; i <= 5; i += 1) await expect(rateToggle(page, i)).toHaveAttribute('aria-pressed', String(i === n));
+}
+
+const storedSong = async (page, title) => (await readStore(page, 'songs')).find((s) => s.title === title);
 
 test.describe('Library', () => {
   test('R2: opens a song from the list and goes back to the same search', async ({ page }) => {
@@ -38,23 +63,21 @@ test.describe('Library', () => {
     await addSong(page, { title: 'Valerie', artist: 'Amy Winehouse', genre: 'Soul', year: 2006 });
     await addSong(page, { title: 'Dancing Queen', artist: 'ABBA' });
 
-    await page.getByRole('searchbox', { name: 'Search songs' }).fill('amy');
+    await songSearch(page).fill('amy');
     await expect(page.getByText('1 of 2 songs')).toBeVisible();
     await expectTapTarget(listRow(page, 'Valerie').locator('button.song-row')); // the row, not its + (R56)
 
     await openSong(page, 'Valerie');
     await expect(details(page)).toContainText('Amy Winehouse');
-    await expect(shown(page, 'Genre')).toHaveText('Soul');
-    await expect(shown(page, 'Year')).toHaveText('2006');
-    await expect(shown(page, 'Status')).toHaveText('—'); // not set until chosen (R64)
-    await expect(shown(page, 'Rating')).toHaveText('—');
-    await expect(shown(page, 'Key')).toHaveText('—');
-    for (const name of ['Back to list', 'Edit', 'Delete']) {
-      await expectTapTarget(page.getByRole('button', { name }));
-    }
+    await expect(songField(page, 'Genre')).toHaveText('Soul');
+    await expect(songField(page, 'Year')).toHaveText('2006');
+    await expectStatus(page, null); // not set until chosen (R64)
+    await expectRating(page, null);
+    await expect(keyValue(page)).toHaveText('0');
+    for (const name of ['Back to Songs', 'Edit', 'Delete']) await expectTapTarget(button(page, name));
 
     await backToList(page);
-    await expect(page.getByRole('searchbox', { name: 'Search songs' })).toHaveValue('amy');
+    await expect(songSearch(page)).toHaveValue('amy');
     await expect(page.getByText('1 of 2 songs')).toBeVisible();
   });
 
@@ -97,7 +120,7 @@ test.describe('Library', () => {
     await editForm(page).getByRole('button', { name: 'Cancel' }).click();
 
     await expect(page.getByRole('heading', { level: 2 })).toHaveText('Valerie');
-    await expect(shown(page, 'Genre')).toHaveText('Soul');
+    await expect(songField(page, 'Genre')).toHaveText('Soul');
 
     await page.reload();
     await expect(listRow(page, 'Valerie')).toContainText('Soul');
@@ -138,7 +161,7 @@ test.describe('Library', () => {
       message = dialog.message();
       await dialog.accept();
     });
-    await page.getByRole('button', { name: 'Delete' }).click();
+    await button(page, 'Delete').click();
 
     await expect(page.getByRole('status')).toHaveText('Deleted “Valerie”.');
     expect(message).toBe('Delete “Valerie” by Amy Winehouse? This cannot be undone.');
@@ -165,7 +188,7 @@ test.describe('Library', () => {
       message = dialog.message();
       await dialog.dismiss();
     });
-    await page.getByRole('button', { name: 'Delete' }).click();
+    await button(page, 'Delete').click();
     await expect.poll(() => message).toBe(
       'Delete “Valerie” by Amy Winehouse? It has been sung once; that history will be deleted too. ' +
       'It will be removed from 1 setlist. This cannot be undone.');
@@ -207,7 +230,7 @@ test.describe('Library', () => {
       message = dialog.message();
       await dialog.accept();
     });
-    await page.getByRole('button', { name: 'Delete' }).click();
+    await button(page, 'Delete').click();
     await expect(page.getByRole('status')).toHaveText('Deleted “Valerie”.');
     expect(message).toContain('It has been sung 2 times; that history will be deleted too.');
     expect(message).toContain('It will be removed from 2 setlists.');
@@ -229,7 +252,9 @@ test.describe('Library', () => {
 
     await openSong(page, 'Valerie');
     await expect(details(page)).toContainText('No notes yet.');
-    await details(page).getByRole('button', { name: 'Edit' }).click();
+    // The pencil beside the notes opens the edit form at the Notes field.
+    await button(page, 'Change notes').click();
+    await expect(editForm(page).getByLabel('Notes')).toBeFocused();
     await editForm(page).getByLabel('Notes').fill('Skip the bridge\nStarts cold, count in 4');
     await save(page);
 
@@ -245,7 +270,7 @@ test.describe('Library', () => {
     await page.reload();
     await openSong(page, 'Valerie');
     await expect(details(page).getByText('Skip the bridge')).toHaveText('Skip the bridge\nStarts cold, count in 4');
-    await details(page).getByRole('button', { name: 'Edit' }).click();
+    await button(page, 'Edit').click();
     await expect(editForm(page).getByLabel('Notes')).toHaveValue('Skip the bridge\nStarts cold, count in 4');
   });
 
@@ -259,8 +284,8 @@ test.describe('Library', () => {
     await editForm(page).getByLabel('Genre').fill('Pop');
     await editForm(page).getByLabel('Year').fill('1985');
     await save(page);
-    await expect(shown(page, 'Genre')).toHaveText('Pop');
-    await expect(shown(page, 'Year')).toHaveText('1985');
+    await expect(songField(page, 'Genre')).toHaveText('Pop');
+    await expect(songField(page, 'Year')).toHaveText('1985');
 
     await backToList(page);
     await expect(listRow(page, 'Valerie').locator('.sub')).toHaveText('Amy Winehouse · Pop · 1985');
@@ -273,15 +298,15 @@ test.describe('Library', () => {
     await editForm(page).getByRole('button', { name: 'Save' }).click();
     await expect(editForm(page)).toBeVisible();
     await editForm(page).getByRole('button', { name: 'Cancel' }).click();
-    await expect(shown(page, 'Year')).toHaveText('1985');
+    await expect(songField(page, 'Year')).toHaveText('1985');
 
     // Both can be cleared.
-    await details(page).getByRole('button', { name: 'Edit' }).click();
+    await button(page, 'Edit').click();
     await editForm(page).getByLabel('Genre').fill('');
     await editForm(page).getByLabel('Year').fill('');
     await save(page);
-    await expect(shown(page, 'Genre')).toHaveText('—');
-    await expect(shown(page, 'Year')).toHaveText('—');
+    await expect(songField(page, 'Genre')).toHaveText('—');
+    await expect(songField(page, 'Year')).toHaveText('—');
     await backToList(page);
     await expect(listRow(page, 'Valerie').locator('.sub')).toHaveText('Amy Winehouse');
     const [song] = await readStore(page, 'songs');
@@ -302,10 +327,11 @@ test.describe('Library', () => {
     await save(page);
 
     const expectShown = async () => {
-      await expect(shown(page, 'Tags')).toHaveText('duet, Crowd-pleaser');
-      await expect(shown(page, 'Key')).toHaveText('-2');
-      await expect(shown(page, 'Status')).toHaveText('Want to try');
-      await expect(shown(page, 'Rating')).toHaveText('4 of 5');
+      await expect(tagChips(page)).toHaveText(['duet', 'Crowd-pleaser']);
+      await expect(keyValue(page)).toHaveText('−2');
+      await expect(page.locator('.song-key-big')).toHaveText('−2');
+      await expectStatus(page, 'Want to try');
+      await expectRating(page, 4);
     };
     await expectShown();
 
@@ -313,7 +339,7 @@ test.describe('Library', () => {
     await openSong(page, 'Valerie');
     await expectShown();
 
-    await details(page).getByRole('button', { name: 'Edit' }).click();
+    await button(page, 'Edit').click();
     await expect(editForm(page).getByLabel('Tags')).toHaveValue('duet, Crowd-pleaser');
     await expect(editForm(page).getByLabel('Key')).toHaveValue('-2');
     await expect(editForm(page).getByLabel('Status')).toHaveValue('want-to-try');
@@ -328,17 +354,122 @@ test.describe('Library', () => {
     await editForm(page).getByLabel('Tags').fill('');
     await editForm(page).getByLabel('Key').fill('');
     await save(page);
-    await expect(shown(page, 'Status')).toHaveText('Retired');
-    await expect(shown(page, 'Rating')).toHaveText('—');
-    await expect(shown(page, 'Tags')).toHaveText('—');
-    await expect(shown(page, 'Key')).toHaveText('—');
+    await expectStatus(page, 'Retired');
+    await expectRating(page, null);
+    await expect(tagChips(page)).toHaveCount(0);
+    await expect(keyValue(page)).toHaveText('0');
+    await expect(page.locator('.song-key')).toBeHidden(); // no key, so the header shows none
 
     await page.reload();
     await openSong(page, 'Valerie');
-    await expect(shown(page, 'Status')).toHaveText('Retired');
-    await expect(shown(page, 'Rating')).toHaveText('—');
+    await expectStatus(page, 'Retired');
+    await expectRating(page, null);
     const [cleared] = await readStore(page, 'songs');
     expect(cleared).toMatchObject({ tags: [], key: '', status: 'retired', rating: null });
+  });
+
+  test('R70: the song page edits key, status and rating in place and toggles the song on tonight\'s set', async ({ page }) => {
+    await openApp(page);
+    const { songIds } = await seed(page, {
+      songs: [
+        { title: 'Valerie', artist: 'Amy Winehouse', genre: 'Soul', year: 2006, key: '-1', notes: 'Starts cold', tags: ['duet'] },
+        { title: 'Dancing Queen', artist: 'ABBA', genre: 'Pop', year: 1976 },
+      ],
+      venues: ['The Crown', 'Anchor'],
+      sings: [
+        { title: 'Valerie', venue: 'The Crown', date: '2026-10-01' },
+        { title: 'Valerie', venue: 'Anchor', date: '2026-11-05' },
+      ],
+    });
+    await chooseVenue(page, 'The Crown');
+    await songRow(page, 'Dancing Queen').locator('.set-toggle').click();
+    await expect(songRow(page, 'Dancing Queen').locator('.set-toggle')).toHaveText('✓');
+    await openSong(page, 'Valerie');
+
+    // The header is for the KJ: title, artist and the key with its meaning.
+    await expect(details(page).locator('.song-artist')).toHaveText('Amy Winehouse');
+    await expect(page.locator('.song-key-big')).toHaveText('−1');
+    await expect(page.locator('.song-key-words')).toHaveText('one semitone down');
+    await expect(details(page).locator('.song-notes')).toHaveText('Starts cold');
+    await expect(tagChips(page)).toHaveText(['duet']);
+    await expect(songField(page, 'Here')).toHaveText(hereText(1, '1 Oct'));
+    await expect(songField(page, 'All venues')).toHaveText(hereText(2, '5 Nov'));
+    await expect(songField(page, 'Genre')).toHaveText('Soul');
+    await expect(songField(page, 'Year')).toHaveText('2006');
+    await expect(songField(page, 'KaraFun')).toHaveText('No');
+    await expectAllTapTargets(page, 'Song page');
+
+    // The key steps a semitone at a time and saves each tap; 0 is no key.
+    await expect(keyValue(page)).toHaveText('−1');
+    await button(page, 'Key up a semitone').click();
+    await expect(keyValue(page)).toHaveText('0');
+    await expect(page.locator('.song-key')).toBeHidden();
+    await expect.poll(async () => (await storedSong(page, 'Valerie')).key).toBe('');
+    await button(page, 'Key up a semitone').click();
+    await expect(keyValue(page)).toHaveText('+1');
+    await expect(page.locator('.song-key-words')).toHaveText('one semitone up');
+    await expect.poll(async () => (await storedSong(page, 'Valerie')).key).toBe('+1');
+    await button(page, 'Key down a semitone').click();
+    await button(page, 'Key down a semitone').click();
+    await button(page, 'Key down a semitone').click();
+    await expect(keyValue(page)).toHaveText('−2');
+    await expect.poll(async () => (await storedSong(page, 'Valerie')).key).toBe('-2');
+
+    // Status: one of three; tapping the chosen one again clears it (R64).
+    await expectStatus(page, null);
+    await statusToggle(page, 'Go-to').click();
+    await expectStatus(page, 'Go-to');
+    await expect.poll(async () => (await storedSong(page, 'Valerie')).status).toBe('go-to');
+    await statusToggle(page, 'Retired').click();
+    await expectStatus(page, 'Retired');
+    await expect.poll(async () => (await storedSong(page, 'Valerie')).status).toBe('retired');
+    await statusToggle(page, 'Retired').click();
+    await expectStatus(page, null);
+    await expect.poll(async () => (await storedSong(page, 'Valerie')).status).toBe('');
+
+    // Rating: 1 to 5, the numbers up to it lit; tapping it again clears it.
+    await rateToggle(page, 4).click();
+    await expectRating(page, 4);
+    await expect(details(page).locator('.rate.lit')).toHaveText(['1', '2', '3', '4']);
+    await expect.poll(async () => (await storedSong(page, 'Valerie')).rating).toBe(4);
+    await rateToggle(page, 4).click();
+    await expectRating(page, null);
+    await expect.poll(async () => (await storedSong(page, 'Valerie')).rating).toBe(null);
+    await rateToggle(page, 2).click();
+    await expect.poll(async () => (await storedSong(page, 'Valerie')).rating).toBe(2);
+
+    // Tonight's set: Add to set puts it at the end, and On set takes it out.
+    const crownSet = async () => (await readStore(page, 'setlists')).find((s) => s.name === 'The Crown').songIds;
+    const toggle = button(page, 'Add Valerie to the set');
+    await expect(toggle).toHaveText('Add to set');
+    await expectTapTarget(toggle);
+    await toggle.click();
+    await expect(button(page, 'Remove Valerie from the set')).toHaveText('On set · 02');
+    await expect.poll(crownSet).toEqual([songIds['Dancing Queen'], songIds.Valerie]);
+    await button(page, 'Remove Valerie from the set').click();
+    await expect(button(page, 'Add Valerie to the set')).toHaveText('Add to set');
+    await expect.poll(crownSet).toEqual([songIds['Dancing Queen']]);
+    await button(page, 'Add Valerie to the set').click();
+    await expect.poll(crownSet).toEqual([songIds['Dancing Queen'], songIds.Valerie]);
+
+    // Back in the list the + shows it; a reload keeps every change.
+    await backToSongs(page);
+    await expect(songRow(page, 'Valerie').locator('.set-toggle')).toHaveText('✓');
+    await page.reload();
+    await openSong(page, 'Valerie');
+    await expect(keyValue(page)).toHaveText('−2');
+    await expectStatus(page, null);
+    await expectRating(page, 2);
+    await expect(button(page, 'Remove Valerie from the set')).toHaveText('On set · 02');
+
+    // Under Overall there is no "here": the sings are across every venue, and
+    // tonight's set is Overall's (R56), here the first list of all.
+    await backToSongs(page);
+    await chooseVenue(page, 'Overall');
+    await openSong(page, 'Valerie');
+    await expect(songField(page, 'Here')).toHaveCount(0);
+    await expect(songField(page, 'All venues')).toHaveText(hereText(2, '5 Nov'));
+    await expect(button(page, 'Remove Valerie from the set')).toHaveText('On set · 02');
   });
 
   test('R1: will not add a song whose title or artist is only spaces', async ({ page }) => {
@@ -349,6 +480,7 @@ test.describe('Library', () => {
     await form.getByLabel('Artist').fill('Amy Winehouse');
     await form.getByRole('button', { name: 'Add song' }).click();
     await expect(form.getByRole('alert')).toHaveText('Enter a title.');
+    await form.getByRole('button', { name: 'Cancel' }).click();
     await expect(page.getByText('0 of 0 songs')).toBeVisible();
   });
 });

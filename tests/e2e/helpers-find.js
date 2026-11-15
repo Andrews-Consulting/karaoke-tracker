@@ -60,21 +60,58 @@ export async function expectRememberedVenue(page, venueId) {
   }).toBe(venueId);
 }
 
+// The Songs scope's field in the dock (R10). Its name stays "Search songs" in either source.
+export function songSearch(page) {
+  return page.getByRole('searchbox', { name: 'Search songs' });
+}
+
+// Back from a song page to the Songs scope.
+export async function backToSongs(page) {
+  await page.getByRole('button', { name: 'Back to Songs' }).click();
+  await expect(songSearch(page)).toBeVisible();
+}
+
 export function filtersForm(page) {
   return page.getByRole('form', { name: 'Filters' });
 }
 
-export function filtersSummary(page) {
-  return page.locator('details.find-filters > summary');
+// The Filters sheet, opened from the dock's filter button.
+export function filtersSheet(page) {
+  return page.getByRole('dialog', { name: 'Filters' });
 }
 
-// Opens the collapsed Filters card.
+// The dock's filter button. It hides while the sheet is up, so it is found by its class.
+export function filterButton(page) {
+  return page.locator('#dock .dock-filter');
+}
+
+// The dock's filter button says how many filters are on (R69): "Filters" or "Filters, 2 on".
+export async function expectFilterCount(page, count) {
+  await expect(filterButton(page)).toHaveAttribute('aria-label', count ? `Filters, ${count} on` : 'Filters');
+}
+
+// Opens the Filters sheet from the dock.
 export async function openFilters(page) {
-  if (!(await filtersForm(page).isVisible())) await filtersSummary(page).click();
+  if (!(await filtersForm(page).isVisible())) await filterButton(page).click();
   await expect(filtersForm(page)).toBeVisible();
 }
 
-// A menu in the Filters card, by its label: Sung, Since, Tag, Status, Rating, Genre, Decade, Sort by.
+// Closes the Filters sheet with its Done button ("Show N songs").
+export async function closeFilters(page) {
+  await filtersSheet(page).locator('.sheet-done').click();
+  await expect(filtersForm(page)).toBeHidden();
+}
+
+// The filters on, as tokens above the list (R69), and one token's × by what it says.
+export function filterTokens(page) {
+  return page.getByRole('group', { name: 'Filters on' }).getByRole('button');
+}
+
+export function removeToken(page, spoken) {
+  return page.getByRole('button', { name: `Remove filter: ${spoken}`, exact: true });
+}
+
+// A menu in the Filters sheet, by its label: Sung, Since, Tag, Status, Rating, Genre, Decade, KaraFun, Sort by.
 export function filter(page, label) {
   return filtersForm(page).getByLabel(label, { exact: true });
 }
@@ -92,9 +129,43 @@ export function songRow(page, title) {
   return page.locator('li.song-item').filter({ has: page.locator('.title').getByText(title, { exact: true }) });
 }
 
-// A row's "Sung N times · last D" / "Never sung here" line.
+// A row's sings at the venue: "2× · 17 Oct", or "New here" ("Never sung" under Overall).
 export function sungLine(page, title) {
   return songRow(page, title).locator('.sung');
+}
+
+// "2× · 17 Oct" as Tonight words it: the year follows the date when it is not this year's.
+export function hereText(count, day, year = 2026) {
+  return new RegExp(`^${count}× · ${day}( ${year})?$`);
+}
+
+// ---------- The song page (R70) ----------
+
+export function songPage(page) {
+  return page.getByRole('region', { name: 'Song details' });
+}
+
+// A value in the song page's list: Here, All venues, Genre, Year, KaraFun.
+export function songField(page, label) {
+  return songPage(page).locator('.song-fields .field').filter({ has: page.locator('dt', { hasText: new RegExp(`^${label}$`) }) }).locator('dd');
+}
+
+// Status (Go-to, Want to try, Retired) and rating (1 to 5) toggles, and the key stepper's value.
+export function statusToggle(page, label) {
+  return songPage(page).getByRole('group', { name: 'Status' }).getByRole('button', { name: label, exact: true });
+}
+
+export function rateToggle(page, n) {
+  return songPage(page).getByRole('button', { name: `Rate ${n} of 5`, exact: true });
+}
+
+export function keyValue(page) {
+  return songPage(page).locator('.key-value');
+}
+
+// The tags on the song page, as chips.
+export function tagChips(page) {
+  return songPage(page).locator('.tag-chip');
 }
 
 export async function expectTapTarget(locator) {
@@ -153,7 +224,7 @@ export async function seedBigLibrary(page, n = 1000, singCount = 500) {
 
 // ---------- Songs tab polish (R35, R9, R13, Wave 4 I) ----------
 
-// Opens the "Add a song" card and resolves with its form.
+// Opens the "Add a song" sheet from the end of the Songs list and resolves with its form.
 export async function openAddForm(page) {
   const form = page.getByRole('form', { name: 'Add a song' });
   if (!(await form.isVisible())) await page.getByText('Add a song', { exact: true }).click();

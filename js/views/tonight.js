@@ -68,7 +68,7 @@ function longDate(now) {
 }
 
 // A sing date ('YYYY-MM-DD') short: 'tonight', '17 Oct', or '17 Oct 2025' in another year.
-function shortDate(iso, today) {
+export function shortDate(iso, today) {
   if (iso === today) return 'tonight';
   const [year, month, day] = iso.split('-').map(Number);
   const base = `${day} ${MONTHS[month - 1]}`;
@@ -76,7 +76,7 @@ function shortDate(iso, today) {
 }
 
 // A row's sings here: '2× · 17 Oct', or 'New here' (under Overall, across every venue).
-function hereShort(stat, atVenue, today) {
+export function hereShort(stat, atVenue, today) {
   if (stat && stat.count) return `${stat.count}× · ${shortDate(stat.lastSung, today)}`;
   return atVenue ? 'New here' : 'Never sung';
 }

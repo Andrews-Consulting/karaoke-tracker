@@ -263,7 +263,7 @@ test.describe('Night out', () => {
 
     // The row itself still opens the song, and Back returns to the same venue and set.
     await openSong(page, 'Dancing Queen');
-    await page.getByRole('button', { name: 'Back to list' }).click();
+    await page.getByRole('button', { name: 'Back to Songs' }).click();
     await expect(findContext(page)).toHaveText('Viking · Viking · 2 songs');
     await expect(toggle(page, 'Dancing Queen')).toHaveText('✓');
 
@@ -318,9 +318,10 @@ test.describe('Night out', () => {
     const addBox = await addSummary.boundingBox();
     expect(moreBox.y).toBeGreaterThan(lastRow.y);
     expect(addBox.y).toBeGreaterThan(moreBox.y + moreBox.height - 1);
-    const form = await openAddForm(page);
+    const form = await openAddForm(page); // a sheet over the list
     await expect(form).toBeVisible();
-    await addSummary.click(); // closes it again
+    await form.getByRole('button', { name: 'Cancel' }).click();
+    await expect(more).toHaveText('Show 6 more');
 
     // A search that matches nothing offers to add it, title filled in.
     await search(page).fill('  Sharp Dressed Man ');
@@ -396,8 +397,8 @@ test.describe('Night out', () => {
 
     // The Songs scope shows the new sings at this venue, and the songs are no longer in the set.
     await openScope(page, 'Songs');
-    await expect(sungLine(page, 'Dancing Queen')).toHaveText(`Sung 1 time · last ${today}`);
-    await expect(sungLine(page, 'Valerie')).toHaveText(`Sung 2 times · last ${today}`);
+    await expect(sungLine(page, 'Dancing Queen')).toHaveText('1× · tonight');
+    await expect(sungLine(page, 'Valerie')).toHaveText('2× · tonight');
     await expect(toggle(page, 'Dancing Queen')).toHaveText('+');
 
     // So does the venue's history.

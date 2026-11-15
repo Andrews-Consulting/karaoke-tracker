@@ -77,15 +77,14 @@ test.describe('Printing', () => {
     await openApp(page);
     await putRecords(page, 'songs', SONGS);
     await openSongs(page);
-    await page.getByText('Add a song', { exact: true }).click();
-    const addForm = page.getByRole('form', { name: 'Add a song' });
-    await expect(addForm).toBeVisible();
+    const addButton = page.getByText('Add a song', { exact: true });
+    await expect(addButton).toBeVisible();
 
     await page.emulateMedia({ media: 'print' });
     await expect(tabBar(page)).toBeHidden();
-    await expect(addForm).toBeHidden();
+    await expect(addButton).toBeHidden();
     await expect(page.getByRole('searchbox', { name: 'Search songs' })).toBeHidden();
-    await expect(page.locator('details.find-filters')).toBeHidden();
+    await expect(page.locator('.filter-line')).toBeHidden();
     await expect(page.getByLabel('Venue')).toBeHidden();
 
     // Hidden on screen (R58), the page title prints as a real heading, not a 1 px clip.
@@ -111,7 +110,7 @@ test.describe('Printing', () => {
     // Back on screen, everything returns.
     await page.emulateMedia({ media: 'screen' });
     await expect(tabBar(page)).toBeVisible();
-    await expect(addForm).toBeVisible();
+    await expect(addButton).toBeVisible();
   });
 
   test("R24: prints a setlist's songs", async ({ page }) => {
