@@ -45,7 +45,7 @@ async function expectAllTapTargets(page, screen) {
 
 // None of the status toggles is pressed, or only `label`.
 async function expectStatus(page, label) {
-  for (const name of ['Go-to', 'Want to try', 'Retired']) {
+  for (const name of ['Active', 'Want to try', 'Retired']) {
     await expect(statusToggle(page, name)).toHaveAttribute('aria-pressed', String(name === label));
   }
 }
@@ -417,8 +417,8 @@ test.describe('Library', () => {
 
     // Status: one of three; tapping the chosen one again clears it (R64).
     await expectStatus(page, null);
-    await statusToggle(page, 'Go-to').click();
-    await expectStatus(page, 'Go-to');
+    await statusToggle(page, 'Active').click();
+    await expectStatus(page, 'Active');
     await expect.poll(async () => (await storedSong(page, 'Valerie')).status).toBe('go-to');
     await statusToggle(page, 'Retired').click();
     await expectStatus(page, 'Retired');

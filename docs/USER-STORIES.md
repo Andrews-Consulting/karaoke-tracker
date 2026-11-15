@@ -39,7 +39,7 @@ Everything the app does today, written as what the singer wants and why, without
 - As a singer, I want each song to carry a genre and a year, so that I can balance a night across styles and decades. (R36)
 - As a singer, I want to tag songs with my own words, such as duet or crowd-pleaser, so that I can group them in ways no fixed field anticipates. (R5)
 - As a singer, I want to record the key change I use for a song, so that I can set the machine right without remembering. (R6)
-- As a singer, I want to mark a song as a go-to, something to try, or retired, with a new song carrying no mark until I decide, so that my list reflects where each song stands with me. (R7, R64)
+- As a singer, I want to mark a song as active in my rotation, something to try, or retired, with a new song carrying no mark until I decide, so that my list reflects where each song stands with me. (R7, R64)
 - As a singer, I want to rate how well I sing each song from 1 to 5, so that I can lean on my best songs when it matters. (R4)
 - As a singer, I want to look a song up on the web to listen to it, so that I can practise or check it away from the venue. (R38)
 

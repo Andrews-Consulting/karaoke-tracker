@@ -13,6 +13,7 @@ import { openSetlists, setlistRow, editSetlist, openSetlist, pageToday } from '.
 import { openVenue, historyRow } from './helpers-venues.js';
 import { deleteOpenList, historyDate } from './helpers-lists.js';
 import { tonightListName } from '../../js/lib/night.js';
+import { swipeOpen, swipeClosed } from './helpers-tonight.js';
 
 const VALERIE = { title: 'Valerie', artist: 'Amy Winehouse', genre: 'Soul', year: 2006 };
 const QUEEN = { title: 'Dancing Queen', artist: 'ABBA', genre: 'Pop', year: 1976 };
@@ -76,11 +77,11 @@ async function expectSet(page, titles) {
   else await expect(afterList(page)).toBeHidden();
 }
 
-// Opens a row's "…" and taps one of its actions: 'Park', 'Remove' or 'Details'.
+// Swipes a row open and taps one of its actions: 'Park' or 'Remove'.
 async function rowAction(page, title, action) {
-  const more = button(page, `More for ${title}`);
-  if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
-  const names = { Park: `Park ${title} for next time`, Remove: `Remove ${title} from tonight`, Details: `Details for ${title}` };
+  const row = afterRow(page, title);
+  if (!/\bopen\b/.test((await row.getAttribute('class')) || '')) await swipeOpen(page, row);
+  const names = { Park: `Park ${title} for next time`, Remove: `Remove ${title} from tonight` };
   await button(page, names[action]).click();
 }
 
@@ -347,7 +348,7 @@ test.describe('Night out', () => {
     await search(page).fill('valerie');
     await expect(page.getByText('1 of 207 songs')).toBeVisible();
     await openFilters(page);
-    await choose(page, 'Status', 'Go-to');
+    await choose(page, 'Status', 'Active');
     await expect(page.getByText('0 of 207 songs')).toBeVisible();
     await expect(page.getByText('No songs match the search and filters.')).toBeVisible();
     await expect(page.getByRole('button', { name: /^Add “/ })).toHaveCount(0);
@@ -421,13 +422,23 @@ test.describe('Night out', () => {
     const viking = venueIds.Viking;
     await openScope(page, 'Tonight');
 
-    // Park is in a row's "…", not on Up next: the KJ already has that song.
+    // Park waits behind a row, revealed by a swipe, not on Up next: the KJ already has that song.
     await expect(upNext(page).getByRole('button', { name: /Park/ })).toHaveCount(0);
-    await expect(button(page, 'More for Dancing Queen')).toHaveAttribute('aria-expanded', 'false');
-    await button(page, 'More for Dancing Queen').click();
-    await expect(button(page, 'More for Dancing Queen')).toHaveAttribute('aria-expanded', 'true');
-    await expect(afterRow(page, 'Dancing Queen').locator('.after-actions').getByRole('button')).toHaveText(['Park', 'Remove', 'Details']);
+    await expect(afterRow(page, 'Dancing Queen')).not.toHaveClass(/\bopen\b/);
+    await swipeOpen(page, afterRow(page, 'Dancing Queen'));
+    await expect(afterRow(page, 'Dancing Queen').locator('.after-actions').getByRole('button')).toHaveText(['Park', 'Remove']);
     await expectAllTapTargets(page, 'A row\'s actions');
+    // Swiping another row open closes the first; a tap on an open row's surface closes it too.
+    await swipeOpen(page, afterRow(page, 'Mr. Brightside'));
+    await expect(afterRow(page, 'Dancing Queen')).not.toHaveClass(/\bopen\b/);
+    await afterRow(page, 'Mr. Brightside').locator('.after-open').click({ position: { x: 24, y: 24 } }); // the title, left of the actions
+    await expect(afterRow(page, 'Mr. Brightside')).not.toHaveClass(/\bopen\b/);
+    await expect(upNext(page)).toBeVisible(); // still on Tonight: the tap closed the row, it did not open Details
+    await swipeOpen(page, afterRow(page, 'Dancing Queen'));
+    await swipeClosed(page, afterRow(page, 'Dancing Queen'));
+    // Keyboard and screen readers reach the actions without the gesture: focus opens the row.
+    await button(page, 'Park Dancing Queen for next time').focus();
+    await expect(afterRow(page, 'Dancing Queen')).toHaveClass(/\bopen\b/);
     await button(page, 'Park Dancing Queen for next time').click();
     await expect(statusLine(page)).toHaveText('Parked “Dancing Queen” for next time.');
     await expectSet(page, ['Valerie', 'Mr. Brightside', 'Africa']);
@@ -465,7 +476,7 @@ test.describe('Night out', () => {
     // Opened, the Next time list offers no Park: a song never moves onto its own list.
     await setSelect(page).selectOption({ label: 'Maybe later' });
     await expectSet(page, ['Dancing Queen', 'Mr. Brightside', 'Africa']);
-    await button(page, 'More for Mr. Brightside').click();
+    await swipeOpen(page, afterRow(page, 'Mr. Brightside'));
     await expect(page.getByRole('button', { name: /^Park / })).toHaveCount(0);
     await expect(button(page, 'Remove Mr. Brightside from tonight')).toBeVisible();
     await expect(button(page, 'Sang it: Dancing Queen')).toBeVisible();
@@ -506,8 +517,8 @@ test.describe('Night out', () => {
     await expectSet(page, ['Valerie', 'Mr. Brightside']);
     await expect.poll(stored).toEqual([songIds.Valerie, songIds['Mr. Brightside']]);
 
-    // Details opens the song with the dock's field put away; Back returns to Tonight.
-    await rowAction(page, 'Mr. Brightside', 'Details');
+    // Tapping the title opens the song with the dock's field put away; Back returns to Tonight.
+    await afterRow(page, 'Mr. Brightside').locator('.after-open').click();
     await expect(page.getByRole('heading', { level: 2, name: 'Mr. Brightside' })).toBeVisible();
     await expect(field(page)).toBeHidden();
     await expect(scopeBar(page)).toBeVisible();

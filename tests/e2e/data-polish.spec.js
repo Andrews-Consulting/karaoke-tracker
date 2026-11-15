@@ -140,7 +140,7 @@ test.describe('Printing', () => {
     await expect(valerie.locator('.here')).toBeVisible();
     await expect(valerie.locator('.here')).toHaveText(/^1× · 30 Oct( 2026)?$/);
     await expect(valerie.getByRole('button', { name: 'Add Valerie to tonight\'s set' })).toBeHidden();
-    await expect(valerie.getByRole('button', { name: 'More for Valerie' })).toBeHidden();
+    await expect(valerie.getByRole('button', { name: 'Remove Valerie from tonight' })).toBeHidden();
     await expect(page.getByText('= in tonight\'s set')).toBeHidden();
 
     expect(await printColours(page)).toEqual({ background: 'rgb(255, 255, 255)', text: 'rgb(0, 0, 0)', scheme: 'light' });

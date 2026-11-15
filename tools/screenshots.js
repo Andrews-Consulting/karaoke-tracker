@@ -111,7 +111,17 @@ const SCREENS = [
   }],
   ['tonight-row', async (page) => {
     await tonightField(page).fill('');
-    await page.getByRole('button', { name: 'More for Drive' }).click();
+    // Swipe the Drive row left for its Park and Remove.
+    const row = page.getByRole('list', { name: 'The rest of tonight\'s set' }).locator('li[data-song-id]').filter({ hasText: 'Drive' });
+    const box = await row.locator('.after-main').boundingBox();
+    const y = box.y + box.height / 2;
+    const x = box.x + box.width * 0.7;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x - 40, y, { steps: 4 });
+    await page.mouse.move(x - 180, y, { steps: 6 });
+    await page.mouse.up();
+    await row.locator('.after-actions').getByRole('button', { name: /^Park/ }).waitFor();
   }],
   ['kj-after-sang-it', async (page) => {
     await page.getByRole('button', { name: /^Sang it/ }).click();
