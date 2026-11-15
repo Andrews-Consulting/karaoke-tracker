@@ -1,19 +1,26 @@
 // Tonight (Design B): the home scope, for working tonight's set at a venue.
 // The header has the venue menu (every venue, Overall and "Manage venues…";
 // R37), the date, and the Set menu (every setlist grouped for this venue, any
-// venue and other venues, then "New list for tonight…"; R47, R56). Tonight's
-// set is the selected setlist, the same list the Lists scope shows; the venue
-// and each venue's set are remembered in meta as before.
+// venue and other venues, then "New list for tonight…"; R47, R56).
+// Tonight's set is designated per venue (R75) and remembered in meta: on a
+// list's screen under Lists, by "New list for tonight…", by "Use for
+// tonight" here, or automatically on a first visit. The Set menu only
+// chooses which list is shown, the working list shared with the Songs scope
+// (js/views/songs.js): tonight's set unless another was chosen.
+// Showing tonight's set:
 //   Sung strip (R50): what was sung here today, with Undo last; a tap opens
 //     the venue's sings by date with Undo for today's.
 //   After that (R49, R61): the rest of the set in order, each with its sings
-//     here, a drag handle, and "…" for Park (the venue's Next time list),
-//     Remove and Details.
+//     here and a drag handle; a swipe reveals Park (the venue's Next time
+//     list) and Remove; a tap on the title opens Details.
 //   Up next, at the head of the set (R49, R54, R74): the first song with its
 //     key and sings here, "Sang it" (logs the sing, takes the song off the set
 //     and shows the next one to the KJ, all in one tap) and "KJ".
-//   Typing in the dock's field lists matching songs above the card, each
-//     with + / ✓ for the set (R48), and offers the KaraFun catalog (R67).
+// Showing another list (R75): a line naming it and tonight's set, with "Use
+//   for tonight"; every song as a numbered row with the handle, + / ✓ that
+//   pulls it into tonight's set, and a swipe for Remove from the list shown.
+// Typing in the dock's field lists matching songs above the card, each with
+//   + / ✓ for the working list (R48), and offers the KaraFun catalog (R67).
 // Under Overall there is a set too (R56), with no Sang it, Park or Sung strip.
 import { db, request, CATALOG_STORE } from '../db.js';
 import {
@@ -28,12 +35,12 @@ import {
 } from '../lib/setlist.js';
 import {
   currentSetlistKey, nextSetlistKey, tonightListName, uniqueSetlistName, setMenuGroups,
-  OVERALL_LIST_NAME, nextSetlistFor, putBackOnTop, groupSingsByDate,
+  OVERALL_LIST_NAME, nextSetlistFor, putBackOnTop, groupSingsByDate, showingLine,
 } from '../lib/night.js';
 import { dragToReorder } from '../drag.js';
 import { swipeToReveal } from '../swipe.js';
 import {
-  VENUE_KEY, openCurrentSet, startList, openSongScreen, findInSongs,
+  VENUE_KEY, openCurrentSet, startList, openSongScreen, findInSongs, workingList, setWorkingList,
 } from './songs.js';
 import { renderKj, keyParts } from './kj.js';
 import { renderVenues } from './venues.js';
@@ -199,8 +206,11 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
   const wanted = meta.has(VENUE_KEY) ? meta.get(VENUE_KEY) : null;
   const state = {
     venueId: venues.some((v) => v.id === wanted) ? wanted : null,
-    set: null, // tonight's set (R47, R56); id null while Overall's is unsaved
-    open: null, // the song whose "…" row is open
+    set: null, // tonight's set (R47, R56, R75); id null while Overall's is unsaved
+    // The list shown, the working list (R75): the same object as `set` while
+    // that is the one shown.
+    shown: null,
+    open: null, // the song whose row is swiped open
   };
   const currentVenue = () => venues.find((v) => v.id === state.venueId) || null;
   {
@@ -208,11 +218,15 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
     if (!stillCurrent(token, ticket)) return;
     ({ set: state.set, setlists } = opened);
     if (state.set.id != null) meta.set(currentSetlistKey(state.venueId), state.set.id);
+    state.shown = workingList(state.venueId, state.set, setlists);
   }
   let stats = singStats(sings, state.venueId);
   let busy = false; // one Sang it or Undo at a time
 
   const setSongs = () => setlistSongs(state.set, songsById);
+  const shownSongs = () => setlistSongs(state.shown, songsById);
+  // True while the list shown is tonight's set, with Up next and the Sung strip.
+  const showingTonight = () => state.shown === state.set;
   const short = (song) => hereShort(stats.get(song.id), state.venueId != null, today);
 
   // The line that says what a tap did, or why it failed.
@@ -249,6 +263,7 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
     const ticket2 = ++venueChange;
     const venue = venues.find((v) => String(v.id) === venueSelect.value) || null;
     state.venueId = venue ? venue.id : null;
+    setWorkingList(null); // another venue shows its own tonight's set (R75)
     db.put('meta', { key: VENUE_KEY, value: state.venueId })
       .catch((err) => console.warn('Could not remember the venue:', err));
     let set;
@@ -261,6 +276,7 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
     if (ticket2 !== venueChange || !root.isConnected) return;
     if (set.id != null) meta.set(currentSetlistKey(state.venueId), set.id);
     state.set = set;
+    state.shown = set;
     state.open = null;
     stats = singStats(sings, state.venueId);
     say('');
@@ -272,7 +288,8 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
   // Every setlist by name, grouped "For <venue>", "Any venue" and "Other
   // venues" (under Overall: "Any venue" and "For a venue"), then "New list for
   // tonight…" (under Overall "New list…", for any venue). Overall's unsaved
-  // "My list" shows first until its first song saves it.
+  // "My list" shows first until its first song saves it. The choice is the
+  // list shown (R75); only "New list for tonight…" changes tonight's set.
   const setText = el('span', { class: 'menu-text' });
   const setSelect = el('select', { name: 'set', 'aria-label': 'Set' });
   function fillSetSelect() {
@@ -281,9 +298,9 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
     if (state.set.id == null) options.unshift(el('option', { value: UNSAVED, text: state.set.name }));
     options.push(el('option', { value: NEW_LIST, text: state.venueId == null ? 'New list…' : 'New list for tonight…' }));
     setSelect.replaceChildren(...options);
-    setSelect.value = state.set.id == null ? UNSAVED : String(state.set.id);
+    setSelect.value = state.shown.id == null ? UNSAVED : String(state.shown.id);
     setSelect.disabled = false;
-    setText.textContent = state.set.name;
+    setText.textContent = state.shown.name;
   }
 
   setSelect.addEventListener('change', async () => {
@@ -293,36 +310,72 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
       setSelect.disabled = true; // one new list per choice
       let made;
       try {
-        made = await startList(venue, tonightListName(new Date()));
+        made = await startList(venue, tonightListName(new Date())); // remembered as tonight's set
       } catch (err) {
         failed(err);
         return;
       }
       if (state.venueId !== venueId || !root.isConnected) return;
       setlists = made.setlists;
-      chooseSet(made.set);
+      designate(made.set);
       say(`Started “${made.set.name}”.`);
       return;
     }
-    const chosen = setlists.find((s) => String(s.id) === setSelect.value);
+    const chosen = setSelect.value === UNSAVED
+      ? state.set
+      : setlists.find((s) => String(s.id) === setSelect.value);
     if (!chosen) return;
-    chooseSet(chosen);
     say('');
-    db.put('meta', { key: currentSetlistKey(venueId), value: chosen.id })
-      .catch((err) => console.warn('Could not remember the set:', err));
+    show(chosen);
   });
 
-  // Opens another set at the same venue (or under Overall).
-  function chooseSet(set) {
-    state.set = set;
+  // Shows a list (R75): tonight's set, or another as plain songs. Tonight's
+  // set stays as it is; the Songs scope's + works on the list shown.
+  function show(list) {
+    state.shown = list === state.set || list.id === state.set.id ? state.set : list;
     state.open = null;
-    meta.set(currentSetlistKey(state.venueId), set.id);
+    setWorkingList(state.venueId, showingTonight() ? null : list.id);
     drawAll();
   }
 
-  // The set with new contents, before it is saved.
+  // Makes `set` tonight's set at the venue (or under Overall) and shows it.
+  // The caller saves the designation.
+  function designate(set) {
+    state.set = set;
+    state.shown = set;
+    state.open = null;
+    setWorkingList(null);
+    if (set.id != null) meta.set(currentSetlistKey(state.venueId), set.id);
+    drawAll();
+  }
+
+  // "Use for tonight" on the line above another list (R75).
+  async function useForTonight() {
+    const list = state.shown;
+    if (showingTonight() || list.id == null) return;
+    designate(list);
+    say(`“${list.name}” is tonight's set now.`);
+    try {
+      await db.put('meta', { key: currentSetlistKey(state.venueId), value: list.id });
+    } catch (err) {
+      failed(err);
+    }
+  }
+
+  // Tonight's set with new contents, before it is saved.
   function changeSet(next) {
+    if (showingTonight()) state.shown = next;
     state.set = next;
+    setlists = setlists.map((s) => (s.id === next.id ? next : s));
+  }
+
+  // The list shown with new contents, before it is saved (R75).
+  function changeShown(next) {
+    if (showingTonight()) {
+      changeSet(next);
+      return;
+    }
+    state.shown = next;
     setlists = setlists.map((s) => (s.id === next.id ? next : s));
   }
 
@@ -341,7 +394,7 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
     savingOverall ||= startList(null, OVERALL_LIST_NAME).then((made) => {
       if (state.venueId == null && state.set.id == null && root.isConnected) {
         setlists = made.setlists;
-        chooseSet(made.set);
+        designate(made.set);
       }
       return state.set.id != null;
     }, (err) => {
@@ -352,15 +405,20 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
     return savingOverall;
   }
 
-  // + adds the song to the end of the set; ✓ takes it out (R48).
-  async function toggleInSet(song) {
-    if (state.set.id == null) {
+  // + adds the song to the end of a list; ✓ takes it out (R48). The matches
+  // work on the list shown (the working list, R75); a plain row's + pulls the
+  // song into tonight's set (`tonight`).
+  async function toggleInSet(song, { tonight = false } = {}) {
+    if (state.set.id == null && (tonight || showingTonight())) {
       const venueId = state.venueId;
       if (!(await saveOverallList()) || state.venueId !== venueId) return;
     }
-    const has = state.set.songIds.includes(song.id);
-    const next = has ? removeSongId(state.set, song.id) : addSongId(state.set, song.id);
-    changeSet(next);
+    const toTonight = tonight || showingTonight();
+    const list = toTonight ? state.set : state.shown;
+    const has = list.songIds.includes(song.id);
+    const next = has ? removeSongId(list, song.id) : addSongId(list, song.id);
+    if (toTonight) changeSet(next);
+    else changeShown(next);
     drawSet();
     drawDock();
     await saveSet(next);
@@ -379,7 +437,7 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
   }
 
   function drawStrip() {
-    const tonight = sungTonight();
+    const tonight = showingTonight() ? sungTonight() : []; // not over another list (R75)
     strip.hidden = tonight.length === 0;
     if (!tonight.length) {
       strip.replaceChildren();
@@ -427,35 +485,68 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
   const empty = el('div', { class: 'tonight-empty' },
     el('p', { text: 'Nothing in tonight\'s set yet. Type a song below, or open Lists.' }),
     el('button', { type: 'button', class: 'btn', text: 'Open Lists', onclick: () => dock.scope('lists') }));
+  const plainEmpty = el('p', { class: 'muted plain-empty', text: 'No songs in this list yet.', hidden: '' });
+
+  // Above another list (R75): which list shows, which is tonight's set, and
+  // the button that makes the one shown tonight's set.
+  const showingText = el('p', { class: 'showing-text' });
+  const showingBox = el('div', { class: 'showing-line', hidden: '' },
+    showingText,
+    el('button', { type: 'button', class: 'btn use-tonight', text: 'Use for tonight', onclick: useForTonight }));
 
   // Up next heads the set in the page, so it reads 01, 02, 03 from the top and
   // sits where a thumb rests after unlocking the phone; the field stays docked.
   const upBox = el('div', { class: 'up-box' });
 
   function drawSet() {
+    if (!showingTonight()) {
+      drawPlain();
+      return;
+    }
     const all = setSongs();
     const rest = all.slice(1);
+    showingBox.hidden = true;
+    plainEmpty.hidden = true;
     upBox.replaceChildren(...(all[0] ? [upNextCard(all[0])] : []));
     afterHead.textContent = `After that · ${rest.length}`;
     afterHead.hidden = rest.length === 0;
+    afterList.setAttribute('aria-label', 'The rest of tonight\'s set');
     afterList.hidden = rest.length === 0;
     afterList.replaceChildren(...rest.map((song, i) => afterRow(song, i + 2)));
     empty.hidden = all.length > 0;
   }
 
+  // Another list (R75): no Up next, every song a row numbered from 01.
+  function drawPlain() {
+    const all = shownSongs();
+    showingText.textContent = showingLine(state.shown, state.set);
+    showingBox.hidden = false;
+    upBox.replaceChildren();
+    afterHead.textContent = `${state.shown.name} · ${all.length}`;
+    afterHead.hidden = false;
+    afterList.setAttribute('aria-label', `Songs in ${state.shown.name}`);
+    afterList.hidden = all.length === 0;
+    afterList.replaceChildren(...all.map((song, i) => afterRow(song, i + 1)));
+    empty.hidden = true;
+    plainEmpty.hidden = all.length > 0;
+  }
+
   // A song after the first: a drag handle at the far left, its place, title
   // and artist (which open its Details) and its sings here. Swipe the row left
-  // for Park and Remove, which wait behind it (js/swipe.js).
+  // for Park and Remove, which wait behind it (js/swipe.js). Over another
+  // list (R75) every song is a row like this, with + / ✓ for tonight's set
+  // after its sings and Remove alone behind it.
   function afterRow(song, position) {
+    const plain = !showingTonight();
     const open = state.open === song.id;
-    const canPark = state.venueId != null && !(nextTimeList() && nextTimeList().id === state.set.id);
+    const canPark = !plain && state.venueId != null && !(nextTimeList() && nextTimeList().id === state.set.id);
     const handle = el('button', {
       type: 'button', class: 'handle', 'aria-label': `Move ${song.title}`,
       onkeydown: (e) => {
         const delta = { ArrowUp: -1, ArrowDown: 1 }[e.key];
         if (!delta) return;
         e.preventDefault();
-        moveTo(song, setSongs().findIndex((s) => s.id === song.id) + delta, true);
+        moveTo(song, shownSongs().findIndex((s) => s.id === song.id) + delta, true);
       },
     }, icon(ICONS.grip, { width: 3 }));
     // The handle sits at the far left, away from where a thumb scrolls the page.
@@ -465,14 +556,16 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
       el('button', { type: 'button', class: 'after-open', onclick: () => details(song) },
         el('span', { class: 'title', text: song.title }),
         el('span', { class: 'sub', text: song.artist })),
-      el('span', { class: 'here', text: short(song) }));
+      el('span', { class: 'here', text: short(song) }),
+      plain ? tonightToggle(song) : null);
     const panel = actionRow(song, canPark);
     const li = el('li', {
-      class: `after-row${open ? ' open' : ''}`, 'data-song-id': song.id, style: `--reveal: ${canPark ? 180 : 110}px`,
+      class: `after-row${plain ? ' plain-row' : ''}${open ? ' open' : ''}`, 'data-song-id': song.id,
+      style: `--reveal: ${canPark ? 180 : 110}px`,
     }, surface, panel);
     dragToReorder({
       list: afterList, li, handle,
-      onDrop: (index, hadFocus) => moveTo(song, index + 1, hadFocus),
+      onDrop: (index, hadFocus) => moveTo(song, plain ? index : index + 1, hadFocus),
       onCancel: drawSet,
     });
     swipeToReveal({
@@ -497,7 +590,10 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
   }
 
   // Park (never onto the Next time list itself) and Remove, behind the row.
+  // Over another list (R75), Remove alone, from that list ("this list", as
+  // "Remove X from <list>" names the matches' ✓ while typing).
   function actionRow(song, canPark) {
+    const from = showingTonight() ? 'tonight' : 'this list';
     return el('div', { class: 'after-actions', role: 'group', 'aria-label': `Actions for ${song.title}` },
       canPark
         ? el('button', {
@@ -506,31 +602,45 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
         })
         : null,
       el('button', {
-        type: 'button', class: 'btn danger remove', text: 'Remove', 'aria-label': `Remove ${song.title} from tonight`,
+        type: 'button', class: 'btn danger remove', text: 'Remove', 'aria-label': `Remove ${song.title} from ${from}`,
         onclick: () => remove(song),
       }));
   }
 
-  // A drop or an arrow key (R61): the song goes to `index` in the set, but
-  // never above Up next, which the KJ already has. Drawn at once, then saved.
+  // A plain row's + / ✓ (R75): pulls the song into tonight's set, or takes it out.
+  function tonightToggle(song) {
+    const has = state.set.songIds.includes(song.id);
+    return el('button', {
+      type: 'button', class: `btn set-toggle${has ? ' in-set' : ''}`, text: has ? '✓' : '+',
+      'aria-label': has ? `Remove ${song.title} from tonight's set` : `Add ${song.title} to tonight's set`,
+      onclick: () => toggleInSet(song, { tonight: true }),
+    });
+  }
+
+  // A drop or an arrow key (R61): the song goes to `index` in the list shown,
+  // but in tonight's set never above Up next, which the KJ already has. Drawn
+  // at once, then saved.
   async function moveTo(song, index, refocus) {
-    if (index < 1) return;
-    const next = moveSongId(state.set, song.id, index, songsById);
-    const same = next.songIds.every((id, i) => id === state.set.songIds[i]);
-    if (!same) changeSet(next);
+    if (index < (showingTonight() ? 1 : 0)) return;
+    const list = state.shown;
+    const next = moveSongId(list, song.id, index, songsById);
+    const same = next.songIds.every((id, i) => id === list.songIds[i]);
+    if (!same) changeShown(next);
     drawSet();
     drawDock();
     if (refocus) afterList.querySelector(`[data-song-id="${song.id}"] .handle`)?.focus();
     if (!same) await saveSet(next);
   }
 
-  // Takes a song off tonight's set, with no confirmation: + puts it back.
+  // Takes a song off the list shown, with no confirmation: + puts it back.
   async function remove(song) {
-    if (!state.set.songIds.includes(song.id)) return; // a second tap finds it gone
-    const next = removeSongId(state.set, song.id);
-    changeSet(next);
+    const list = state.shown;
+    if (!list.songIds.includes(song.id)) return; // a second tap finds it gone
+    const next = removeSongId(list, song.id);
+    const from = showingTonight() ? 'tonight\'s set' : next.name;
+    changeShown(next);
     state.open = null;
-    say(`Removed “${song.title}” from tonight's set.`);
+    say(`Removed “${song.title}” from ${from}.`);
     drawSet();
     drawDock();
     await saveSet(next);
@@ -625,11 +735,16 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
 
   // ---- Typing in the field (R48, R67) ----
 
+  // What the field adds to (R75): "the set" while tonight's set is shown,
+  // otherwise the list shown by name.
+  const workingName = () => (showingTonight() ? null : state.shown.name);
+
   // A match: the title (the typed part marked), the artist, its sings here,
-  // and + / ✓ for the set. Its buttons keep the field focused, so the
-  // keyboard stays up while adding several.
+  // and + / ✓ for the list shown (R48, R75). Its buttons keep the field
+  // focused, so the keyboard stays up while adding several.
   function matchRow(song, text) {
-    const has = state.set.songIds.includes(song.id);
+    const has = state.shown.songIds.includes(song.id);
+    const target = workingName() ?? 'the set';
     return el('li', { class: 'match', 'data-song-id': song.id },
       el('div', { class: 'match-text' },
         el('span', { class: 'title' }, ...highlighted(song.title, text)),
@@ -637,7 +752,7 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
       el('span', { class: 'here', text: short(song) }),
       el('button', {
         type: 'button', class: `btn set-toggle${has ? ' in-set' : ''}`, text: has ? '✓' : '+',
-        'aria-label': has ? `Remove ${song.title} from the set` : `Add ${song.title} to the set`,
+        'aria-label': has ? `Remove ${song.title} from ${target}` : `Add ${song.title} to ${target}`,
         onmousedown: (e) => e.preventDefault(),
         onclick: () => toggleInSet(song),
       }));
@@ -646,10 +761,11 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
   function matchesPanel() {
     const text = query.trim();
     const all = rankMatches(songs, query);
+    const addTo = `Add to ${workingName() ?? 'tonight'}`;
     const head = all.length
-      ? `Add to tonight · ${plural(all.length, 'match', 'matches')}${all.length > MATCH_LIMIT ? ` · top ${MATCH_LIMIT}` : ''}`
+      ? `${addTo} · ${plural(all.length, 'match', 'matches')}${all.length > MATCH_LIMIT ? ` · top ${MATCH_LIMIT}` : ''}`
       : 'No songs match';
-    return el('section', { class: 'matches', 'aria-label': 'Add to tonight' },
+    return el('section', { class: 'matches', 'aria-label': addTo },
       el('p', { class: 'cap', text: head }),
       all.length ? el('ul', { class: 'match-list' }, ...all.slice(0, MATCH_LIMIT).map((song) => matchRow(song, text))) : null,
       // Fewer than three of mine: the catalog may have it (R67); none: add it as a new song.
@@ -684,19 +800,27 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
     drawStrip();
     drawSet();
     drawDock();
-    if (dock.searchValue() !== query) dock.search({ ...searchOptions, value: query });
+    syncField();
   }
 
-  const searchOptions = {
-    placeholder: 'Add a song to tonight',
-    label: 'Add a song to tonight\'s set',
-    value: query,
-    onInput: (value) => {
-      if (!root.isConnected) return;
-      query = value;
-      drawDock();
-    },
-  };
+  // The field adds to the list shown (R75), and says which.
+  let fieldLabel = null;
+  function syncField() {
+    const name = workingName();
+    const label = name ? `Add a song to ${name}` : 'Add a song to tonight\'s set';
+    if (fieldLabel === label && dock.searchValue() === query) return;
+    fieldLabel = label;
+    dock.search({
+      placeholder: name ? label : 'Add a song to tonight',
+      label,
+      value: query,
+      onInput: (value) => {
+        if (!root.isConnected) return;
+        query = value;
+        drawDock();
+      },
+    });
+  }
 
   // ---- The screen ----
 
@@ -711,10 +835,10 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
         el('span', { class: 'cap', text: 'Set' }),
         el('span', { class: 'menu-line' }, setText, icon(ICONS.chevron, { size: 16 }))),
       setSelect));
-  const root = el('div', { class: 'tonight' }, header, status, strip, upBox, afterHead, afterList, empty);
+  const root = el('div', { class: 'tonight' },
+    header, showingBox, status, strip, upBox, afterHead, afterList, empty, plainEmpty);
 
   viewEl.replaceChildren(root);
-  dock.search(searchOptions);
   drawAll();
   viewEl.scrollTop = 0;
   if (focusId != null) {

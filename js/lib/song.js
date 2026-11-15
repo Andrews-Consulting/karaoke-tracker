@@ -7,10 +7,10 @@
 export const SONG_STATUSES = ['go-to', 'want-to-try', 'retired'];
 
 // What the owner sees for each status (R7).
-// 'go-to' reads "Active" since 2026-11-15: the songs in my rotation, between
-// "Want to try" and "Retired". The stored value is unchanged, so old backups
-// and CSVs still load.
-export const STATUS_LABELS = { 'go-to': 'Active', 'want-to-try': 'Want to try', retired: 'Retired' };
+// "Go-to" read "Active" for a day on 2026-11-15; the owner went back to Go-to
+// once "Not set" (R64) turned out to be the everyday state, with Go-to for
+// the sure things. The stored value never changed.
+export const STATUS_LABELS = { 'go-to': 'Go-to', 'want-to-try': 'Want to try', retired: 'Retired' };
 
 export const RATINGS = [1, 2, 3, 4, 5];
 
@@ -116,7 +116,7 @@ export function validateSong(fields = {}) {
     errors.rating = 'Choose a rating from 1 to 5, or no rating.';
   }
   if (!blank(fields.status) && !SONG_STATUSES.includes(fields.status)) {
-    errors.status = 'Choose Active, Want to try or Retired.';
+    errors.status = 'Choose Go-to, Want to try or Retired.';
   }
   return errors;
 }

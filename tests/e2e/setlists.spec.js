@@ -433,6 +433,64 @@ test.describe('Setlists', () => {
     await expect(page.getByText('= in tonight\'s set')).toBeHidden();
   });
 
+  test('R75: Make this tonight\'s set on a list\'s screen designates it for the venue', async ({ page }) => {
+    await openApp(page);
+    const ids = await seedSongs(page, [VALERIE, QUEEN, BRIGHTSIDE]);
+    const [crown] = await putRecords(page, 'venues', [{ name: 'The Crown' }]);
+    const [crownSat, crowd, empty] = await putRecords(page, 'setlists', [
+      { name: 'Crown Saturdays', venueId: crown, songIds: [ids.Valerie] },
+      { name: 'Crowd pleasers', venueId: null, songIds: [ids['Dancing Queen'], ids['Mr. Brightside']] },
+      { name: 'Empty one', venueId: null, songIds: [] },
+    ]);
+    await putRecords(page, 'meta', [
+      { key: 'findVenueId', value: crown },
+      { key: `currentSetlist:${crown}`, value: crownSat },
+    ]);
+    const meta = async (key) => (await readStore(page, 'meta')).find((r) => r.key === key)?.value;
+    const make = page.getByRole('button', { name: 'Make this tonight\'s set', exact: true });
+    await openSetlists(page);
+
+    // Tonight's set itself has no button.
+    await openSetlist(page, 'Crown Saturdays');
+    await expect(inSetLine(page)).toHaveText('This is tonight\'s set');
+    await expect(make).toHaveCount(0);
+    await backToSetlists(page);
+
+    // Another list has it near the top; it designates the list at The Crown.
+    await openSetlist(page, 'Crowd pleasers');
+    await expect(inSetLine(page)).toHaveText('0 of 2 in tonight\'s set');
+    await expect(tonightToggle(page, 'Dancing Queen')).toHaveText('+');
+    const box = await make.boundingBox();
+    expect(box.height).toBeGreaterThanOrEqual(44);
+    expect(box.y).toBeLessThan((await page.getByRole('button', { name: 'Find songs', exact: true }).boundingBox()).y);
+    await make.click();
+    await expect(page.getByRole('status').filter({ hasText: 'tonight\'s set' }))
+      .toHaveText('“Crowd pleasers” is tonight\'s set at The Crown.');
+    await expect(inSetLine(page)).toHaveText('This is tonight\'s set');
+    await expect(make).toHaveCount(0);
+    await expect(tonightToggle(page, 'Dancing Queen')).toHaveCount(0); // the + / ✓ give way
+    await expect(page.getByText('= in tonight\'s set')).toBeHidden();
+    await expect.poll(() => meta(`currentSetlist:${crown}`)).toBe(crowd);
+
+    // The cards and Tonight follow.
+    await backToSetlists(page);
+    await expect(setlistRow(page, 'Crowd pleasers').locator('.list-in-set')).toHaveText('Tonight\'s set');
+    await expect(setlistRow(page, 'Crown Saturdays').locator('.list-in-set')).toHaveCount(0);
+    await openScope(page, 'Tonight');
+    await expect(page.getByLabel('Set', { exact: true }).locator('option:checked')).toHaveText('Crowd pleasers');
+    await expect(page.locator('.up-next .up-title')).toHaveText('Dancing Queen');
+
+    // Under Overall it designates Overall's set, even an empty list, and leaves The Crown's.
+    await page.getByLabel('Venue', { exact: true }).selectOption({ label: 'Overall' });
+    await expect(page.locator('.venue-menu .menu-text')).toHaveText('Overall');
+    await openSetlists(page);
+    await openSetlist(page, 'Empty one');
+    await make.click();
+    await expect(inSetLine(page)).toHaveText('This is tonight\'s set');
+    await expect.poll(() => meta('currentSetlist:overall')).toBe(empty);
+    expect(await meta(`currentSetlist:${crown}`)).toBe(crowd);
+  });
+
   test('R14: the Setlists tab returns to the setlist list', async ({ page }) => {
     await openApp(page);
     await putRecords(page, 'setlists', [{ name: 'Friday', venueId: null, songIds: [] }]);

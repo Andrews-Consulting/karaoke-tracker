@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   currentSetlistKey, nextSetlistKey, tonightListName, uniqueSetlistName, venueSetlists, currentSetlistFor,
-  setMenuGroups, nextSetlistFor, putBackOnTop, dateLabel, groupSingsByDate,
+  setMenuGroups, nextSetlistFor, putBackOnTop, dateLabel, groupSingsByDate, shownSetlistFor, showingLine,
 } from '../../js/lib/night.js';
 
 const VIKING = 1;
@@ -197,6 +197,43 @@ describe('R49 nextSetlistFor', () => {
   it('never picks a list by its name alone', () => {
     expect(nextSetlistFor(setlists, VIKING, 5).id).toBe(5);
     expect(nextSetlistFor(setlists, null, 6)).toBeNull();
+  });
+});
+
+describe('R75 shownSetlistFor', () => {
+  const tonight = setlists[2];
+
+  it('is tonight\'s set itself when no other list was chosen', () => {
+    expect(shownSetlistFor(setlists, tonight, null)).toBe(tonight);
+    expect(shownSetlistFor(setlists, tonight, undefined)).toBe(tonight);
+  });
+
+  it('is the chosen list while it exists', () => {
+    expect(shownSetlistFor(setlists, tonight, 6)).toBe(setlists[1]);
+    expect(shownSetlistFor(setlists, tonight, 9)).toBe(setlists[4]);
+  });
+
+  it('is tonight\'s set object, not the stored copy, when the chosen list is tonight\'s set', () => {
+    const edited = { ...tonight, songIds: [11, 10] };
+    expect(shownSetlistFor(setlists, edited, 7)).toBe(edited);
+  });
+
+  it('falls back to tonight\'s set when the chosen list was deleted', () => {
+    expect(shownSetlistFor(setlists, tonight, 99)).toBe(tonight);
+    expect(shownSetlistFor(undefined, tonight, 6)).toBe(tonight);
+  });
+});
+
+describe('R75 showingLine', () => {
+  it('names the list shown and tonight\'s set', () => {
+    expect(showingLine({ id: 6, name: 'Next time' }, { id: 7, name: 'Fri 14 Nov' }))
+      .toBe('Showing Next time · tonight\'s set is Fri 14 Nov');
+  });
+
+  it('says when there is no tonight\'s set yet, or only Overall\'s unsaved one', () => {
+    expect(showingLine({ id: 6, name: 'Next time' }, null)).toBe('Showing Next time · no tonight\'s set yet');
+    expect(showingLine({ id: 6, name: 'Next time' }, { id: null, name: 'My list' }))
+      .toBe('Showing Next time · no tonight\'s set yet');
   });
 });
 

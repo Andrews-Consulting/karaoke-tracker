@@ -5,9 +5,8 @@ import { makeSong } from '../../js/lib/song.js';
 import { openApp, putRecords, readStore } from './helpers.js';
 import {
   openSetlists, openSetlist, backToSetlists, setlistSongRow, setlistSongRows, setlistSongTitles,
-  dragHandle, moveButton, removeFromSetlist, openMix, mixLine, suggestForm, suggest,
+  dragHandle, removeFromSetlist, openMix, mixLine, suggestForm, suggest,
 } from './helpers-setlists.js';
-import { openSongMenu } from './helpers-lists.js';
 
 // Stores songs (partial fields, completed by makeSong) and returns { title: id }.
 async function seedSongs(page, songs) {
@@ -94,10 +93,10 @@ test.describe('Setlists: suggest', () => {
     // The result is a start to edit: songs can be removed and moved as usual.
     const last = added.at(-1);
     await removeFromSetlist(page, { title: last, artist: byTitle.get(last).artist });
-    await openSongMenu(page, added[0]);
-    await moveButton(page, added[0], 'up').click();
-    await expect(setlistSongTitles(page).first()).toHaveText(added[0]);
     await expect(dragHandle(page, added[0])).toBeVisible();
+    await dragHandle(page, added[0]).focus();
+    await page.keyboard.press('ArrowUp');
+    await expect(setlistSongTitles(page).first()).toHaveText(added[0]);
 
     // Asking again takes the rest (the removed song is a candidate again); Toxic, sung only at Anchor, is among them.
     await suggest(page, 50, 'Added 7 songs (only 7 never sung here were left).');
