@@ -9,6 +9,7 @@ import {
 import { songKey } from '../lib/song.js';
 import { THEME_CHOICES, ACCENT_CHOICES } from '../lib/theme.js';
 import { savedThemeChoice, applyThemeChoice, savedAccentChoice, applyAccentChoice } from '../theme.js';
+import { setLayoutDebug, layoutDebugOn } from '../dock.js';
 import { recordBackup } from '../reminder.js';
 import { suggestionsEnabled, setSuggestionsEnabled } from '../musicbrainz.js';
 import {
@@ -75,12 +76,17 @@ export async function renderSettings() {
     ...ACCENT_CHOICES.map(([value, text]) => el('option', { value, text })));
   accentSelect.value = savedAccentChoice();
   accentSelect.addEventListener('change', () => applyAccentChoice(accentSelect.value));
+  const debugBox = el('input', { type: 'checkbox', name: 'layoutDebug' });
+  debugBox.checked = layoutDebugOn();
+  debugBox.addEventListener('change', () => setLayoutDebug(debugBox.checked));
   const appearance = el('div', { class: 'card stack' },
     el('strong', { text: 'Appearance' }),
     el('label', { for: 'setting-theme', text: 'Theme' }),
     themeSelect,
     el('label', { for: 'setting-accent', text: 'Accent colour' }),
-    accentSelect);
+    accentSelect,
+    el('label', { class: 'check' }, debugBox,
+      el('span', { text: 'Show screen numbers in the dock (for checking the keyboard layout on a phone)' })));
 
   // ---- R35: online suggestions, the app's only network call ----
   const suggestBox = el('input', { type: 'checkbox', name: 'musicbrainz' });

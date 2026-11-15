@@ -658,13 +658,15 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
         : null);
   }
 
-  // The slot above the field: the matches while typing, then Up next.
+  // The slot above the field: the matches while typing, otherwise Up next.
+  // Not both: with the keyboard up there is room for one, and the matches
+  // belong right above the field (the prototype's B1).
   const dockBox = el('div', { class: 'tonight-dock' });
   function drawDock() {
     const first = setSongs()[0] || null;
     const parts = [];
     if (query.trim()) parts.push(matchesPanel());
-    if (first) parts.push(upNextCard(first));
+    else if (first) parts.push(upNextCard(first));
     dockBox.replaceChildren(...parts);
     dock.slot(parts.length ? dockBox : null);
   }

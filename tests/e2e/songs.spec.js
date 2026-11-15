@@ -89,5 +89,16 @@ test.describe('Songs', () => {
     expect(row.y + row.height).toBeLessThanOrEqual(420);
     expect(box.y + box.height).toBeLessThanOrEqual(420);
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
+
+    // A phone also reports the keyboard through the visual viewport, which the
+    // dock turns into html[data-kb]; the Songs header then folds away so the
+    // matches get the room. Simulated here, since a desktop browser has no keyboard.
+    await page.evaluate(() => document.documentElement.setAttribute('data-kb', ''));
+    await expect(page.locator('.songs-view > .find-context')).toBeHidden();
+    await expect(page.locator('.songs-view > .filter-line')).toBeHidden();
+    await expect(page.getByText('2 of 3 songs')).toBeVisible();
+    await expect(first).toBeVisible();
+    await page.evaluate(() => document.documentElement.removeAttribute('data-kb'));
+    await expect(page.locator('.songs-view > .find-context')).toBeVisible();
   });
 });

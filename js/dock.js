@@ -16,7 +16,7 @@
 // field over with `detail: true` (a list's songs, "Search Friday"), which
 // lasts until the next screen is drawn; the KJ view hides it all
 // (body[data-screen="kj"] in css/app.css).
-import { onDraw } from './ui.js';
+import { onDraw, el } from './ui.js';
 
 export const SCOPES = [
   ['tonight', 'Tonight'],
@@ -178,13 +178,44 @@ onDraw(({ depth }) => {
 // <main> shrinks and scrolls inside rather than the page scrolling to the
 // field and hiding the top of the screen. Safari still nudges the page when
 // the field takes focus; scrolling back to the top keeps the layout honest.
-if (window.visualViewport) {
+// html[data-kb] says the keyboard is up (the visible height is well below the
+// window's), which the Songs scope uses to fold its header away.
+const DEBUG_KEY = 'layoutDebug';
+let debugLine = null;
+
+function fit() {
   const vv = window.visualViewport;
-  const fit = () => {
-    document.documentElement.style.setProperty('--vvh', `${Math.round(vv.height)}px`);
-    if (window.scrollY || vv.offsetTop) window.scrollTo(0, 0);
-  };
-  vv.addEventListener('resize', fit);
-  vv.addEventListener('scroll', fit);
+  const height = vv ? Math.round(vv.height) : window.innerHeight;
+  document.documentElement.style.setProperty('--vvh', `${height}px`);
+  document.documentElement.toggleAttribute('data-kb', height < window.innerHeight - 120);
+  if (vv && (window.scrollY || vv.offsetTop)) window.scrollTo(0, 0);
+  if (debugLine) {
+    debugLine.textContent = `window ${window.innerHeight} · visible ${height} · top ${vv ? Math.round(vv.offsetTop) : 0} · scroll ${Math.round(window.scrollY)}`;
+  }
+}
+
+// Settings → Appearance switches a line of screen numbers on at the top of
+// the dock, for checking the keyboard layout on a real phone.
+export function setLayoutDebug(on) {
+  try { localStorage.setItem(DEBUG_KEY, on ? '1' : ''); } catch { /* storage may be unavailable */ }
+  if (on && !debugLine) {
+    debugLine = el('p', { class: 'dock-debug', 'aria-hidden': 'true' });
+    dockEl.prepend(debugLine);
+  } else if (!on && debugLine) {
+    debugLine.remove();
+    debugLine = null;
+  }
   fit();
 }
+
+export function layoutDebugOn() {
+  try { return localStorage.getItem(DEBUG_KEY) === '1'; } catch { return false; }
+}
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', fit);
+  window.visualViewport.addEventListener('scroll', fit);
+}
+window.addEventListener('resize', fit);
+if (layoutDebugOn()) setLayoutDebug(true);
+else fit();
