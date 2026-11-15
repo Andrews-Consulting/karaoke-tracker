@@ -64,6 +64,17 @@ html, body { height: 100%; }
    dock sits on the keyboard and <main> shrinks and scrolls inside instead. */
 body { height: var(--vvh, 100%); }
 
+/* With the keyboard up (html[data-kb], set by js/dock.js when the visible
+   height drops well below the window's) the Songs scope folds its header
+   away, so the first matches sit in the little room left above the field. */
+html[data-kb] .songs-view > .find-context,
+html[data-kb] .songs-view > .source-switch,
+html[data-kb] .songs-view > .filter-line { display: none; }
+html[data-kb] .songs-view > .pick-row { margin: 0 0 6px; }
+
+/* Screen numbers for checking the layout on a phone (Settings → Appearance). */
+.dock-debug { margin: 0; font: 12px/1.3 var(--mono); color: var(--muted); text-align: center; }
+
 body {
   margin: 0;
   display: flex;
@@ -800,10 +811,11 @@ label.check > input[type="checkbox"] {
 .up-actions .btn.sang { font-size: 1.0625rem; font-weight: 700; }
 .up-actions .btn.sang:active { opacity: 1; background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
 
-/* Matches while typing (R48): sized to the visible height, which shrinks
-   when the keyboard opens, so the first match stays just above the card. */
+/* Matches while typing (R48): they take the Up next card's place and are
+   sized to the visible height, which shrinks when the keyboard opens, less
+   the field, the scope bar and a little of the list above. */
 .matches {
-  max-height: calc(var(--vvh, 100vh) * 0.42);
+  max-height: min(calc(var(--vvh, 100vh) - 190px), 560px);
   overflow-y: auto;
   padding: 6px 0;
   border: 1px solid var(--border);

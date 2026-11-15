@@ -275,21 +275,23 @@ test.describe('Night out', () => {
     await expect(matches(page)).toHaveCount(0);
     await field(page).fill('af');
     await expect(matches(page).locator('.cap')).toHaveText('Add to tonight · 1 match');
+    await expect(upNext(page)).toHaveCount(0); // the matches take the card's place while typing
     await expect(matchRow(page, 'Africa').locator('.hit')).toHaveText('Af');
     await expect(matchRow(page, 'Africa')).toContainText('Toto');
     await expect(matchRow(page, 'Africa').locator('.here')).toHaveText('New here');
     await matchRow(page, 'Africa').getByRole('button', { name: 'Add Africa to the set' }).click();
     await expect(matchRow(page, 'Africa').getByRole('button', { name: 'Remove Africa from the set' })).toHaveText('✓');
     await expect(field(page)).toBeFocused(); // the keyboard stays up for the next one
-    await expectSet(page, ['Dancing Queen', 'Mr. Brightside', 'Africa']);
+    await expect(afterTitles(page)).toHaveText(['Mr. Brightside', 'Africa']); // the card is away while typing
     await expect.poll(stored).toEqual([songIds['Dancing Queen'], songIds['Mr. Brightside'], songIds.Africa]);
     await expectAllTapTargets(page, 'Tonight while typing');
 
-    // Matches above the Up next card; ✓ takes a song out.
-    expect((await matches(page).boundingBox()).y).toBeLessThan((await upNext(page).boundingBox()).y);
+    // The matches sit right above the field; ✓ takes a song out. Clearing the
+    // field brings the Up next card back.
+    expect((await matches(page).boundingBox()).y).toBeLessThan((await field(page).boundingBox()).y);
     await field(page).fill('queen');
     await matchRow(page, 'Dancing Queen').getByRole('button', { name: 'Remove Dancing Queen from the set' }).click();
-    await expectSet(page, ['Mr. Brightside', 'Africa']);
+    await expect(afterTitles(page)).toHaveText(['Africa']);
     await expect.poll(stored).toEqual([songIds['Mr. Brightside'], songIds.Africa]);
 
     // Clearing the field returns to the set.
