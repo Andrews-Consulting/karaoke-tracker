@@ -90,15 +90,17 @@ test.describe('Songs', () => {
     expect(box.y + box.height).toBeLessThanOrEqual(420);
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
 
-    // A phone also reports the keyboard through the visual viewport, which the
-    // dock turns into html[data-kb]; the Songs header then folds away so the
-    // matches get the room. Simulated here, since a desktop browser has no keyboard.
-    await page.evaluate(() => document.documentElement.setAttribute('data-kb', ''));
+    // The drop from the full height is how the dock knows the keyboard is up
+    // (a Home Screen app on iOS shrinks the whole window): html[data-kb] is set
+    // and the Songs header folds away so the matches get the room.
+    await expect(page.locator('html[data-kb]')).toHaveCount(1);
     await expect(page.locator('.songs-view > .find-context')).toBeHidden();
     await expect(page.locator('.songs-view > .filter-line')).toBeHidden();
     await expect(page.getByText('2 of 3 songs')).toBeVisible();
     await expect(first).toBeVisible();
-    await page.evaluate(() => document.documentElement.removeAttribute('data-kb'));
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.locator('html[data-kb]')).toHaveCount(0);
     await expect(page.locator('.songs-view > .find-context')).toBeVisible();
   });
 });

@@ -178,16 +178,23 @@ onDraw(({ depth }) => {
 // <main> shrinks and scrolls inside rather than the page scrolling to the
 // field and hiding the top of the screen. Safari still nudges the page when
 // the field takes focus; scrolling back to the top keeps the layout honest.
-// html[data-kb] says the keyboard is up (the visible height is well below the
-// window's), which the Songs scope uses to fold its header away.
+// html[data-kb] says the keyboard is up, which the Songs scope uses to fold
+// its header away. In Safari the keyboard shrinks only the visual viewport,
+// but in a Home Screen app iOS shrinks the whole window with it (a phone
+// read window 762 and visible 762, then 427 and 427 with the keyboard up), so
+// the sign is a height well below the tallest this orientation has had.
 const DEBUG_KEY = 'layoutDebug';
+const KEYBOARD_DROP = 150;
+const tallest = { portrait: 0, landscape: 0 };
 let debugLine = null;
 
 function fit() {
   const vv = window.visualViewport;
   const height = vv ? Math.round(vv.height) : window.innerHeight;
+  const orientation = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
+  tallest[orientation] = Math.max(tallest[orientation], height);
   document.documentElement.style.setProperty('--vvh', `${height}px`);
-  document.documentElement.toggleAttribute('data-kb', height < window.innerHeight - 120);
+  document.documentElement.toggleAttribute('data-kb', height < tallest[orientation] - KEYBOARD_DROP);
   if (vv && (window.scrollY || vv.offsetTop)) window.scrollTo(0, 0);
   if (debugLine) {
     debugLine.textContent = `window ${window.innerHeight} · visible ${height} · top ${vv ? Math.round(vv.offsetTop) : 0} · scroll ${Math.round(window.scrollY)}`;
