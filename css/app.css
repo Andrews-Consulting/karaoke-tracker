@@ -389,120 +389,8 @@ label > textarea { margin-top: 4px; color: var(--text); resize: vertical; }
 .error { margin: 0; color: var(--error); }
 .notice { margin: 0; }
 
-/* ---- Venues view (Wave 1 C) ---- */
-.venues-view h2 { margin: 0; font-size: 1.25rem; }
-.venues-view h3 { margin-bottom: 0; font-size: 1rem; }
-.venues-view .error { margin: 0; color: var(--error); }
-.venues-view .status { margin: 0; color: var(--accent); }
-.venues-view .error:empty, .venues-view .status:empty, .venues-view .count:empty { display: none; }
-.venues-view .picked, .venues-view .count { margin: 0; }
-.venues-view .title { display: block; font-weight: 600; }
-.venues-view .sub { display: block; color: var(--muted); font-size: 0.875rem; }
-.venues-view .nowrap { white-space: nowrap; }
-
-.venue-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.venue-row .open {
-  flex: 1;
-  min-width: 0;
-  min-height: var(--tap);
-  padding: 0;
-  border: 0;
-  background: none;
-  text-align: left;
-  cursor: pointer;
-}
-.venue-row .actions { display: flex; gap: 8px; }
-.venue-row > form, .venue-row > .error { flex-basis: 100%; }
-
-.venues-view .picks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.venues-view .pick {
-  width: 100%;
-  min-height: var(--tap);
-  padding: 8px 12px;
-  text-align: left;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  cursor: pointer;
-}
-.venues-view .pick[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-
-.venues-view .history summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: var(--tap);
-  list-style: none;
-  cursor: pointer;
-}
-.venues-view .history summary::-webkit-details-marker { display: none; }
-.venues-view .history summary .text { flex: 1; min-width: 0; }
-.venues-view .history summary::after { content: "▸"; color: var(--muted); }
-.venues-view .history details[open] > summary::after { content: "▾"; }
-.venues-view .entries { list-style: none; margin: 4px 0 0; padding: 0 0 0 12px; }
-.venues-view .entries li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: var(--tap);
-  padding: 4px 0;
-  border-bottom: 0;
-}
-
-/* ---- Setlists view (Wave 2 E) ---- */
-.setlists-view h2 { margin: 0; font-size: 1.25rem; overflow-wrap: anywhere; }
-.setlists-view form h2, .setlists-view h3 { margin: 0; font-size: 1rem; }
-.setlists-view .venue-line, .setlists-view .count, .setlists-view .empty { margin: 0; }
-.setlists-view .error, .setlists-view .status { margin: 0; }
-.setlists-view .error { color: var(--error); }
-.setlists-view .status { color: var(--accent); }
-.setlists-view .error:empty, .setlists-view .status:empty, .setlists-view .count:empty { display: none; }
-.setlists-view .title { display: block; font-weight: 600; overflow-wrap: anywhere; }
-.setlists-view .sub { display: block; color: var(--muted); font-size: 0.875rem; }
-.setlists-view .nowrap { white-space: nowrap; }
-
-/* List rows: the name opens the setlist, Edit and Delete sit beside it. */
-.setlist-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.setlist-row .open {
-  flex: 1;
-  min-width: 0;
-  min-height: var(--tap);
-  padding: 0;
-  border: 0;
-  background: none;
-  text-align: left;
-  cursor: pointer;
-}
-.setlist-row .actions { display: flex; gap: 8px; }
-.setlist-row > form { flex-basis: 100%; }
-
-/* Songs in one setlist, in order, each with a Remove button (R15). */
-.setlist-song { display: flex; align-items: center; gap: 8px; }
-.setlist-song .text { flex: 1; min-width: 0; }
-
-/* Already sung at this setlist's venue (R43). */
-.setlists-view .flag {
-  display: inline-block;
-  margin-top: 4px;
-  padding: 0 8px;
-  border: 1px solid var(--accent);
-  border-radius: 999px;
-  color: var(--accent);
-  font-size: 0.875rem;
-}
-
-.setlists-view .picks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.setlists-view .pick {
-  width: 100%;
-  min-height: var(--tap);
-  padding: 8px 12px;
-  text-align: left;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  cursor: pointer;
-}
+/* The Lists and History scopes are styled in their own block at the end
+   ("Lists and History"). */
 
 /* ---- Find (Wave 2 D) ---- */
 
@@ -589,33 +477,20 @@ label > textarea { margin-top: 4px; color: var(--text); resize: vertical; }
   /* One thin rule between rows, and no row split across pages. */
   .list li { padding: 3pt 0; border-bottom: 0.5pt solid #999; break-inside: avoid; }
   .song-row { padding: 3pt 0; color: #000; }
-  .venue-row .open, .setlist-row .open { padding: 0; color: #000; }
   .list .sub, .song-row .sung, .count, .muted { color: #333; font-size: 11pt; }
-  .setlists-view .flag { margin: 0; padding: 0; border: 0; color: #000; font-size: 11pt; font-style: italic; }
 
-  /* A venue's history: the summary prints as plain text, without its arrow,
-     and closed entries print too where the browser supports ::details-content
-     (elsewhere they stay closed). A separate rule, as with :has() above. */
+  /* A venue's history: the summary prints as plain text, and closed entries
+     print too where the browser supports ::details-content (elsewhere they
+     stay closed). A separate rule, as with :has() above. The rest of the
+     Lists and History print rules are in their block at the end. */
   details::details-content { display: block; content-visibility: visible; }
   summary { list-style: none; }
   summary::-webkit-details-marker { display: none; }
-  .venues-view .history summary::after { content: none; }
-  .venues-view .entries li { padding: 0; border: 0; }
 }
 
 /* ---- Setlists polish (Wave 3 G) ---- */
 
-/* Song rows (R16): drag handle, the song, then Up, Down and Remove. On a phone
-   the buttons wrap onto their own line under the song, at the right, so titles
-   keep the full width; wider screens fit everything on one line. */
-.setlist-song { flex-wrap: wrap; }
-.setlist-song .text { flex: 1 1 12rem; }
-.setlist-song .sub { overflow-wrap: anywhere; }
-.setlist-song .moves { display: flex; gap: 6px; margin-left: auto; }
-.setlist-song .moves .btn { padding: 8px 12px; }
-.setlist-song .btn.move { min-width: var(--tap); padding: 0; font-size: 1.125rem; }
-.setlist-song .btn.move:disabled { opacity: 0.35; }
-
+/* The drag handle (R16, R61) on a list's songs and Tonight's set. */
 .setlist-song .handle, .after-row .handle {
   min-width: var(--tap);
   padding: 0;
@@ -1194,3 +1069,262 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
 .karafun-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 /* The file button while a catalog is loading. */
 .file-btn:has(> .file-input:disabled) { opacity: 0.5; cursor: default; }
+
+/* ==== Lists and History (Design B, wave 2b) ====
+   js/views/setlists.js and js/views/venues.js, after the prototype's Lists
+   and History scopes (docs/design/b-prototype.dc.html, B4-History). */
+
+/* A detail screen that hands the dock's field over (dock.search({ detail:
+   true }), a list's songs) keeps it showing under the screen. */
+.dock[data-detail][data-detail-search] .dock-search:not([hidden]) { display: flex; }
+
+/* A scope's heading with its buttons at the right: "Lists  + New list",
+   "History  Log a sing  Venues". */
+.scope-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.scope-head h2 { margin: 0; font-size: 1.75rem; font-weight: 600; letter-spacing: -0.01em; }
+.head-actions { display: flex; gap: 6px; }
+.scope-head .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border-color: var(--outline);
+  border-radius: 10px;
+  background: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.scope-head .btn > svg { color: var(--accent); }
+.scope-head .btn.log-sing { border: 1.5px solid var(--accent); }
+.scope-head .btn[aria-expanded="true"] { border-color: var(--accent); }
+
+/* Back to what is underneath: "‹ Lists", "‹ History". */
+.back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 8px 0 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+.back:active { opacity: 0.6; }
+
+.back > svg { margin-left: -6px; }
+
+/* Lines in these screens keep the .stack spacing above them and lose the
+   paragraph's own below. */
+.lists-view .status, .setlists-view .status, .history-view .status, .log-view .status {
+  margin-bottom: 0;
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+.lists-view .error, .setlists-view .error, .venues-view .error, .log-view .error { margin-bottom: 0; }
+.setlists-view > .list, .venues-view > .list { margin-top: 12px; }
+.lists-view :is(.status, .error, .count):empty,
+.setlists-view :is(.status, .error):empty,
+.history-view :is(.status, .history-count):empty,
+.venues-view .error:empty,
+.log-view :is(.status, .error, .count):empty { display: none; }
+.lists-view .empty, .setlists-view .empty, .history-view .empty { margin-bottom: 0; }
+.lists-view [hidden], .setlists-view [hidden], .history-view [hidden] { display: none; }
+
+/* The lists (R14, R44, R56): a card each, the whole card opening the list. */
+.list-cards { list-style: none; margin-bottom: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.list-open {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 8px 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+}
+.list-open:active { opacity: 0.6; }
+.list-open > svg { flex: none; color: var(--muted); }
+.list-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.list-text .title { font-size: 1.0625rem; font-weight: 600; overflow-wrap: anywhere; }
+.list-meta, .list-mix, .list-in-set { margin: 0; font-family: var(--mono); font-size: 0.75rem; }
+.list-meta { letter-spacing: 0.04em; text-transform: uppercase; }
+.list-mix { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.list-in-set { font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent); }
+.list-in-set:empty, .list-mix:empty { display: none; }
+
+/* A list's songs: the heading with the label, mix and tonight lines. */
+.list-head { display: flex; flex-direction: column; gap: 4px; }
+.list-head h2 { margin: 0; font-size: 1.625rem; font-weight: 600; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.list-head .list-mix { white-space: normal; }
+.list-head .list-in-set { margin-top: 4px; }
+.setlist-actions .btn { padding: 8px 12px; }
+.edit-slot:empty { display: none; }
+
+/* "✓ = in tonight's set". */
+.set-legend { display: flex; align-items: center; gap: 6px; margin-bottom: 0; font-size: 0.8125rem; color: var(--muted); }
+.set-legend .tick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+/* A song: handle, title and artist with its sings here (R43), + / ✓ (R48)
+   and "…", which opens Up, Down and Remove under it (R16, R15). */
+.list.setlist-songs { border-top: 1px solid var(--line); }
+.list.setlist-songs li { padding: 0; border-bottom-color: var(--line); }
+.list.setlist-songs li.no-match { padding: 12px 0; border-bottom: 0; }
+.song-main { display: flex; align-items: center; gap: 6px; min-height: 62px; }
+.setlist-song .handle {
+  flex: none;
+  width: var(--tap);
+  height: var(--tap);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+}
+.setlist-song .text { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 8px 0; }
+.setlist-song .title, .setlist-song .sub { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.setlist-song .sub { font-size: 0.8125rem; color: var(--muted); }
+.setlist-song .here {
+  margin-top: 2px;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.setlist-song .here.sung { color: var(--text); }
+.setlist-song.open .row-more { color: var(--accent); }
+.song-actions { display: flex; justify-content: flex-end; gap: 6px; padding: 0 0 10px; }
+.song-actions .btn { padding: 8px 14px; }
+.song-actions .btn.move { min-width: var(--tap); padding: 0; font-size: 1.125rem; }
+.song-actions .btn.move:disabled { opacity: 0.35; }
+
+/* History (R8, R72): the venue chips, By song / By night, and the sings. */
+.history-view .caption { margin-top: 4px; font-size: 0.875rem; }
+.chips {
+  display: flex;
+  gap: 6px;
+  margin-right: -16px;
+  padding-right: 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex: none;
+  min-height: var(--tap);
+  padding: 0 14px;
+  border: 1px solid var(--outline);
+  border-radius: 22px;
+  background: none;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+.chip:active, .segmented button:active, .delete-sing:active { opacity: 0.6; }
+.history-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.segmented button {
+  min-height: var(--tap);
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.segmented button[aria-pressed="true"] { background: var(--border); color: var(--text); font-weight: 600; }
+
+.history-view .history { border-top: 1px solid var(--line); }
+.history-view .history > li { padding: 0; border-bottom-color: var(--line); }
+.history summary { display: flex; align-items: center; gap: 10px; min-height: 58px; list-style: none; cursor: pointer; }
+.history summary::-webkit-details-marker { display: none; }
+.history summary .text, .night-row .text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.history .title, .night-row .title { font-weight: 600; overflow-wrap: anywhere; }
+.history .sub, .night-row .sub { font-size: 0.8125rem; color: var(--muted); }
+.history .stat { flex: none; font-family: var(--mono); font-size: 0.75rem; text-transform: uppercase; white-space: nowrap; }
+.history summary > svg { flex: none; color: var(--muted); transition: transform 0.15s; }
+.history details[open] > summary > svg { transform: rotate(180deg); }
+.history .entries { list-style: none; margin: 0 0 10px; padding: 4px 4px 4px 12px; border-radius: 10px; background: var(--surface); }
+.history .entries li { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0; border-bottom: 1px solid var(--line); }
+.history .entries li:last-child { border-bottom: 0; }
+.when { flex: 1; min-width: 0; font-family: var(--mono); font-size: 0.8125rem; text-transform: uppercase; overflow-wrap: anywhere; }
+.when .note, .history-night h3 .note { color: var(--muted); }
+.delete-sing {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--tap);
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--error);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.history-night + .history-night { margin-top: 16px; }
+.history-night h3 { margin-bottom: 4px; color: var(--text); }
+.history-night .list { border-top: 1px solid var(--line); }
+.list li.night-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom-color: var(--line); }
+.print-only { display: none; }
+
+/* Log a sing (R71) and the venue list (R40), each stacked on top. */
+.log-view h2, .venues-view h2 { margin: 0; font-size: 1.5rem; font-weight: 600; }
+.log-view .caption { margin-top: 4px; font-size: 0.875rem; }
+.log-view .count, .log-view .picked { margin-bottom: 0; }
+.log-field > label + select { margin-top: 4px; }
+.log-view .picks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.log-view .pick {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  text-align: left;
+  cursor: pointer;
+}
+.log-view .pick .title { display: block; font-weight: 600; }
+.log-view .pick .sub { display: block; color: var(--muted); font-size: 0.875rem; }
+.log-view .pick[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+.venue-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.venue-row > .text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.venue-row .title { overflow-wrap: anywhere; }
+.venue-row .actions { display: flex; gap: 8px; }
+.venue-row > form, .venue-row > .error { flex-basis: 100%; }
+
+@media print {
+  .scope-head, .history-view .caption, .history-view .chips, .set-legend, .list-in-set, .song-actions { display: none !important; }
+  .print-only { display: block; margin: 0 0 6pt; }
+  .song-main { min-height: 0; }
+  .setlist-song .text { padding: 0; }
+  .setlist-song .here { color: #000; font-size: 10pt; }
+  .history summary { min-height: 0; }
+  .history summary > svg { display: none; }
+  .history .entries { margin: 0; padding: 0 0 0 12pt; background: none; }
+  .history .entries li { min-height: 0; border: 0; }
+}

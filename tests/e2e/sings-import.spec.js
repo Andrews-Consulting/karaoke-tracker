@@ -2,7 +2,8 @@
 import { test, expect } from '@playwright/test';
 import { openApp, readStore } from './helpers.js';
 import { openSettings, openSongs, importCsv } from './helpers-data.js';
-import { openVenues, openVenue, historyRow } from './helpers-venues.js';
+import { openVenue, historyRow } from './helpers-venues.js';
+import { historyDate } from './helpers-lists.js';
 import { chooseVenue } from './helpers-find.js';
 
 const songItem = (page, title) => page.getByRole('listitem').filter({ hasText: title });
@@ -33,10 +34,9 @@ test.describe('CSV import of sings', () => {
     expect(sings.map((s) => s.date).sort()).toEqual(['2026-10-15', '2026-10-20', today].sort());
 
     // History shows the venue and its history.
-    await openVenues(page);
     await openVenue(page, 'Viking');
-    await expect(historyRow(page, 'Come and Get Your Love')).toContainText('2026-10-15');
-    await expect(historyRow(page, 'Drive')).toContainText(today);
+    await expect(historyRow(page, 'Come and Get Your Love')).toContainText(historyDate('2026-10-15'));
+    await expect(historyRow(page, 'Drive')).toContainText(historyDate(today));
 
     // The Songs list, at that venue (picked on Tonight), shows the stats.
     await openSongs(page);

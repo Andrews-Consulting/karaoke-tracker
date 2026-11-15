@@ -6,13 +6,15 @@
 //
 //   dock.scope('songs')                      select a scope and render it
 //   dock.onScope((name) => ...)              app.js: how to render one ('settings' too)
-//   dock.search({ placeholder, label, value, onInput, onSubmit })   or null to hide
+//   dock.search({ placeholder, label, value, onInput, onSubmit, detail })   or null to hide
 //   dock.filters({ count, onOpen })          or null to hide
 //   dock.slot(element)                       or null to empty
 //
 // Switching scope clears the field, filters and slot; the new scope's root
 // sets them again. On a detail screen (anything opened with openScreen) the
-// field and slot hide and the scope bar stays; the KJ view hides it all
+// field and slot hide and the scope bar stays, unless that screen hands the
+// field over with `detail: true` (a list's songs, "Search Friday"), which
+// lasts until the next screen is drawn; the KJ view hides it all
 // (body[data-screen="kj"] in css/app.css).
 import { onDraw } from './ui.js';
 
@@ -91,6 +93,7 @@ function syncSearchRow() {
 
 export function search(opts) {
   searchOpts = opts || null;
+  dockEl.toggleAttribute('data-detail-search', !!(searchOpts && searchOpts.detail));
   if (searchOpts) {
     input.placeholder = searchOpts.placeholder || '';
     input.setAttribute('aria-label', searchOpts.label || searchOpts.placeholder || 'Search');
@@ -159,9 +162,11 @@ for (const button of scopeButtons) {
 }
 
 // Detail screens keep the scope bar and hide the field and slot. Every draw
-// clears the gear; Settings marks it again as it renders.
+// clears the gear and a detail screen's hold on the field; Settings and that
+// screen set them again as they render.
 onDraw(({ depth }) => {
   dockEl.toggleAttribute('data-detail', depth > 0);
+  dockEl.removeAttribute('data-detail-search');
   if (settingsOn) {
     settingsOn = false;
     markScopes();

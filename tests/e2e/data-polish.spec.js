@@ -7,7 +7,8 @@ import {
   songRecord, backupFile, downloadSongsCsv,
 } from './helpers-data.js';
 import { openSetlists, openSetlist, setlistSongRows, setlistSongRow, suggestForm } from './helpers-setlists.js';
-import { openVenues, openVenue, historyRow } from './helpers-venues.js';
+import { openVenue, historyRow } from './helpers-venues.js';
+import { historyDate, historyStat } from './helpers-lists.js';
 
 // Every awkward value a CSV has to survive: commas, quotes, a line break,
 // accents, a sign on the key, and a song with no optional fields at all.
@@ -125,7 +126,7 @@ test.describe('Printing', () => {
 
     await page.emulateMedia({ media: 'print' });
     await expect(tabBar(page)).toBeHidden();
-    await expect(page.getByRole('button', { name: '‹ All setlists' })).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Back to Lists' })).toBeHidden();
     await expect(page.getByRole('button', { name: 'Find songs', exact: true })).toBeHidden();
     await expect(page.getByRole('button', { name: 'Merge into…', exact: true })).toBeHidden();
     await expect(suggestForm(page)).toBeHidden();
@@ -137,9 +138,11 @@ test.describe('Printing', () => {
     await expect(setlistSongRow(page, '"Heroes"')).toBeVisible();
     await expect(valerie).toBeVisible();
     await expect(valerie.locator('.sub')).toBeVisible();
-    await expect(valerie.locator('.flag')).toBeVisible();
-    await expect(valerie.locator('.flag')).toHaveText('Sung here · last 2026-10-30');
-    await expect(valerie.getByRole('button', { name: 'Remove Valerie by Amy Winehouse' })).toBeHidden();
+    await expect(valerie.locator('.here')).toBeVisible();
+    await expect(valerie.locator('.here')).toHaveText(/^1× · 30 Oct( 2026)?$/);
+    await expect(valerie.getByRole('button', { name: 'Add Valerie to tonight\'s set' })).toBeHidden();
+    await expect(valerie.getByRole('button', { name: 'More for Valerie' })).toBeHidden();
+    await expect(page.getByText('= in tonight\'s set')).toBeHidden();
 
     expect(await printColours(page)).toEqual({ background: 'rgb(255, 255, 255)', text: 'rgb(0, 0, 0)', scheme: 'light' });
   });
@@ -152,19 +155,20 @@ test.describe('Printing', () => {
       { id: 1, songId: 1, venueId: 1, date: '2026-10-02' },
       { id: 2, songId: 1, venueId: 1, date: '2026-10-30' },
     ]);
-    await openVenues(page);
     await openVenue(page, 'The Crown');
     const valerie = historyRow(page, 'Valerie');
-    await expect(valerie.getByText('2026-10-02', { exact: true })).toBeHidden(); // closed on screen
+    await expect(valerie.getByText(historyDate('2026-10-02'), { exact: true })).toBeHidden(); // closed on screen
 
+    // The venue heads the printout in place of the chips; the buttons go.
     await page.emulateMedia({ media: 'print' });
     await expect(tabBar(page)).toBeHidden();
-    await expect(page.getByRole('form', { name: 'Log a sing' })).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Log a sing' })).toBeHidden();
+    await expect(page.getByRole('button', { name: 'The Crown', exact: true })).toBeHidden();
     await expect(page.getByRole('heading', { level: 2, name: 'The Crown' })).toBeVisible();
     await expect(valerie).toBeVisible();
-    await expect(valerie.locator('summary .sub')).toContainText('Sung 2 times');
-    await expect(valerie.getByText('2026-10-02', { exact: true })).toBeVisible();
-    await expect(valerie.getByText('2026-10-30', { exact: true })).toBeVisible();
+    await expect(valerie.locator('summary .stat')).toHaveText(historyStat(2, '2026-10-30'));
+    await expect(valerie.getByText(historyDate('2026-10-02'), { exact: true })).toBeVisible();
+    await expect(valerie.getByText(historyDate('2026-10-30'), { exact: true })).toBeVisible();
     await expect(valerie.getByRole('button', { name: /^Delete sing/ }).first()).toBeHidden();
     expect(await printColours(page)).toEqual({ background: 'rgb(255, 255, 255)', text: 'rgb(0, 0, 0)', scheme: 'light' });
   });

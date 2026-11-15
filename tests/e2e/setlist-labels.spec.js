@@ -408,11 +408,12 @@ test.describe('Setlist labels, Find songs and merge', () => {
     const viking = venueIds.Viking;
     await expect(shownSet(page)).toHaveText('Viking');
 
-    // The setlist screen: no picker, Find songs at the top, Suggest songs and Mix stay.
+    // The setlist screen: no picker (the only search is the dock's, which
+    // filters the list), Find songs at the top, Suggest songs and Mix stay.
     await openSetlists(page);
     await openSetlist(page, 'Crown Sat');
     await expect(page.getByRole('region', { name: 'Add songs' })).toHaveCount(0);
-    await expect(page.getByRole('searchbox')).toHaveCount(0);
+    await expect(page.getByRole('searchbox')).toHaveAccessibleName('Search Crown Sat');
     await expect(suggestForm(page)).toBeVisible();
     await expect(mixCard(page)).toBeVisible();
     const find = button(page, 'Find songs');

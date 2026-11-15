@@ -4,6 +4,7 @@ import { test, expect } from '@playwright/test';
 import { openApp, putRecords, readStore, expectTab, openScope } from './helpers.js';
 import { seed, venueSelect } from './helpers-find.js';
 import { openSetlists, openSetlist } from './helpers-setlists.js';
+import { listsHeading } from './helpers-lists.js';
 
 const VALERIE = { title: 'Valerie', artist: 'Amy Winehouse', genre: 'Soul', year: 2006 };
 const QUEEN = { title: 'Dancing Queen', artist: 'ABBA', genre: 'Pop', year: 1976 };
@@ -12,7 +13,6 @@ const AFRICA = { title: 'Africa', artist: 'Toto', genre: 'Rock', year: 1982 };
 
 const showTab = (page, name) => openScope(page, name);
 const setlistHeading = (page) => page.getByRole('heading', { level: 2, name: 'Friday', exact: true });
-const newSetlistForm = (page) => page.getByRole('form', { name: 'New setlist' });
 
 async function seedFriday(page, songs = [VALERIE, QUEEN, BRIGHTSIDE]) {
   const { songIds, venueIds } = await seed(page, { songs, venues: ['The Crown'] });
@@ -38,7 +38,7 @@ test.describe('Holding a place', () => {
 
     // The back gesture still reaches the list and does not bounce back into the setlist.
     await page.goBack();
-    await expect(newSetlistForm(page)).toBeVisible();
+    await expect(listsHeading(page)).toBeVisible();
     await expect(setlistHeading(page)).toHaveCount(0);
 
     // After an hour away, the scope starts at the list.
@@ -46,16 +46,16 @@ test.describe('Holding a place', () => {
     await showTab(page, 'Songs');
     await page.clock.fastForward('01:00:00');
     await showTab(page, 'Lists');
-    await expect(newSetlistForm(page)).toBeVisible();
+    await expect(listsHeading(page)).toBeVisible();
     await expect(setlistHeading(page)).toHaveCount(0);
 
-    // Leaving through "All setlists" is a choice: the scope starts at the list next time.
+    // Leaving through "‹ Lists" is a choice: the scope starts at the lists next time.
     await openSetlist(page, 'Friday');
-    await page.getByRole('button', { name: '‹ All setlists' }).click();
-    await expect(newSetlistForm(page)).toBeVisible();
+    await page.getByRole('button', { name: 'Back to Lists' }).click();
+    await expect(listsHeading(page)).toBeVisible();
     await showTab(page, 'Songs');
     await showTab(page, 'Lists');
-    await expect(newSetlistForm(page)).toBeVisible();
+    await expect(listsHeading(page)).toBeVisible();
     await expect(setlistHeading(page)).toHaveCount(0);
   });
 
