@@ -599,7 +599,7 @@ async function renderSetlist(id, message = '') {
   function drawSongs() {
     const inList = setlistSongs(setlist, songsById);
     const text = songsQuery.text.trim();
-    const shown = text ? filterSongs(inList, text) : inList;
+    const shown = text ? filterSongs(inList, songsQuery.text) : inList; // untrimmed: a trailing space asks for whole words
     countText.textContent = plural(inList.length, 'song', 'songs');
     genreLine.textContent = inList.length ? mixSummary(mixByGenre(inList), 3) : '';
     decadeLine.textContent = inList.length ? mixSummary(mixByDecade(inList), 4) : '';

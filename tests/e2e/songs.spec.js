@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, addSong } from './helpers.js';
+import { openApp, addSong, openScope } from './helpers.js';
 
 test.describe('Songs', () => {
   test('R1: adds a song with title and artist', async ({ page }) => {
@@ -102,6 +102,34 @@ test.describe('Songs', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.locator('html[data-kb]')).toHaveCount(0);
     await expect(page.locator('.songs-view > .find-context')).toBeVisible();
+  });
+
+  test('R10: a space typed at the end of the search asks for whole words, on Songs and on Tonight', async ({ page }) => {
+    await openApp(page);
+    await addSong(page, { title: 'I Sang Dixie', artist: 'Dwight Yoakam' });
+    await addSong(page, { title: 'Ring of Fire', artist: 'Johnny Cash' });
+    const field = page.getByRole('searchbox', { name: 'Search songs' });
+
+    await field.fill('i');
+    await expect(page.getByText('2 of 2 songs')).toBeVisible();
+    await field.fill('i ');
+    await expect(page.getByText('1 of 2 songs')).toBeVisible();
+    await expect(page.locator('li.song-item').filter({ hasText: 'I Sang Dixie' })).toBeVisible();
+    await expect(page.locator('li.song-item').filter({ hasText: 'Ring of Fire' })).toHaveCount(0);
+    await field.fill('fire ');
+    await expect(page.getByText('1 of 2 songs')).toBeVisible();
+    await expect(page.locator('li.song-item').filter({ hasText: 'Ring of Fire' })).toBeVisible();
+    await field.fill('');
+
+    // The Tonight field takes the same rule.
+    await openScope(page, 'Tonight');
+    const tonightField = page.getByRole('searchbox', { name: 'Add a song to tonight\'s set' });
+    await tonightField.fill('i');
+    await expect(page.getByText('Add to tonight · 2 matches')).toBeVisible();
+    await tonightField.fill('i ');
+    await expect(page.getByText('Add to tonight · 1 match')).toBeVisible();
+    await expect(page.locator('.matches')).toContainText('I Sang Dixie');
+    await expect(page.locator('.matches')).not.toContainText('Ring of Fire');
   });
 
   test('R10: clearing the search keeps the field focused only if it was focused', async ({ page }) => {

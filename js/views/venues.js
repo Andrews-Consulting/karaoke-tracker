@@ -234,7 +234,8 @@ export async function renderHistory() {
     const songsById = new Map(songs.map((s) => [s.id, s]));
     const text = query.trim();
     // A sing whose song is gone still shows, so it can be deleted, until the field narrows the list.
-    const matches = (songId) => (text ? !!songsById.get(songId) && matchesQuery(songsById.get(songId), text) : true);
+    // The query goes in untrimmed: a trailing space asks for whole words (R10).
+    const matches = (songId) => (text ? !!songsById.get(songId) && matchesQuery(songsById.get(songId), query) : true);
     const here = sings.filter((s) => (venueId() == null || s.venueId === venueId()) && matches(s.songId));
     const total = here.length;
     if (groupBy === 'song') {
@@ -342,7 +343,7 @@ async function renderLogSing(venueId) {
   function drawPicks() {
     const text = search.value.trim();
     // A blank search lists nothing: the first 20 of hundreds helps nobody.
-    const matches = text ? filterSongs(sorted, text) : [];
+    const matches = text ? filterSongs(sorted, search.value) : []; // untrimmed: a trailing space asks for whole words
     if (!songs.length) pickCount.textContent = 'No songs yet. Add some under Songs first.';
     else if (!text) pickCount.textContent = `Type to find one of ${plural(songs.length, 'song', 'songs')}.`;
     else if (!matches.length) pickCount.textContent = 'No songs match.';
