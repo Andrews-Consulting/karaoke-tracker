@@ -10,7 +10,7 @@
 //     there (the owner's case: open "Crowd pleasers" and drop two songs into
 //     tonight), its sings at the list's label venue (R43), a drag handle
 //     (R16), and a swipe left for Remove (R15). The list's actions:
-//     Find songs (R57), Rename and label (R14, R56), Merge into… (R59) and
+//     Find songs (R57) beside a "…" holding Rename and label (R14, R56), Merge into… (R59) and
 //     Delete; the Mix card (R44) and Suggest songs (R45) follow the songs.
 //     The dock's field filters its songs.
 // Coming back to the scope within five minutes reopens the list (R60).
@@ -694,23 +694,41 @@ async function renderSetlist(id, message = '') {
     await save();
   }
 
+  // Rename and label, Merge into… and Delete are occasional, so they wait
+  // behind a "…" beside Find songs; choosing one closes the menu.
+  const moreMenu = el('div', { class: 'list-more-menu', role: 'group', 'aria-label': 'List actions', hidden: '' },
+    renameButton, mergeButton, deleteButton);
+  const moreButton = el('button', {
+    class: 'btn icon-btn list-more', type: 'button', 'aria-label': 'List actions', 'aria-expanded': 'false',
+    onclick: () => showMore(moreMenu.hidden),
+  }, icon(ICONS.more, { width: 3.2 }));
+  function showMore(open) {
+    moreMenu.hidden = !open;
+    moreButton.setAttribute('aria-expanded', String(open));
+    moreButton.classList.toggle('on', open);
+  }
+  moreMenu.addEventListener('click', (e) => { if (e.target.closest('button')) showMore(false); });
+
   const root = el('div', { class: 'stack setlists-view' },
-    el('button', {
-      class: 'back', type: 'button', 'aria-label': 'Back to Lists',
-      onclick: () => {
-        lastOpen = null; // chosen on purpose: the scope starts at the lists next time (R60)
-        closeScreen(() => renderSetlists());
-      },
-    }, icon(CHEVRON_LEFT, { size: 20 }), 'Lists'),
+    // The top line: back at the left, "Make this tonight's set" at the right.
+    el('div', { class: 'list-topbar' },
+      el('button', {
+        class: 'back', type: 'button', 'aria-label': 'Back to Lists',
+        onclick: () => {
+          lastOpen = null; // chosen on purpose: the scope starts at the lists next time (R60)
+          closeScreen(() => renderSetlists());
+        },
+      }, icon(CHEVRON_LEFT, { size: 20 }), 'Lists'),
+      makeTonightButton),
     el('header', { class: 'list-head' },
       el('h2', { text: setlist.name }),
       el('p', { class: 'list-meta' },
         el('span', { class: 'label', text: venueLabel(setlist, venues) }), ' · ', countText),
       genreLine,
       decadeLine,
-      inSetLine,
-      makeTonightButton),
-    el('div', { class: 'setlist-actions' }, findButton, renameButton, mergeButton, deleteButton, mergeNote),
+      inSetLine),
+    el('div', { class: 'setlist-actions' }, findButton, moreButton, mergeNote),
+    moreMenu,
     editSlot,
     mergeForm,
     status,

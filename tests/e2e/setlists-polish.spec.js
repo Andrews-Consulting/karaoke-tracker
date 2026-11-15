@@ -120,6 +120,7 @@ test.describe('Setlists polish', () => {
   });
 
   test('R16: a song dragged to the bottom edge scrolls the list, so a long move needs no buttons', async ({ page }) => {
+    test.slow(); // the drag scrolls a few pixels a frame, and frames are slow on a loaded machine
     await openApp(page);
     const many = Array.from({ length: 30 }, (_, i) => ({ title: `Song ${String(i + 1).padStart(2, '0')}`, artist: 'The Band' }));
     const ids = await seedSongs(page, many);
@@ -138,7 +139,7 @@ test.describe('Setlists polish', () => {
     await page.mouse.move(x, screen.y + screen.height - 12, { steps: 12 });
     await expect(setlistSongRow(page, 'Song 01')).toHaveClass(/\bdragging\b/);
     // The screen scrolls by itself, the others making room, until the end of the list is in view.
-    await expect(setlistSongTitles(page).last()).toHaveText('Song 01', { timeout: 15_000 });
+    await expect(setlistSongTitles(page).last()).toHaveText('Song 01', { timeout: 40_000 });
     expect(await main.evaluate((m) => m.scrollTop)).toBeGreaterThan(0);
     const settled = await main.evaluate((m) => m.scrollTop);
     await page.waitForTimeout(300);

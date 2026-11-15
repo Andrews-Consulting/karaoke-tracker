@@ -13,6 +13,7 @@ import {
 import { openVenues, venueRow, venueRows } from './helpers-venues.js';
 import { tonightListName } from '../../js/lib/night.js';
 import { swipeOpen } from './helpers-tonight.js';
+import { openListMenu } from './helpers-lists.js';
 
 const VALERIE = { title: 'Valerie', artist: 'Amy Winehouse', genre: 'Soul', year: 2006 };
 const QUEEN = { title: 'Dancing Queen', artist: 'ABBA', genre: 'Pop', year: 1976 };
@@ -492,6 +493,7 @@ test.describe('Setlist labels, Find songs and merge', () => {
     await openSetlists(page);
     await openSetlist(page, 'Friday');
     const merge = button(page, 'Merge into…');
+    await openListMenu(page); // Merge into… waits behind the "…" beside Find songs
     await expect(merge).toBeDisabled();
     await expect(page.getByText('No other setlist to merge into.')).toBeVisible();
 
@@ -506,6 +508,7 @@ test.describe('Setlist labels, Find songs and merge', () => {
     ]);
     await backToSetlists(page);
     await openSetlist(page, 'Friday');
+    await openListMenu(page);
     await expect(merge).toBeEnabled();
     await expect(page.getByText('No other setlist to merge into.')).toBeHidden();
     await expectTapTarget(merge);
@@ -526,6 +529,7 @@ test.describe('Setlist labels, Find songs and merge', () => {
     await expect(form).toBeHidden();
 
     // Confirm first: saying no changes nothing.
+    await openListMenu(page);
     await merge.click();
     await target.selectOption({ label: 'Next time' });
     await form.getByRole('button', { name: 'Merge', exact: true }).click();
@@ -560,6 +564,7 @@ test.describe('Setlist labels, Find songs and merge', () => {
     await expect(setlistRow(page, 'Friday')).toContainText('For The Crown · 0 songs');
     await expect(setlistRow(page, 'Next time')).toContainText('For The Crown · 4 songs');
     await openSetlist(page, 'Friday');
+    await openListMenu(page);
     await expect(merge).toBeDisabled();
     await expect(page.getByText('Nothing to merge.')).toBeVisible();
   });
