@@ -689,6 +689,7 @@ export async function renderSongs({
         if (!root.isConnected) return;
         state.query = value;
         draw();
+        viewEl.scrollTop = 0; // the first matches sit at the top, in view above the keyboard
       },
       // Search on the keyboard puts it away; the list is already up to date.
       onSubmit: () => document.activeElement?.blur(),
