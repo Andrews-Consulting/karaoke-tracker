@@ -4,14 +4,15 @@
 // with the date last sung there (R43); reorder songs by dragging or with Up
 // and Down buttons (R16); show the mix by genre and decade (R44); suggest
 // songs never sung at the label venue, spread across genres and decades
-// (R45); merge a setlist into another (R59). This tab is for building and
-// tidying lists; working one through the night is the Songs tab's List mode
-// (R49), which replaced Tonight mode (R17).
+// (R45); merge a setlist into another (R59). This is the Lists scope, for
+// building and tidying lists; working one through the night is Tonight (R49).
 //
-// Two screens in one tab: the setlist list and one setlist. renderSetlists()
-// always shows the list, so tapping the Setlists tab is a way back as well.
+// Two screens in one scope: the setlist list and one setlist. renderSetlists()
+// always shows the list, so tapping Lists is a way back as well.
 import { db, request } from '../db.js';
-import { el, viewEl, confirmAction, openScreen, closeScreen, renderingBack } from '../ui.js';
+import {
+  el, viewEl, confirmAction, openScreen, closeScreen, renderingBack, screenTicket, screenStillShowing,
+} from '../ui.js';
 import { dragToReorder as dragToReorderRow } from '../drag.js';
 import { plural, sortVenues } from '../lib/stats.js';
 import {
@@ -33,11 +34,10 @@ let screen = 0;
 const HOLD_MS = 5 * 60 * 1000;
 let lastOpen = null; // { id, at } or null
 
-// True while a load started with `token` should still be shown: no newer
-// setlist screen has started and the Setlists tab is still the selected one.
-function stillCurrent(token) {
-  const tab = document.querySelector('.tabs button[data-view="setlists"]');
-  return token === screen && (!tab || tab.getAttribute('aria-current') === 'page');
+// True while a load started with `token` and screen `ticket` should still be
+// shown: no newer setlist screen has started and no other screen has been drawn.
+function stillCurrent(token, ticket) {
+  return token === screen && screenStillShowing(ticket);
 }
 
 function show(...children) {
@@ -67,6 +67,7 @@ function venueSelect(venues, venueId) {
 
 export async function renderSetlists() {
   const token = ++screen;
+  const ticket = screenTicket();
   // Arriving by the tab (not by going back) within HOLD_MS of leaving a setlist
   // reopens it on top of the list, so the back gesture still reaches the list (R60).
   const held = !renderingBack() && lastOpen && Date.now() - lastOpen.at < HOLD_MS ? lastOpen.id : null;
@@ -74,7 +75,7 @@ export async function renderSetlists() {
   const [setlistRecords, venueRecords, songs] = await Promise.all([
     db.getAll('setlists'), db.getAll('venues'), db.getAll('songs'),
   ]);
-  if (!stillCurrent(token)) return;
+  if (!stillCurrent(token, ticket)) return;
   if (held != null && setlistRecords.some((s) => s.id === held)) {
     openScreen(() => renderSetlist(held));
     return;
@@ -92,7 +93,7 @@ export async function renderSetlists() {
     el('h2', { text: 'New setlist' }),
     el('label', { text: 'Setlist name' }, nameInput),
     el('label', { text: 'For venue (optional)' }, venueInput),
-    venues.length ? null : el('p', { class: 'count', text: 'Add venues in the Venues tab to label a setlist with one.' }),
+    venues.length ? null : el('p', { class: 'count', text: 'Add venues under History to label a setlist with one.' }),
     el('button', { class: 'btn primary', type: 'submit', text: 'Create setlist' }),
     addError);
 
@@ -204,10 +205,11 @@ function mergeSetlists(sourceId, targetId, songsById) {
 // `message` is a line to show at the top, e.g. after a merge.
 async function renderSetlist(id, message = '') {
   const token = ++screen;
+  const ticket = screenTicket();
   const [found, venues, songs, sings, allSetlists] = await Promise.all([
     db.get('setlists', id), db.getAll('venues'), db.getAll('songs'), db.getAll('sings'), db.getAll('setlists'),
   ]);
-  if (!stillCurrent(token)) return;
+  if (!stillCurrent(token, ticket)) return;
   if (!found) {
     closeScreen(() => renderSetlists());
     return;
@@ -222,8 +224,8 @@ async function renderSetlist(id, message = '') {
   const count = el('p', { class: 'count' });
   const list = el('ol', { class: 'list setlist-songs', 'aria-label': 'Songs in this setlist' });
 
-  // "Find songs" (R57): the Songs tab, in Find, with this set open at the
-  // venue it is on, where + adds songs. At the top, and in place of the list
+  // "Find songs" (R57): the Songs scope with this set as tonight's at the
+  // venue chosen on Tonight, where + adds songs. At the top, and in place of the list
   // while there is nothing in it, so only one shows at a time.
   const findSongs = () => showSetInFind(setlist.id);
   const findButton = el('button', { class: 'btn', type: 'button', text: 'Find songs', onclick: findSongs });
@@ -388,7 +390,7 @@ async function renderSetlist(id, message = '') {
   // goes, and its touch-action: none (app.css) stops the page scrolling. The
   // dragged row is never taken out of the list, since that would drop the
   // capture; its neighbours are moved past it instead.
-  // Drag to reorder (R16): shared with List mode on the Songs tab (js/drag.js).
+  // Drag to reorder (R16): shared with Tonight's set (js/drag.js).
   function dragToReorder(li, handle, song) {
     dragToReorderRow({
       list, li, handle,
@@ -451,7 +453,7 @@ async function renderSetlist(id, message = '') {
       return;
     }
     if (!songs.length) {
-      suggestStatus.textContent = 'No songs yet. Add some in the Songs tab first.';
+      suggestStatus.textContent = 'No songs yet. Add some under Songs first.';
       return;
     }
     const chosen = suggestSongs(songs, sings, setlist, n);

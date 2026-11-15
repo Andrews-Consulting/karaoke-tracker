@@ -271,7 +271,7 @@ async function renderVenue(venueId) {
     const query = search.value.trim();
     // A blank search lists nothing: the first 20 of hundreds helps nobody.
     const matches = query ? filterSongs(sorted, query) : [];
-    if (!songs.length) pickCount.textContent = 'No songs yet. Add some in the Songs tab first.';
+    if (!songs.length) pickCount.textContent = 'No songs yet. Add some under Songs first.';
     else if (!query) pickCount.textContent = `Type to find one of ${plural(songs.length, 'song', 'songs')}.`;
     else if (!matches.length) pickCount.textContent = 'No songs match.';
     else if (matches.length > MAX_PICKS) {

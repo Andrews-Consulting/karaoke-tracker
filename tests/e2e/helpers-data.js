@@ -1,20 +1,15 @@
 // Steps for the CSV import, backup and restore tests (R20, R21, R22).
 import { readFile } from 'node:fs/promises';
 import { expect } from '@playwright/test';
-import { expectTab } from './helpers.js';
-
-async function openTab(page, name) {
-  await page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name }).click();
-  await expectTab(page, name);
-}
+import { openScope, openSettings as openSettingsScreen } from './helpers.js';
 
 export async function openSettings(page) {
-  await openTab(page, 'Settings');
+  await openSettingsScreen(page);
   await expect(page.getByRole('button', { name: 'Download backup' })).toBeVisible();
 }
 
 export async function openSongs(page) {
-  await openTab(page, 'Songs');
+  await openScope(page, 'Songs');
   await expect(page.getByText(/of \d+ songs/)).toBeVisible();
 }
 

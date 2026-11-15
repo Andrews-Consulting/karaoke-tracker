@@ -1,7 +1,7 @@
 // Steps for the Find e2e tests (Wave 2 D). openApp, putRecords and readStore live in helpers.js.
 import { expect } from '@playwright/test';
 import { makeSong } from '../../js/lib/song.js';
-import { putRecords, readStore, mockedMusicBrainz, expectTab } from './helpers.js';
+import { putRecords, readStore, mockedMusicBrainz, expectTab, openScope } from './helpers.js';
 
 // Reloads and waits for the Songs list to show all `total` songs.
 export async function reloadList(page, total) {
@@ -27,8 +27,29 @@ export async function seed(page, { songs = [], venues = [], sings = [] }) {
   return { songIds, venueIds };
 }
 
+// Tonight's venue menu (R37).
 export function venueSelect(page) {
   return page.getByLabel('Venue', { exact: true });
+}
+
+// The venue Tonight's menu shows: its name, or 'Overall'.
+export function shownVenue(page) {
+  return page.locator('.venue-menu .menu-text');
+}
+
+// The Songs scope's line naming the venue and tonight's set: "The Crown · Friday · 2 songs".
+export function findContext(page) {
+  return page.locator('.find-context');
+}
+
+// Picks a venue (or 'Overall') on Tonight, where the venue is chosen, and
+// comes back to the Songs scope with it.
+export async function chooseVenue(page, label) {
+  await openScope(page, 'Tonight');
+  await venueSelect(page).selectOption({ label });
+  await expect(shownVenue(page)).toHaveText(label);
+  await openScope(page, 'Songs');
+  await expect(findContext(page)).toHaveText(new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} · `));
 }
 
 // Waits until the venue choice is saved, so a reload sees it.

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Mic Jaunt</title>
 
-  <meta name="theme-color" content="#14121a">
+  <meta name="theme-color" content="#0c1015">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="icons/icon-192.png">
 
@@ -25,8 +25,8 @@
           || (savedTheme === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches)) {
         document.documentElement.dataset.theme = 'light';
       }
-      var savedAccent = localStorage.getItem('accent'); // R55; green needs no attribute
-      if (savedAccent === 'amber' || savedAccent === 'lime' || savedAccent === 'pink') {
+      var savedAccent = localStorage.getItem('accent'); // R55; sky needs no attribute
+      if (savedAccent === 'green' || savedAccent === 'amber' || savedAccent === 'lime' || savedAccent === 'pink') {
         document.documentElement.dataset.accent = savedAccent;
       }
     } catch (e) { /* storage blocked: stay dark */ }
@@ -34,18 +34,32 @@
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
-  <!-- R58: no title bar; the selected tab shows where you are. The page name
+  <!-- R58: no title bar; the selected scope shows where you are. The page name
        stays for screen readers and prints at the top of a printout. -->
-  <h1 id="view-title" class="visually-hidden">Songs</h1>
+  <h1 id="view-title" class="visually-hidden">Tonight</h1>
 
   <main id="view" tabindex="-1"></main>
 
-  <nav class="tabs" aria-label="Sections">
-    <button type="button" data-view="songs" aria-current="page">Songs</button>
-    <button type="button" data-view="setlists">Setlists</button>
-    <button type="button" data-view="venues">Venues</button>
-    <button type="button" data-view="settings">Settings</button>
-  </nav>
+  <!-- The dock (Design B, js/dock.js), from the bottom up: the scope bar, the
+       search field with its filter button, and a slot for a docked card. -->
+  <div class="dock" id="dock">
+    <div class="dock-slot"></div>
+    <form class="dock-search" role="search" hidden>
+      <div class="dock-field">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+        <input type="search" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" aria-label="Search">
+        <button type="button" class="dock-clear" aria-label="Clear search" hidden><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+      </div>
+      <button type="button" class="dock-filter" aria-label="Filters" hidden><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></svg><span class="badge" aria-hidden="true" hidden></span></button>
+    </form>
+    <nav class="scopes" aria-label="Scopes">
+      <button type="button" data-scope="tonight">Tonight</button>
+      <button type="button" data-scope="songs">Songs</button>
+      <button type="button" data-scope="lists">Lists</button>
+      <button type="button" data-scope="history">History</button>
+      <button type="button" class="gear" data-scope="settings" aria-label="Settings"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
+    </nav>
+  </div>
 
   <script type="module" src="js/app.js"></script>
 </body>

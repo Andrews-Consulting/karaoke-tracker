@@ -1,14 +1,12 @@
 // Steps for the Setlists e2e tests (Wave 2 E). openApp, addSong, putRecords and
 // readStore live in helpers.js.
 import { expect } from '@playwright/test';
-import { expectTab } from './helpers.js';
+import { openScope, expectTab } from './helpers.js';
 
-// Taps the Setlists tab and waits for the setlist list.
-// Taps the Setlists tab and lands on the setlist list. Within a few minutes of
-// leaving a setlist the tab reopens it (R60), so this steps back out to the list.
+// Taps Lists and lands on the setlist list. Within a few minutes of leaving a
+// setlist the scope reopens it (R60), so this steps back out to the list.
 export async function openSetlists(page) {
-  await page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name: 'Setlists' }).click();
-  await expectTab(page, 'Setlists');
+  await openScope(page, 'Lists');
   const form = page.getByRole('form', { name: 'New setlist' });
   const back = page.getByRole('button', { name: '‹ All setlists' });
   await expect(form.or(back)).toBeVisible();
@@ -68,14 +66,14 @@ export function setlistSongRow(page, title) {
 }
 
 // Adds songs to the open setlist the R57 way: "Find songs" opens the Songs
-// tab in Find with this set, + adds each song there (searching for it), and
-// the setlist opens again. Songs go to the end in the order given. Leaves the
-// search empty, since it persists across tabs (R53).
+// scope with this set as tonight's, + adds each song there (searching for
+// it), and the setlist opens again. Songs go to the end in the order given.
+// Leaves the search empty, since it persists across scopes (R53).
 export async function addToSetlist(page, setlistName, ...songs) {
   await page.getByRole('button', { name: 'Find songs', exact: true }).click();
   const search = page.getByRole('searchbox', { name: 'Search songs' });
-  await expect(page.getByRole('tab', { name: 'Find' })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByLabel('Set', { exact: true }).locator('option:checked')).toHaveText(new RegExp(`^${escapeRegExp(setlistName)}( · |$)`));
+  await expectTab(page, 'Songs');
+  await expect(page.locator('.find-context')).toContainText(` · ${setlistName} · `);
   for (const { title } of songs) {
     await search.fill(title);
     await page.getByRole('button', { name: `Add ${title} to the set`, exact: true }).click();
