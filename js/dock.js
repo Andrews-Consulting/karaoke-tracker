@@ -16,7 +16,7 @@
 // field over with `detail: true` (a list's songs, "Search Friday"), which
 // lasts until the next screen is drawn; the KJ view hides it all
 // (body[data-screen="kj"] in css/app.css).
-import { onDraw, el } from './ui.js';
+import { onDraw } from './ui.js';
 
 export const SCOPES = [
   ['tonight', 'Tonight'],
@@ -194,10 +194,8 @@ onDraw(({ depth }) => {
 // but in a Home Screen app iOS shrinks the whole window with it (a phone
 // read window 762 and visible 762, then 427 and 427 with the keyboard up), so
 // the sign is a height well below the tallest this orientation has had.
-const DEBUG_KEY = 'layoutDebug';
 const KEYBOARD_DROP = 150;
 const tallest = { portrait: 0, landscape: 0 };
-let debugLine = null;
 
 function fit() {
   const vv = window.visualViewport;
@@ -207,27 +205,6 @@ function fit() {
   document.documentElement.style.setProperty('--vvh', `${height}px`);
   document.documentElement.toggleAttribute('data-kb', height < tallest[orientation] - KEYBOARD_DROP);
   if (vv && (window.scrollY || vv.offsetTop)) window.scrollTo(0, 0);
-  if (debugLine) {
-    debugLine.textContent = `window ${window.innerHeight} · visible ${height} · top ${vv ? Math.round(vv.offsetTop) : 0} · scroll ${Math.round(window.scrollY)}`;
-  }
-}
-
-// Settings → Appearance switches a line of screen numbers on at the top of
-// the dock, for checking the keyboard layout on a real phone.
-export function setLayoutDebug(on) {
-  try { localStorage.setItem(DEBUG_KEY, on ? '1' : ''); } catch { /* storage may be unavailable */ }
-  if (on && !debugLine) {
-    debugLine = el('p', { class: 'dock-debug', 'aria-hidden': 'true' });
-    dockEl.prepend(debugLine);
-  } else if (!on && debugLine) {
-    debugLine.remove();
-    debugLine = null;
-  }
-  fit();
-}
-
-export function layoutDebugOn() {
-  try { return localStorage.getItem(DEBUG_KEY) === '1'; } catch { return false; }
 }
 
 if (window.visualViewport) {
@@ -235,5 +212,4 @@ if (window.visualViewport) {
   window.visualViewport.addEventListener('scroll', fit);
 }
 window.addEventListener('resize', fit);
-if (layoutDebugOn()) setLayoutDebug(true);
-else fit();
+fit();

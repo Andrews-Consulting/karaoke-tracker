@@ -72,9 +72,6 @@ html[data-kb] .songs-view > .source-switch,
 html[data-kb] .songs-view > .filter-line { display: none; }
 html[data-kb] .songs-view > .pick-row { margin: 0 0 6px; }
 
-/* Screen numbers for checking the layout on a phone (Settings → Appearance). */
-.dock-debug { margin: 0; font: 12px/1.3 var(--mono); color: var(--muted); text-align: center; }
-
 body {
   margin: 0;
   display: flex;

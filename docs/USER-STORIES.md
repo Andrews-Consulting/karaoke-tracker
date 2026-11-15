@@ -20,7 +20,7 @@ Everything the app does today, written as what the singer wants and why, without
 
 ## Finding the right song
 
-- As a singer, I want to search my songs by title or artist as I type, so that I can find a song in a few letters. (R10)
+- As a singer, I want to search my songs by title or artist as I type, and to type a space after a short word such as "I" to mean that whole word, so that I can find a song in a few letters without wading through every title that contains them. (R10)
 - As a singer, I want to see, for each song, how many times and how recently I sang it at this venue, so that I can avoid repeating myself here. (R37, R8)
 - As a singer, I want to narrow my songs to those I have never sung at this venue, or not since a date I choose, so that I only see songs this room has not heard, or has not heard lately. (R41, R52)
 - As a singer, I want to narrow my songs by tag, status, rating, genre and decade, combining them with my search, so that I can get to "upbeat 80s songs I sing well that are not retired" quickly. (R11, R42)

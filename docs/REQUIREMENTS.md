@@ -31,7 +31,7 @@ Finding the next song to sing and working a list through the night; adding songs
 
 | ID | Requirement | Priority | Status | Notes |
 |---|---|---|---|---|
-| R10 | Search my songs by title or artist as I type | Must | Done | Typed in the dock's field on the Songs scope ("Search 412 songs"). e2e: "R10: searches by title or artist as I type"; unit: tests/unit/search.test.js |
+| R10 | Search my songs by title or artist as I type; a space typed at the end makes it a whole-word search | Must | Done | Typed in the dock's field on the Songs scope ("Search 412 songs"). "i " finds "I Sang Dixie" and not every title with an i; the same rule applies wherever the field searches (Tonight, Lists, History, the catalog). Added 2026-11-15. e2e: "R10: searches by title or artist as I type"; unit: tests/unit/search.test.js |
 | R41 | Filter to songs never sung at the selected venue, or not sung there since a date I pick | Must | Done | "Not since D" keeps songs never sung there or last sung strictly before D. e2e: "R41: filters to songs never sung at the selected venue", "R41: filters to songs not sung since a date" |
 | R11 | Filter by tag, status (including "Not set") and minimum rating; filters combine with each other and with the search | Must | Done | In the Filters sheet, opened from the dock's filter button; the filters on show as tokens above the list (R69). e2e: "R11: tag, status and rating filters combine" |
 | R42 | Filter and sort by genre and decade | Must | Done | Songs without a genre or year sort last. e2e: "R42: filters by genre and decade and sorts by decade" |

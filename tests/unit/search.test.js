@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchesQuery, filterSongs, sortByTitle } from '../../js/lib/search.js';
+import { matchesQuery, filterSongs, sortByTitle, queryMatcher, textMatches } from '../../js/lib/search.js';
 
 const songs = [
   { title: 'Dancing Queen', artist: 'ABBA' },
@@ -31,6 +31,41 @@ describe('R10 matchesQuery', () => {
     expect(matchesQuery({ title: 'Only Title' }, 'only')).toBe(true);
     expect(matchesQuery({ artist: 'Only Artist' }, 'only')).toBe(true);
     expect(matchesQuery({}, 'x')).toBe(false);
+  });
+
+  it('a trailing space asks for whole words; a leading one is ignored', () => {
+    const dixie = { title: 'I Sang Dixie', artist: 'Dwight Yoakam' };
+    const fire = { title: 'Ring of Fire', artist: 'Johnny Cash' };
+    const hi = { title: 'Hi There', artist: 'Someone' };
+    expect(matchesQuery(dixie, 'i')).toBe(true);
+    expect(matchesQuery(fire, 'i')).toBe(true);
+    expect(matchesQuery(dixie, 'i ')).toBe(true);
+    expect(matchesQuery(fire, 'i ')).toBe(false);
+    expect(matchesQuery(hi, 'i ')).toBe(false); // "Hi" is not the word "I"
+    expect(matchesQuery(dixie, ' i ')).toBe(true);
+    expect(matchesQuery({ title: 'Love Will Tear Us Apart', artist: 'Joy Division' }, 'love ')).toBe(true);
+    expect(matchesQuery({ title: 'Glove', artist: 'X' }, 'love ')).toBe(false);
+    expect(matchesQuery({ title: 'Glove', artist: 'X' }, 'love')).toBe(true);
+    // The word may end the title or the artist, and may be more than one word.
+    expect(matchesQuery(fire, 'fire ')).toBe(true);
+    expect(matchesQuery(fire, 'johnny cash ')).toBe(true);
+    expect(matchesQuery(fire, 'of fire ')).toBe(true);
+    expect(matchesQuery({ title: 'Café', artist: 'X' }, 'caf ')).toBe(false); // é is a letter
+  });
+});
+
+describe('R10 queryMatcher and textMatches', () => {
+  it('reads the text and the whole-word flag from the query', () => {
+    expect(queryMatcher('  Val ')).toEqual({ q: 'val', whole: true });
+    expect(queryMatcher('Val')).toEqual({ q: 'val', whole: false });
+    expect(queryMatcher('   ')).toEqual({ q: '', whole: false });
+    expect(queryMatcher(undefined)).toEqual({ q: '', whole: false });
+  });
+
+  it('matches lower-cased text the same way the song search does', () => {
+    expect(textMatches('i sang dixie\u0000dwight yoakam', queryMatcher('i '))).toBe(true);
+    expect(textMatches('ring of fire\u0000johnny cash', queryMatcher('i '))).toBe(false);
+    expect(textMatches('anything', queryMatcher(''))).toBe(true);
   });
 });
 
