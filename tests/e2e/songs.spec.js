@@ -103,4 +103,28 @@ test.describe('Songs', () => {
     await expect(page.locator('html[data-kb]')).toHaveCount(0);
     await expect(page.locator('.songs-view > .find-context')).toBeVisible();
   });
+
+  test('R10: clearing the search keeps the field focused only if it was focused', async ({ page }) => {
+    await openApp(page);
+    await addSong(page, { title: 'Valerie', artist: 'Amy Winehouse' });
+    const field = page.getByRole('searchbox', { name: 'Search songs' });
+    const clear = page.getByRole('button', { name: 'Clear search' });
+
+    // Mid-typing: the next search starts at once.
+    await field.fill('val');
+    await expect(field).toBeFocused();
+    await clear.click();
+    await expect(field).toHaveValue('');
+    await expect(field).toBeFocused();
+
+    // Keyboard down (focus elsewhere): the tap only empties the field, so a
+    // phone does not raise the keyboard.
+    await field.fill('val');
+    await page.getByRole('navigation', { name: 'Scopes' }).getByRole('button', { name: 'Songs' }).focus();
+    await expect(field).not.toBeFocused();
+    await clear.click();
+    await expect(field).toHaveValue('');
+    await expect(field).not.toBeFocused();
+    await expect(page.getByText('1 of 1 songs')).toBeVisible();
+  });
 });
