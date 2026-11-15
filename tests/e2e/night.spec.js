@@ -368,7 +368,7 @@ test.describe('Night out', () => {
     await search(page).fill('valerie');
     await expect(page.getByText('1 of 207 songs')).toBeVisible();
     await openFilters(page);
-    await choose(page, 'Status', 'Active');
+    await choose(page, 'Status', 'Go-to');
     await expect(page.getByText('0 of 207 songs')).toBeVisible();
     await expect(page.getByText('No songs match the search and filters.')).toBeVisible();
     await expect(page.getByRole('button', { name: /^Add “/ })).toHaveCount(0);

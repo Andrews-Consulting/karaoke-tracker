@@ -150,7 +150,7 @@ export function songField(page, label) {
   return songPage(page).locator('.song-fields .field').filter({ has: page.locator('dt', { hasText: new RegExp(`^${label}$`) }) }).locator('dd');
 }
 
-// Status (Active, Want to try, Retired) and rating (1 to 5) toggles, and the key stepper's value.
+// Status (Go-to, Want to try, Retired) and rating (1 to 5) toggles, and the key stepper's value.
 export function statusToggle(page, label) {
   return songPage(page).getByRole('group', { name: 'Status' }).getByRole('button', { name: label, exact: true });
 }
