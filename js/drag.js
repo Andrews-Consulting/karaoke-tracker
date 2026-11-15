@@ -67,8 +67,11 @@ export function dragToReorder({ list, li, handle, onDrop, onCancel }) {
   }
 
   // One frame of edge scrolling; it stops when the pointer leaves the zone,
-  // that end of the list is in view, the screen can scroll no further, or
-  // the drag ends.
+  // that end of the list is clear of the zone, the screen can scroll no
+  // further, or the drag ends. "Clear of the zone", not merely in view: on an
+  // iPhone a finger cannot reach the top few dozen pixels under the status
+  // bar, so a first row parked right at the edge could never be passed and
+  // the song stopped at second place.
   function scrollFrame() {
     if (!drag) return;
     drag.frame = 0;
@@ -76,7 +79,7 @@ export function dragToReorder({ list, li, handle, onDrop, onCancel }) {
     const { top, bottom } = edgesOf(scroller);
     const step = edgeStep(drag.y, top, bottom, drag.startY);
     const ends = list.getBoundingClientRect();
-    if (!step || (step > 0 && ends.bottom <= bottom) || (step < 0 && ends.top >= top)) return;
+    if (!step || (step > 0 && ends.bottom <= bottom - EDGE) || (step < 0 && ends.top >= top + EDGE)) return;
     const before = scroller.scrollTop;
     scroller.scrollTop = before + step;
     if (scroller.scrollTop === before) return;

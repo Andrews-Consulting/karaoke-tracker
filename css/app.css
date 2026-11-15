@@ -68,8 +68,8 @@ body { height: var(--vvh, 100%); }
    height drops well below the window's) the Songs scope folds its header
    away, so the first matches sit in the little room left above the field. */
 html[data-kb] .songs-view > .find-context,
-html[data-kb] .songs-view > .source-switch,
 html[data-kb] .songs-view > .filter-line { display: none; }
+html[data-kb] .songs-view > .source-switch { margin-bottom: 6px; } /* stays: it is how the catalog is reached */
 html[data-kb] .songs-view > .pick-row { margin: 0 0 6px; }
 
 body {

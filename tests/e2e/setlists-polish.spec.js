@@ -152,6 +152,35 @@ test.describe('Setlists polish', () => {
     expect((await storedOrder(page)).slice(0, 2)).toEqual([ids['Song 02'], ids['Song 03']]);
   });
 
+  test('R16: a song dragged to the top edge reaches first place even when the finger cannot touch the very top', async ({ page }) => {
+    test.slow(); // the drag scrolls a few pixels a frame, and frames are slow on a loaded machine
+    await openApp(page);
+    const many = Array.from({ length: 20 }, (_, i) => ({ title: `Song ${String(i + 1).padStart(2, '0')}`, artist: 'The Band' }));
+    const ids = await seedSongs(page, many);
+    await putRecords(page, 'setlists', [{ name: 'Long', venueId: null, songIds: many.map((s) => ids[s.title]) }]);
+    await openSetlists(page);
+    await openSetlist(page, 'Long');
+    const main = page.locator('main');
+    await setlistSongRow(page, 'Song 20').scrollIntoViewIfNeeded();
+    expect(await main.evaluate((m) => m.scrollTop)).toBeGreaterThan(0);
+
+    // Up from the bottom and held 44 px below the screen's top edge: an iPhone
+    // finger cannot reach under the status bar, so the drag must scroll on
+    // until the first row sits clear of that strip.
+    const from = await dragHandle(page, 'Song 20').boundingBox();
+    const screen = await main.boundingBox();
+    const x = from.x + from.width / 2;
+    await page.mouse.move(x, from.y + from.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(x, screen.y + 44, { steps: 12 });
+    await expect(setlistSongRow(page, 'Song 20')).toHaveClass(/\bdragging\b/);
+    await expect(setlistSongTitles(page).first()).toHaveText('Song 20', { timeout: 40_000 });
+    await page.mouse.up();
+
+    await expect(setlistSongTitles(page).first()).toHaveText('Song 20');
+    await expect.poll(async () => (await storedOrder(page))[0]).toBe(ids['Song 20']);
+  });
+
   test('R16: drags a song to a new position', async ({ page }) => {
     await openApp(page);
     const ids = await seedSongs(page, SONGS);
