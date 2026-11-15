@@ -154,9 +154,11 @@ test.describe('Setlist labels, Find songs and merge', () => {
     await expect.poll(() => metaValue(page, `currentSetlist:${venueIds.Pub}`))
       .toBe((await setlistNamed(page, 'All time')).id);
 
-    // A list from another venue can be picked, and is remembered for this venue.
+    // A list from another venue can be shown, and Use for tonight makes it this venue's set (R75).
     await setSelect(page).selectOption({ label: 'Crown Sat · The Crown' });
     await expect(shownSet(page)).toHaveText('Crown Sat · The Crown');
+    expect(await metaValue(page, `currentSetlist:${venueIds.Pub}`)).toBe((await setlistNamed(page, 'All time')).id);
+    await button(page, 'Use for tonight').click();
     await expect.poll(() => metaValue(page, `currentSetlist:${venueIds.Pub}`))
       .toBe((await setlistNamed(page, 'Crown Sat')).id);
 
@@ -203,7 +205,10 @@ test.describe('Setlist labels, Find songs and merge', () => {
     await expect(shownSet(page)).toHaveText('Viking');
     const crownSat = (await setlistNamed(page, 'Crown Sat')).id;
 
+    // Opened in the Set menu it shows; Use for tonight makes it Viking's set (R75).
     await setSelect(page).selectOption({ label: 'Crown Sat · The Crown' });
+    await expect(upNext(page)).toHaveCount(0);
+    await button(page, 'Use for tonight').click();
     await expectSet(page, ['Valerie', 'Dancing Queen', 'Africa']);
     await expect.poll(() => metaValue(page, `currentSetlist:${viking}`)).toBe(crownSat);
 
@@ -424,23 +429,27 @@ test.describe('Setlist labels, Find songs and merge', () => {
     expect(findBox.y).toBeGreaterThan((await page.getByText('For The Crown', { exact: true }).boundingBox()).y);
     expect(findBox.y).toBeLessThan((await page.getByRole('list', { name: 'Songs in this setlist' }).boundingBox()).y);
 
-    // The Songs scope, at the same venue, with the setlist as tonight's set.
+    // The Songs scope, at the same venue, with the setlist as the list + works
+    // on; tonight's set stays as it is (R75).
     await find.click();
     await expectTab(page, 'Songs');
     await expect(findContext(page)).toHaveText('Viking · Crown Sat · 1 song'); // the venue stays
     await expect(search(page)).toBeVisible();
     await expect(toggle(page, 'Valerie')).toHaveText('✓');
-    expect(await metaValue(page, `currentSetlist:${viking}`)).toBe(setlistIds['Crown Sat']);
+    expect(await metaValue(page, `currentSetlist:${viking}`)).toBe(setlistIds.Viking);
     expect(await metaValue(page, 'findVenueId')).toBe(viking);
 
     await toggle(page, 'Dancing Queen').click();
     await expect(findContext(page)).toHaveText('Viking · Crown Sat · 2 songs');
     await expect.poll(async () => (await setlistNamed(page, 'Crown Sat')).songIds)
       .toEqual([songIds.Valerie, songIds['Dancing Queen']]);
-    // Tonight has it too.
+    expect((await setlistNamed(page, 'Viking')).songIds).toEqual([songIds.Africa]);
+    // Tonight shows it too, as plain songs beside tonight's set.
     await openScope(page, 'Tonight');
     await expect(shownSet(page)).toHaveText('Crown Sat · The Crown');
-    await expectSet(page, ['Valerie', 'Dancing Queen']);
+    await expect(upNext(page)).toHaveCount(0);
+    await expect(page.locator('.showing-line')).toContainText('Showing Crown Sat · tonight\'s set is Viking');
+    await expect(page.getByRole('list', { name: 'Songs in Crown Sat' }).locator('.title')).toHaveText(['Valerie', 'Dancing Queen']);
 
     // An empty setlist offers Find songs in its empty state, once.
     await openSetlists(page);
@@ -451,17 +460,18 @@ test.describe('Setlist labels, Find songs and merge', () => {
     await button(page, 'Find songs').click();
     await expect(findContext(page)).toHaveText('Viking · Empty one · 0 songs');
 
-    // Under Overall, the set opens there.
+    // Under Overall, the list is worked on there; neither Overall's set nor Viking's changes.
     await openScope(page, 'Tonight');
     await venueSelect(page).selectOption({ label: 'Overall' });
     await expect(shownVenue(page)).toHaveText('Overall');
+    const overallSet = await metaValue(page, 'currentSetlist:overall');
     await openSetlists(page);
     await openSetlist(page, 'Viking');
     await button(page, 'Find songs').click();
     await expect(findContext(page)).toHaveText('Overall · Viking · 1 song');
     await expect(toggle(page, 'Africa')).toHaveText('✓');
-    expect(await metaValue(page, 'currentSetlist:overall')).toBe(setlistIds.Viking);
-    expect(await metaValue(page, `currentSetlist:${viking}`)).toBe(setlistIds['Empty one']); // Viking's own choice is kept
+    expect(await metaValue(page, 'currentSetlist:overall')).toBe(overallSet);
+    expect(await metaValue(page, `currentSetlist:${viking}`)).toBe(setlistIds.Viking);
   });
 
   test('R59: merging moves every song not already there to the end of the other list and empties the source', async ({ page }) => {

@@ -1,9 +1,9 @@
 // What the Songs scope (js/views/find.js), the song page (js/views/song.js)
-// and Tonight share: the venue and tonight's set at it (R37, R47, R56),
-// "Find songs" on a setlist (R57), deleting a song with its sings (R2), the
-// song forms' fields, and the Add a song sheet (R1) with suggestions from
-// MusicBrainz (R35, R63), a warning about a song already there (R9) and the
-// status left unset (R64).
+// and Tonight share: the venue and tonight's set at it (R37, R47, R56), the
+// working list (R75), "Find songs" on a setlist (R57), deleting a song with
+// its sings (R2), the song forms' fields, and the Add a song sheet (R1) with
+// suggestions from MusicBrainz (R35, R63), a warning about a song already
+// there (R9) and the status left unset (R64).
 // The Songs scope and the song page are re-exported from here, so the
 // modules that open them (app.js, tonight.js, setlists.js) import from one place.
 import { db, request } from '../db.js';
@@ -16,7 +16,9 @@ import {
 } from '../lib/song.js';
 import { createSuggester, fetchArtistGenres } from '../musicbrainz.js';
 import { makeSetlist } from '../lib/setlist.js';
-import { currentSetlistKey, uniqueSetlistName, currentSetlistFor, OVERALL_LIST_NAME } from '../lib/night.js';
+import {
+  currentSetlistKey, uniqueSetlistName, currentSetlistFor, shownSetlistFor, OVERALL_LIST_NAME,
+} from '../lib/night.js';
 
 export { renderSongs, findInSongs } from './find.js';
 export { openSongScreen } from './song.js';
@@ -83,13 +85,37 @@ export function startList(venue, name) {
   });
 }
 
-// "Find songs" on a setlist (R57): makes it tonight's set at the remembered
-// venue (or under Overall), then shows the Songs scope. The venue stays as it is.
+// ---------- The working list (R75) ----------
+
+// The list Tonight shows and the Songs scope's + works on: tonight's set
+// (null here), or another list chosen in Tonight's Set menu or by "Find
+// songs" on a list's screen, as { venueId, id }. Kept while the app is open,
+// whatever the scope; a reload, another venue on Tonight, or a new
+// designation of tonight's set returns it to tonight's set. Working on a
+// list never makes it tonight's set.
+let working = null;
+
+// `id` null (or tonight's set's own id) means tonight's set.
+export function setWorkingList(venueId, id) {
+  working = id == null ? null : { venueId: venueId ?? null, id };
+}
+
+// The working list at the venue (null = Overall), given tonight's set there:
+// the chosen one while it still exists and the venue is the one it was
+// chosen at; otherwise tonight's set itself, the same object.
+export function workingList(venueId, tonightSet, setlists) {
+  if (!working || working.venueId !== (venueId ?? null)) return tonightSet;
+  return shownSetlistFor(setlists, tonightSet, working.id);
+}
+
+// "Find songs" on a setlist (R57, R75): makes it the working list at the
+// remembered venue (or under Overall), then shows the Songs scope, where +
+// adds to it. Tonight's set and the venue stay as they are.
 export async function showSetInFind(setlistId) {
   const [saved, venues] = await Promise.all([db.get('meta', VENUE_KEY), db.getAll('venues')]);
   const wanted = saved ? saved.value : null;
   const venueId = venues.some((v) => v.id === wanted) ? wanted : null; // a deleted venue means Overall
-  await db.put('meta', { key: currentSetlistKey(venueId), value: setlistId });
+  setWorkingList(venueId, setlistId);
   dock.scope('songs');
 }
 

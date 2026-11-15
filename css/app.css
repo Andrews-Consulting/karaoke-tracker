@@ -738,7 +738,7 @@ label.check > input[type="checkbox"] {
   color: var(--muted);
   white-space: nowrap;
 }
-.after-row .handle, .row-more {
+.after-row .handle {
   flex: none;
   width: var(--tap);
   height: var(--tap);
@@ -750,7 +750,6 @@ label.check > input[type="checkbox"] {
   background: none;
   color: var(--muted);
 }
-.after-row .handle { border: 0; }
 
 /* Swipe a row left for Park and Remove (js/swipe.js): the actions slide in
    from the right over the row's end, --reveal wide (set per row: both
@@ -778,6 +777,28 @@ label.check > input[type="checkbox"] {
 .after-row.swiping .after-actions { transition: none; }
 .after-row.open .after-actions { transform: none; }
 .after-actions .btn { height: var(--tap); padding: 0 14px; }
+
+/* ---- R75: another list shown on Tonight ----
+   The line over it naming it and tonight's set, with Use for tonight; its
+   rows are After that's, numbered from 01, with + / ✓ for tonight's set
+   after the sings here. */
+.showing-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 14px;
+  border: 1px dashed var(--outline);
+  border-radius: 10px;
+}
+.showing-line[hidden], .plain-empty[hidden] { display: none; }
+.showing-text { flex: 1; min-width: 0; margin: 0; font-size: 0.875rem; color: var(--muted); overflow-wrap: anywhere; }
+.showing-line .use-tonight { flex: none; padding: 0 14px; white-space: nowrap; font-weight: 600; }
+.plain-row .set-toggle { margin-left: 2px; }
+.plain-empty { margin: 0; }
+@media print {
+  .showing-line .use-tonight, .plain-row .set-toggle { display: none !important; }
+}
+/* ---- end R75 ---- */
 
 .tonight-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .tonight-empty > p { margin: 8px 0 0; padding: 14px; border-radius: 10px; background: var(--surface); color: var(--text); }
@@ -875,7 +896,7 @@ label.check > input[type="checkbox"] {
 .sung-song { flex: 1; min-width: 0; }
 
 @media print {
-  .tonight-head .menu-face svg, .sung-strip button.undo-last, .after-row .handle, .row-more, .after-actions, .tonight-empty { display: none !important; }
+  .tonight-head .menu-face svg, .sung-strip button.undo-last, .after-row .handle, .after-actions, .tonight-empty { display: none !important; }
   .tonight .after-open { display: flex !important; color: #000; }
   .tonight .here { color: #333; }
 }
@@ -1424,6 +1445,10 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
 .list-head h2 { margin: 0; font-size: 1.625rem; font-weight: 600; letter-spacing: -0.01em; overflow-wrap: anywhere; }
 .list-head .list-mix { white-space: normal; }
 .list-head .list-in-set { margin-top: 4px; }
+/* R75: "Make this tonight's set", under the line that says how much of it is. */
+.list-head .make-tonight { align-self: flex-start; margin-top: 6px; font-weight: 600; }
+.list-head .make-tonight[hidden] { display: none; }
+@media print { .list-head .make-tonight { display: none !important; } }
 .setlist-actions .btn { padding: 8px 12px; }
 .edit-slot:empty { display: none; }
 
@@ -1440,8 +1465,8 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
   color: var(--accent-text);
 }
 
-/* A song: handle, title and artist with its sings here (R43), + / ✓ (R48)
-   and "…", which opens Up, Down and Remove under it (R16, R15). */
+/* A song: handle, title and artist with its sings here (R43), and + / ✓
+   (R48); swiped left, Remove (R15). */
 .list.setlist-songs { border-top: 1px solid var(--line); }
 .list.setlist-songs li { padding: 0; border-bottom-color: var(--line); }
 .list.setlist-songs li.no-match { padding: 12px 0; border-bottom: 0; }
@@ -1467,11 +1492,37 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
   color: var(--muted);
 }
 .setlist-song .here.sung { color: var(--text); }
-.setlist-song.open .row-more { color: var(--accent); }
+/* Written for the list's old "…" row, these also lay out the song page's
+   Listen, Edit and Delete (the grid above), so they stay. */
 .song-actions { display: flex; justify-content: flex-end; gap: 6px; padding: 0 0 10px; }
 .song-actions .btn { padding: 8px 14px; }
-.song-actions .btn.move { min-width: var(--tap); padding: 0; font-size: 1.125rem; }
-.song-actions .btn.move:disabled { opacity: 0.35; }
+
+/* Swipe a list's song left for Remove (js/swipe.js), as on Tonight: the
+   button slides in from the right over the row's end, --reveal wide, and is
+   in the page all the time, parked off the right edge, so focus reaches it
+   without the gesture. */
+.setlist-song { position: relative; overflow: hidden; --reveal: 110px; }
+/* No text selection on the surface, or a second swipe would drag the selected text instead. */
+.setlist-song .song-main { touch-action: pan-y; -webkit-user-select: none; user-select: none; }
+.setlist-song .song-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--reveal);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 4px 0 12px;
+  box-sizing: border-box;
+  background: linear-gradient(to right, transparent, var(--bg) 12px);
+  transform: translateX(100%);
+  transition: transform 160ms ease-out;
+}
+.setlist-song.swiping .song-actions { transition: none; }
+.setlist-song.open .song-actions { transform: none; }
+.setlist-song .song-actions .btn { height: var(--tap); padding: 0 14px; }
 
 /* History (R8, R72): the venue chips, By song / By night, and the sings. */
 .history-view .caption { margin-top: 4px; font-size: 0.875rem; }

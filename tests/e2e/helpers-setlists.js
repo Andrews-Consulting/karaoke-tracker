@@ -69,9 +69,10 @@ export function setlistSongRow(page, title) {
 }
 
 // Adds songs to the open setlist the R57 way: "Find songs" opens the Songs
-// scope with this set as tonight's, + adds each song there (searching for
-// it), and the setlist opens again. Songs go to the end in the order given.
-// Leaves the search empty, since it persists across scopes (R53).
+// scope with this set as the working list (R75), + adds each song there
+// (searching for it), and the setlist opens again. Songs go to the end in
+// the order given. Leaves the search empty, since it persists across scopes
+// (R53). The list stays the working list, so Tonight shows it afterwards.
 export async function addToSetlist(page, setlistName, ...songs) {
   await page.getByRole('button', { name: 'Find songs', exact: true }).click();
   const search = page.getByRole('searchbox', { name: 'Search songs' });
@@ -88,7 +89,7 @@ export async function addToSetlist(page, setlistName, ...songs) {
   for (const { title } of songs) await expect(setlistSongRow(page, title)).toBeVisible();
 }
 
-// Removes a song from the open list, through its "…".
+// Removes a song from the open list: a swipe, then Remove.
 export async function removeFromSetlist(page, { title, artist }) {
   await openSongMenu(page, title);
   await setlistSongRow(page, title).getByRole('button', { name: `Remove ${title} by ${artist}`, exact: true }).click();
@@ -105,12 +106,6 @@ export function escapeRegExp(text) {
 export function dragHandle(page, title) {
   return page.getByRole('list', { name: 'Songs in this setlist' })
     .getByRole('button', { name: `Move ${title}`, exact: true });
-}
-
-// A song's Up or Down button, under its "…" (openSongMenu): direction is 'up' or 'down'.
-export function moveButton(page, title, direction) {
-  return page.getByRole('list', { name: 'Songs in this setlist' })
-    .getByRole('button', { name: `Move ${title} ${direction}`, exact: true });
 }
 
 // Drags a song by its handle with the mouse (pointer events) onto the row of

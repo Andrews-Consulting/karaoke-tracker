@@ -3,13 +3,13 @@
 // lists for tonight, and what was sung there by date. Pure: no DOM, no IndexedDB.
 //
 // A setlist's venueId is a label, not a binding (R56): any setlist can be
-// opened at any venue, and under Overall. Which set is current at each venue
-// (and under Overall), and which setlist plays a venue's Next time role, are
-// remembered in the meta store as { key: 'currentSetlist:<venueId>' } (or
-// 'currentSetlist:overall') and { key: 'nextTimeSetlist:<venueId>' }, each
-// with a setlist id as its value. The selection rules here take that
-// remembered id and the setlists and say which setlist to use, or null when
-// one has to be created.
+// opened at any venue, and under Overall. Which set is tonight's set at each
+// venue and under Overall (designated, R75), and which setlist plays a
+// venue's Next time role, are remembered in the meta store as
+// { key: 'currentSetlist:<venueId>' } (or 'currentSetlist:overall') and
+// { key: 'nextTimeSetlist:<venueId>' }, each with a setlist id as its value.
+// The selection rules here take that remembered id and the setlists and say
+// which setlist to use, or null when one has to be created.
 import { sortSetlists } from './setlist.js';
 import { todayLocalISO } from './stats.js';
 
@@ -60,6 +60,23 @@ export function currentSetlistFor(setlists, venueId, remembered) {
   const anyVenue = all.find((s) => s.venueId == null);
   if (venueId == null) return anyVenue || all[0] || null;
   return all.find((s) => s.venueId === venueId) || anyVenue || null;
+}
+
+// The working list (R75): the list Tonight shows and the Songs scope's +
+// works on. `wantedId` is the list chosen in the Set menu or by "Find songs";
+// it is used while it still exists, and otherwise (or when none was chosen,
+// or it is tonight's set) tonight's set itself, the same object.
+export function shownSetlistFor(setlists, tonightSet, wantedId) {
+  if (wantedId == null || (tonightSet && tonightSet.id === wantedId)) return tonightSet;
+  return (Array.isArray(setlists) ? setlists : []).find((s) => s.id === wantedId) || tonightSet;
+}
+
+// The line Tonight shows above another list (R75): 'Showing Next time ·
+// tonight's set is Fri 14 Nov', or '… · no tonight's set yet' when there is
+// none (or it is Overall's unsaved list).
+export function showingLine(shown, tonightSet) {
+  const tonight = tonightSet && tonightSet.id != null ? `tonight's set is ${tonightSet.name}` : 'no tonight\'s set yet';
+  return `Showing ${shown.name} · ${tonight}`;
 }
 
 // The Set menu's groups (R56), each { label, items: [{ id, text }] } with the

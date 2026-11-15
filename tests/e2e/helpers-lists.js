@@ -2,6 +2,7 @@
 // moved onto these screens, are in helpers-setlists.js and helpers-venues.js.
 import { expect } from '@playwright/test';
 import { openScope } from './helpers.js';
+import { swipeOpen } from './helpers-tonight.js';
 
 export function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -19,11 +20,17 @@ export function listSongs(page) {
   return page.getByRole('list', { name: 'Songs in this setlist' });
 }
 
-// Opens a song's "…" in the open list, for its Up, Down and Remove, unless it is open.
+// A song's row in the open list.
+export function listSongRow(page, title) {
+  return listSongs(page).locator('li[data-song-id]')
+    .filter({ has: page.locator('.title').getByText(title, { exact: true }) });
+}
+
+// Swipes a song's row in the open list open, for its Remove, unless it is open.
 export async function openSongMenu(page, title) {
-  const more = listSongs(page).getByRole('button', { name: `More for ${title}`, exact: true });
-  if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
-  await expect(more).toHaveAttribute('aria-expanded', 'true');
+  const row = listSongRow(page, title);
+  if (!/\bopen\b/.test((await row.getAttribute('class')) || '')) await swipeOpen(page, row, '.song-main');
+  await expect(row).toHaveClass(/\bopen\b/);
 }
 
 // A song's + / ✓ in the open list, which adds it to tonight's set or takes it out.

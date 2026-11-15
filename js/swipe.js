@@ -1,4 +1,5 @@
-// Swipe a row sideways to reveal the actions behind it (Tonight's set, R49).
+// Swipe a row sideways to reveal the actions behind it: Tonight's rows (R49,
+// R75) and a list's songs on the Lists scope (R16, R15).
 //
 //   swipeToReveal({ li, surface, panel, isOpen, onOpen, onClose });
 //
@@ -23,7 +24,7 @@ export function swipeToReveal({ li, surface, panel, isOpen, onOpen, onClose }) {
   let shown = 0; // how far the panel is in, 0..width, while dragging
 
   surface.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0 || e.target.closest('.handle, .after-actions')) return;
+    if (e.button !== 0 || e.target.closest('.handle') || panel.contains(e.target)) return;
     start = { x: e.clientX, y: e.clientY, id: e.pointerId, from: isOpen() ? width() : 0 };
     dragging = false;
   });
@@ -59,7 +60,7 @@ export function swipeToReveal({ li, surface, panel, isOpen, onOpen, onClose }) {
 
   // A swipe is not a tap; a tap on an open row's surface closes it.
   li.addEventListener('click', (e) => {
-    if (e.target.closest('.after-actions')) return;
+    if (panel.contains(e.target)) return;
     if (swiped || isOpen()) {
       e.preventDefault();
       e.stopPropagation();
@@ -69,6 +70,6 @@ export function swipeToReveal({ li, surface, panel, isOpen, onOpen, onClose }) {
 
   // Keyboard and screen readers: landing on an action opens the row.
   li.addEventListener('focusin', (e) => {
-    if (e.target.closest('.after-actions') && !isOpen()) onOpen();
+    if (panel.contains(e.target) && !isOpen()) onOpen();
   });
 }

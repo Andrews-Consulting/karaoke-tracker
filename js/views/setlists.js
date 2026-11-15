@@ -5,10 +5,11 @@
 //     (or "Tonight's set" for the one that is). "New list" at the top opens a
 //     form for a name and a label. The dock's field filters the lists by name.
 //   A list's songs, stacked on top so the back gesture returns (R31): the
-//     label and mix lines; each song with + / ✓ for tonight's set at the venue
-//     chosen on Tonight (the owner's case: open "Crowd pleasers" and drop two
-//     songs into tonight), its sings at the list's label venue (R43), a drag
-//     handle, and "…" for Up, Down and Remove (R16, R15). The list's actions:
+//     label and mix lines, and "Make this tonight's set" at the venue chosen
+//     on Tonight unless it is (R75); each song with + / ✓ for tonight's set
+//     there (the owner's case: open "Crowd pleasers" and drop two songs into
+//     tonight), its sings at the list's label venue (R43), a drag handle
+//     (R16), and a swipe left for Remove (R15). The list's actions:
 //     Find songs (R57), Rename and label (R14, R56), Merge into… (R59) and
 //     Delete; the Mix card (R44) and Suggest songs (R45) follow the songs.
 //     The dock's field filters its songs.
@@ -19,6 +20,7 @@ import {
 } from '../ui.js';
 import * as dock from '../dock.js';
 import { dragToReorder } from '../drag.js';
+import { swipeToReveal } from '../swipe.js';
 import { plural, sortVenues, singStats, todayLocalISO } from '../lib/stats.js';
 import { filterSongs } from '../lib/search.js';
 import {
@@ -29,7 +31,9 @@ import {
   mergePlan, describeMerge, describeMerged,
 } from '../lib/setlist.js';
 import { setMenuGroups, currentSetlistKey, currentSetlistFor } from '../lib/night.js';
-import { VENUE_KEY, openCurrentSet, showSetInFind } from './songs.js';
+import {
+  VENUE_KEY, openCurrentSet, showSetInFind, setWorkingList,
+} from './songs.js';
 import { hereShort } from './tonight.js';
 
 // Bumped on every screen change, so a slow load never paints over a newer screen.
@@ -266,7 +270,7 @@ async function renderSetlist(id, message = '') {
   const night = tonightContext(venues, setlistRecords, metaRecords);
   let tonight = night.set;
   const isTonight = () => !!tonight && tonight.id === setlist.id;
-  let openRow = null; // the song whose "…" row is open
+  let openRow = null; // the song whose row is swiped open
 
   const status = el('p', { class: 'status', role: 'status', text: message });
   const list = el('ol', { class: 'list setlist-songs', 'aria-label': 'Songs in this setlist' });
@@ -279,10 +283,38 @@ async function renderSetlist(id, message = '') {
     el('span', { class: 'visually-hidden', text: 'Tick' }),
     ' = in tonight\'s set');
 
-  // "Find songs" (R57): the Songs scope with this list as tonight's set at the
-  // venue chosen on Tonight, where + adds songs. With the actions, and in
-  // place of the songs while there are none, so only one shows at a time.
+  // "Find songs" (R57, R75): the Songs scope with this list as the working
+  // list at the venue chosen on Tonight, where + adds songs to it; tonight's
+  // set stays as it is. With the actions, and in place of the songs while
+  // there are none, so only one shows at a time.
   const findSongs = () => showSetInFind(setlist.id);
+
+  // "Make this tonight's set" (R75): designates the list at the venue chosen
+  // on Tonight (or under Overall), where Sang it, Park and Up next work.
+  const makeTonightButton = el('button', {
+    class: 'btn make-tonight', type: 'button', text: 'Make this tonight\'s set', onclick: makeTonight,
+  });
+  let designating = false;
+  async function makeTonight() {
+    if (designating || isTonight()) return;
+    designating = true;
+    clearStatus();
+    const key = currentSetlistKey(night.venueId);
+    try {
+      await db.put('meta', { key, value: setlist.id });
+    } catch (err) {
+      designating = false;
+      if (root.isConnected) status.textContent = `Could not save: ${err.message}`;
+      return;
+    }
+    designating = false;
+    night.meta.set(key, setlist.id);
+    tonight = setlist;
+    setWorkingList(null); // Tonight shows it, and the Songs scope's + adds to it
+    if (!root.isConnected) return;
+    status.textContent = `“${setlist.name}” is tonight's set ${night.venue ? `at ${night.venue.name}` : 'under Overall'}.`;
+    drawSongs();
+  }
   const findButton = el('button', { class: 'btn', type: 'button', text: 'Find songs', onclick: findSongs });
   const empty = el('div', { class: 'empty setlist-empty' },
     el('p', { class: 'muted', text: 'No songs yet. Find songs to add some, or let Suggest songs pick a few.' }),
@@ -516,83 +548,60 @@ async function renderSetlist(id, message = '') {
 
   // ---- The songs ----
 
-  // Each row's handle and Up and Down buttons by song id, so focus can go back
-  // to the moved song's control after the list is redrawn.
-  const controls = new Map();
-
-  // A song row: drag handle, the song with its sings here, + / ✓, and "…"
-  // for Up, Down and Remove. `index` is its place in the whole list, `total`
-  // the list's length; `filtered` while the dock's field narrows the rows,
-  // when there is nothing to drag among.
-  function songRow(song, index, total, filtered) {
+  // A song row: drag handle at the far left, the song with its sings here,
+  // and + / ✓. Swiped left (js/swipe.js, as on Tonight), Remove slides in
+  // over the row's end; it is in the page all the time, so a keyboard reaches
+  // it and focusing it opens the row. `filtered` while the dock's field
+  // narrows the rows, when there is nothing to drag among.
+  function songRow(song, filtered) {
     const open = openRow === song.id;
-    // True when the tapped control had focus (a keyboard, or a desktop click),
-    // so focus follows the song; phones do not focus buttons on a tap.
-    const focused = (e) => document.activeElement === e.currentTarget;
     const handle = filtered ? null : el('button', {
       class: 'handle', type: 'button', 'aria-label': `Move ${song.title}`,
       onkeydown: (e) => {
         const delta = { ArrowUp: -1, ArrowDown: 1 }[e.key];
         if (!delta) return;
         e.preventDefault();
-        moveSongBy(song, delta, 'handle');
+        moveSongBy(song, delta);
       },
     }, icon(ICONS.grip, { width: 3 }));
     const stat = here ? hereShort(here.get(song.id), true, today) : '';
-    let actions = null;
-    const row = { handle, up: null, down: null };
-    if (open) {
-      row.up = el('button', {
-        class: 'btn move', type: 'button', text: '↑', 'aria-label': `Move ${song.title} up`,
-        onclick: (e) => moveSongBy(song, -1, focused(e) ? 'up' : null),
-      });
-      row.down = el('button', {
-        class: 'btn move', type: 'button', text: '↓', 'aria-label': `Move ${song.title} down`,
-        onclick: (e) => moveSongBy(song, 1, focused(e) ? 'down' : null),
-      });
-      row.up.disabled = index === 0;
-      row.down.disabled = index === total - 1;
-      actions = el('div', { class: 'song-actions' },
-        row.up,
-        row.down,
-        el('button', {
-          class: 'btn', type: 'button', text: 'Remove', 'aria-label': `Remove ${song.title} by ${song.artist}`,
-          onclick: () => removeSong(song),
-        }));
-    }
-    controls.set(song.id, row);
-
-    const li = el('li', { class: `setlist-song${open ? ' open' : ''}`, 'data-song-id': song.id },
-      el('div', { class: 'song-main' },
-        handle,
-        el('div', { class: 'text' },
-          el('span', { class: 'title', text: song.title }),
-          el('span', { class: 'sub', text: song.artist }),
-          stat ? el('span', { class: `here${here.has(song.id) ? ' sung' : ''}`, text: stat }) : null),
-        isTonight() ? null : toggleButton(song),
-        el('button', {
-          class: 'row-more', type: 'button', 'aria-label': `More for ${song.title}`, 'aria-expanded': String(open),
-          onclick: (e) => toggleRow(song, focused(e)),
-        }, icon(ICONS.more, { width: 3.2 }))),
-      actions);
+    const surface = el('div', { class: 'song-main' },
+      handle,
+      el('div', { class: 'text' },
+        el('span', { class: 'title', text: song.title }),
+        el('span', { class: 'sub', text: song.artist }),
+        stat ? el('span', { class: `here${here.has(song.id) ? ' sung' : ''}`, text: stat }) : null),
+      isTonight() ? null : toggleButton(song));
+    const panel = el('div', { class: 'song-actions', role: 'group', 'aria-label': `Actions for ${song.title}` },
+      el('button', {
+        class: 'btn danger', type: 'button', text: 'Remove', 'aria-label': `Remove ${song.title} by ${song.artist}`,
+        onclick: () => removeSong(song),
+      }));
+    const li = el('li', { class: `setlist-song${open ? ' open' : ''}`, 'data-song-id': song.id }, surface, panel);
     if (handle) {
       // Drag to reorder (R16): shared with Tonight's set (js/drag.js).
       dragToReorder({
         list, li, handle,
-        onDrop: (to, hadFocus) =>
-          reorder(moveSongId(setlist, song.id, to, songsById), hadFocus ? { songId: song.id, which: 'handle' } : null),
+        onDrop: (to, hadFocus) => reorder(moveSongId(setlist, song.id, to, songsById), hadFocus ? song.id : null),
         onCancel: drawSongs,
       });
     }
+    swipeToReveal({
+      li, surface, panel,
+      isOpen: () => openRow === song.id,
+      onOpen: () => setOpenRow(song.id),
+      onClose: () => setOpenRow(null),
+    });
     return li;
   }
 
-  function toggleRow(song, refocus) {
-    openRow = openRow === song.id ? null : song.id;
-    drawSongs();
-    const li = list.querySelector(`[data-song-id="${song.id}"]`);
-    if (openRow != null) li?.scrollIntoView({ block: 'nearest' });
-    if (refocus) li?.querySelector('.row-more')?.focus();
+  // The row swiped open, if any; one at a time. Only the classes change, so
+  // focus stays where it is.
+  function setOpenRow(songId) {
+    openRow = songId;
+    for (const li of list.querySelectorAll('li.setlist-song')) {
+      li.classList.toggle('open', songId != null && li.dataset.songId === String(songId));
+    }
   }
 
   // The header's lines and the songs, from the latest state.
@@ -603,11 +612,11 @@ async function renderSetlist(id, message = '') {
     countText.textContent = plural(inList.length, 'song', 'songs');
     genreLine.textContent = inList.length ? mixSummary(mixByGenre(inList), 3) : '';
     decadeLine.textContent = inList.length ? mixSummary(mixByDecade(inList), 4) : '';
-    inSetLine.textContent = !inList.length ? ''
-      : isTonight() ? 'This is tonight\'s set' : `${inTonight(inList, tonight)} of ${inList.length} in tonight's set`;
+    inSetLine.textContent = isTonight() ? 'This is tonight\'s set'
+      : inList.length ? `${inTonight(inList, tonight)} of ${inList.length} in tonight's set` : '';
+    makeTonightButton.hidden = isTonight();
     legend.hidden = !inList.length || isTonight();
-    controls.clear();
-    list.replaceChildren(...shown.map((song) => songRow(song, inList.indexOf(song), inList.length, !!text)));
+    list.replaceChildren(...shown.map((song) => songRow(song, !!text)));
     if (inList.length && !shown.length) list.append(el('li', { class: 'muted no-match', text: `No songs in this list match “${text}”.` }));
     empty.hidden = inList.length > 0;
     findButton.hidden = inList.length === 0; // the empty state has its own
@@ -620,16 +629,6 @@ async function renderSetlist(id, message = '') {
     mixDecades.textContent = formatMix(mixByDecade(inList));
     mixEmpty.hidden = inList.length > 0;
     mixLines.hidden = inList.length === 0;
-  }
-
-  // Focus `which` ('handle', 'up' or 'down') of a song's row; when that button
-  // is now disabled (the song reached an end), the other one or the handle.
-  function focusControl(songId, which) {
-    const row = controls.get(songId);
-    if (!row) return;
-    const order = which === 'up' ? ['up', 'down'] : which === 'down' ? ['down', 'up'] : [];
-    const name = order.find((key) => row[key] && !row[key].disabled) || 'handle';
-    row[name]?.focus();
   }
 
   async function save() {
@@ -672,19 +671,19 @@ async function renderSetlist(id, message = '') {
     suggestStatus.textContent = describeSuggestion(chosen.length, n, general);
   });
 
-  // Saves a new order at once (R16). `refocus` ({ songId, which }) puts focus
-  // back on that control of the moved song once the list is redrawn.
+  // Saves a new order at once (R16). `refocus` (a song id) puts focus back on
+  // that song's handle once the list is redrawn.
   async function reorder(next, refocus = null) {
     if (sameOrder(next.songIds, setlist.songIds || [])) return;
     setlist = next;
     clearStatus();
     await save();
-    if (refocus) focusControl(refocus.songId, refocus.which);
+    if (refocus != null) list.querySelector(`[data-song-id="${refocus}"] .handle`)?.focus();
   }
 
-  // Up (-1) or Down (1), from the row's "…" or the arrow keys on the handle.
-  function moveSongBy(song, delta, which = null) {
-    return reorder(moveSongIdBy(setlist, song.id, delta, songsById), which ? { songId: song.id, which } : null);
+  // Up (-1) or Down (1), from the arrow keys on the handle; focus stays with the song.
+  function moveSongBy(song, delta) {
+    return reorder(moveSongIdBy(setlist, song.id, delta, songsById), song.id);
   }
 
   // No confirmation: removing deletes no data and is easy to redo.
@@ -709,7 +708,8 @@ async function renderSetlist(id, message = '') {
         el('span', { class: 'label', text: venueLabel(setlist, venues) }), ' · ', countText),
       genreLine,
       decadeLine,
-      inSetLine),
+      inSetLine,
+      makeTonightButton),
     el('div', { class: 'setlist-actions' }, findButton, renameButton, mergeButton, deleteButton, mergeNote),
     editSlot,
     mergeForm,

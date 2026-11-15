@@ -1,12 +1,14 @@
-// Steps for Tonight's set rows (Design B, R49): the swipe that reveals a
-// row's Park and Remove.
+// Steps for swiped rows (Design B, R49): the swipe that reveals a row's Park
+// and Remove on Tonight, or Remove on a list's screen.
 import { expect } from '@playwright/test';
 
-// Swipes a row of tonight's set (a locator for its <li>) to the left until its
-// actions show. The pointer starts on the row's title, clear of the drag
-// handle at the left edge and of the actions at the right.
-export async function swipeOpen(page, row) {
-  const box = await row.locator('.after-main').boundingBox();
+// Swipes a row (a locator for its <li>) to the left until its actions show.
+// The pointer starts on the row's title, clear of the drag handle at the left
+// edge and of the actions at the right. `surface` is the part the finger
+// moves on: Tonight's '.after-main', or a list's '.song-main'.
+export async function swipeOpen(page, row, surface = '.after-main') {
+  await row.scrollIntoViewIfNeeded();
+  const box = await row.locator(surface).boundingBox();
   const y = box.y + box.height / 2;
   const x = box.x + box.width * 0.45;
   await page.mouse.move(x, y);

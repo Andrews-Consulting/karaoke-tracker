@@ -8,9 +8,10 @@
 // songs match, with Pick one (R13) and the sort.
 // Each row: title, artist, genre and year, the sings at the venue (R37, R8;
 // hidden under a sung filter, R52), the KaraFun mark (R68), and + / ✓ for
-// tonight's set (R48, under Overall too, R56). A tap on the row opens the
-// song page (js/views/song.js). Stays quick with 1,000 songs (R34): rows are
-// built once and at most PAGE_SIZE are drawn at a time.
+// the working list: tonight's set unless Tonight's Set menu or a list's "Find
+// songs" chose another (R48, R75; under Overall too, R56). A tap on the row
+// opens the song page (js/views/song.js). Stays quick with 1,000 songs
+// (R34): rows are built once and at most PAGE_SIZE are drawn at a time.
 // Once a KaraFun catalog is loaded, a "My songs | KaraFun" switch searches
 // the catalog instead, with its own filters; each catalog row adds the song
 // to my songs or straight into the set (R67).
@@ -40,7 +41,7 @@ import {
 import { addSongId, removeSongId, setlistSongs } from '../lib/setlist.js';
 import { currentSetlistKey, OVERALL_LIST_NAME } from '../lib/night.js';
 import {
-  VENUE_KEY, openCurrentSet, startList, goToBackup, renderAddSong,
+  VENUE_KEY, openCurrentSet, startList, goToBackup, renderAddSong, workingList,
 } from './songs.js';
 import { openSongScreen } from './song.js';
 import { hereShort, shortDate } from './tonight.js';
@@ -254,7 +255,9 @@ export async function renderSongs({
     venueId: venues.some((v) => v.id === wanted) ? wanted : null,
     filters: { ...defaultFilters(), ...filters },
     catalogFilters: loadSavedCatalogFilters(), // the KaraFun source's own (R67)
-    set: null, // tonight's set at the venue or under Overall (R47, R56); id null while Overall's is unsaved
+    // The working list (R75), where + adds: tonight's set at the venue or under
+    // Overall (R47, R56) unless another was chosen; id null while Overall's is unsaved.
+    set: null,
   };
   rememberedQuery = state.query;
   const currentVenue = () => venues.find((v) => v.id === state.venueId) || null;
@@ -262,8 +265,9 @@ export async function renderSongs({
   {
     const opened = await openCurrentSet(currentVenue(), setlists, meta);
     if (!stillCurrent(token, ticket)) return;
-    ({ set: state.set, setlists } = opened);
-    if (state.set.id != null) meta.set(currentSetlistKey(state.venueId), state.set.id);
+    setlists = opened.setlists;
+    if (opened.set.id != null) meta.set(currentSetlistKey(state.venueId), opened.set.id);
+    state.set = workingList(state.venueId, opened.set, setlists);
   }
   let inSet = new Set(state.set.songIds);
   const stats = singStats(singRecords, state.venueId);
@@ -638,7 +642,7 @@ export async function renderSongs({
     showMoreButton();
   }
 
-  // ---- Tonight's set (R47, R56), chosen on Tonight ----
+  // ---- The working list (R47, R56, R75), chosen on Tonight or by Find songs ----
 
   // Which venue and set the + works on: "The Crown · Friday · 2 songs".
   const context = el('p', { class: 'find-context' });
