@@ -8,7 +8,7 @@
 // the title order and the menus' choices. A search then scans plain strings,
 // and typing on narrows the previous result (catalogSearcher) instead of the
 // whole catalog.
-import { queryText, searchText } from './search.js';
+import { queryText, searchText, queryMatcher, textMatches } from './search.js';
 import { decadeOf, distinctText, distinctDecades, newestFirst, compareFor } from './find.js';
 import { songKey } from './song.js';
 
@@ -136,7 +136,8 @@ const NONE = new Set();
 function matchIndexes(prepared, filters, query, from = null) {
   const f = { ...defaultCatalogFilters(), ...filters };
   const { rows, texts } = prepared;
-  const q = queryText(query);
+  const matcher = queryMatcher(query);
+  const q = matcher.q;
   const genre = fold(f.genre) ? prepared.styleSpellings.get(fold(f.genre)) || NONE : null;
   const language = fold(f.language) ? prepared.languageSpellings.get(fold(f.language)) || NONE : null;
   const decade = decadeOf(f.decade);
@@ -144,7 +145,7 @@ function matchIndexes(prepared, filters, query, from = null) {
   const has = (values, wanted) => listOf(values).some((v) => wanted.has(v));
 
   const matches = (i) => {
-    if (q && !texts[i].includes(q)) return false;
+    if (q && !textMatches(texts[i], matcher)) return false;
     const row = rows[i];
     if (f.duet === 'only' && !row.duet) return false;
     if (f.duet === 'none' && row.duet) return false;
@@ -204,16 +205,18 @@ export function searchCatalog(prepared, filters = defaultCatalogFilters(), query
 
 // searchCatalog() for one prepared catalog that remembers its last result:
 // while the filters stay the same and the new search contains the last one
-// (typing on), only the last result is scanned. Same answers, fewer rows.
+// (typing on), only the last result is scanned. Same answers, fewer rows. A
+// whole-word result (a trailing space) is narrower than the text alone, so
+// nothing narrows from it.
 export function catalogSearcher(prepared) {
-  let last = null; // { q, narrowing, indexes }
+  let last = null; // { q, whole, narrowing, indexes }
   return (filters = defaultCatalogFilters(), query = '') => {
     const f = { ...defaultCatalogFilters(), ...filters };
-    const q = queryText(query);
+    const { q, whole } = queryMatcher(query);
     const narrowing = JSON.stringify([fold(f.genre), decadeOf(f.decade), f.duet, f.explicit, fold(f.language)]);
-    const from = last && last.narrowing === narrowing && q.includes(last.q) ? last.indexes : null;
-    const indexes = matchIndexes(prepared, f, q, from);
-    last = { q, narrowing, indexes };
+    const from = last && last.narrowing === narrowing && !last.whole && q.includes(last.q) ? last.indexes : null;
+    const indexes = matchIndexes(prepared, f, query, from);
+    last = { q, whole, narrowing, indexes };
     return sortedRows(prepared, indexes, f.sort);
   };
 }

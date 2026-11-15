@@ -166,6 +166,9 @@ describe('R67 catalogSearcher narrows as the search grows', () => {
       [{}, 'q'], [{}, 'qu'], [{}, 'que'], [{}, 'queen'], [{}, 'que'], [{}, 'a'], [{}, 'an'],
       [{ genre: 'Pop' }, 'an'], [{ genre: 'Pop', sort: 'decade' }, 'an'], [{ genre: 'Pop' }, 'dan'],
       [{ genre: 'Rock' }, 'dan'], [{}, ''], [{ duet: 'only' }, ''], [{ duet: 'only' }, 'kenny'],
+      // A trailing space (whole words) narrows the text's result, and typing
+      // on from it, or dropping the space, must not narrow from the narrower set.
+      [{}, 'a'], [{}, 'a '], [{}, 'a'], [{}, 'an'], [{}, 'an '], [{}, 'and '], [{}, 'queen '], [{}, 'queen'],
     ];
     for (const [changes, query] of steps) {
       expect(titles(search(filters(changes), query))).toEqual(titles(searchCatalog(prepared, filters(changes), query)));
