@@ -705,6 +705,8 @@ label.check > input[type="checkbox"] {
 
 /* After that (R49, R61): place, song, sings here, handle, "…". */
 .after-head { margin-top: 4px; letter-spacing: 0.08em; }
+.up-box:empty { display: none; }
+.up-box { margin-top: 2px; }
 .after-head[hidden], .after-list[hidden], .tonight-empty[hidden] { display: none; }
 .list.after-list li { padding: 0; border-bottom-color: var(--line); }
 .after-main { display: flex; align-items: center; gap: 8px; min-height: 56px; }
