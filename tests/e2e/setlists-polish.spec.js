@@ -6,6 +6,7 @@ import {
   openSetlists, openSetlist, backToSetlists, setlistSongRow, setlistSongTitles, addToSetlist, removeFromSetlist,
   dragHandle, moveButton, dragSong, mixCard, openMix, mixLine,
 } from './helpers-setlists.js';
+import { openSongMenu } from './helpers-lists.js';
 
 const SONGS = [
   { title: 'Valerie', artist: 'Amy Winehouse', genre: 'Soul', year: 2006 },
@@ -39,27 +40,34 @@ test.describe('Setlists polish', () => {
     await openSetlist(page, 'Friday');
     await expect(setlistSongTitles(page)).toHaveText(['Valerie', 'Dancing Queen', 'Mr. Brightside', 'Jolene']);
 
-    // Up is off on the first song and Down on the last.
+    // Up and Down are under a song's "…": Up is off on the first song and Down on the last.
+    await openSongMenu(page, 'Valerie');
     await expect(moveButton(page, 'Valerie', 'up')).toBeDisabled();
     await expect(moveButton(page, 'Valerie', 'down')).toBeEnabled();
-    await expect(moveButton(page, 'Jolene', 'up')).toBeEnabled();
-    await expect(moveButton(page, 'Jolene', 'down')).toBeDisabled();
     for (const control of [dragHandle(page, 'Valerie'), moveButton(page, 'Valerie', 'up'), moveButton(page, 'Valerie', 'down')]) {
       const box = await control.boundingBox();
       expect(box.width).toBeGreaterThanOrEqual(44);
       expect(box.height).toBeGreaterThanOrEqual(44);
     }
+    await openSongMenu(page, 'Jolene');
+    await expect(moveButton(page, 'Valerie', 'up')).toHaveCount(0); // one "…" open at a time
+    await expect(moveButton(page, 'Jolene', 'up')).toBeEnabled();
+    await expect(moveButton(page, 'Jolene', 'down')).toBeDisabled();
 
+    await openSongMenu(page, 'Mr. Brightside');
     await moveButton(page, 'Mr. Brightside', 'up').click();
     await expect(setlistSongTitles(page)).toHaveText(['Valerie', 'Mr. Brightside', 'Dancing Queen', 'Jolene']);
     await expect.poll(() => storedOrder(page)).toEqual(idsOf(['Valerie', 'Mr. Brightside', 'Dancing Queen', 'Jolene']));
 
-    // Two quick taps move two places; the new first song's Up turns off.
+    // The "…" stays open on the moving song: two quick taps move two places,
+    // and the new first song's Up turns off.
+    await openSongMenu(page, 'Valerie');
     await moveButton(page, 'Valerie', 'down').click();
     await moveButton(page, 'Valerie', 'down').click();
     await expect(setlistSongTitles(page)).toHaveText(['Mr. Brightside', 'Dancing Queen', 'Valerie', 'Jolene']);
-    await expect(moveButton(page, 'Mr. Brightside', 'up')).toBeDisabled();
     await expect(moveButton(page, 'Valerie', 'down')).toBeEnabled();
+    await openSongMenu(page, 'Mr. Brightside');
+    await expect(moveButton(page, 'Mr. Brightside', 'up')).toBeDisabled();
 
     // The arrow keys on the handle move a song too, and focus stays with it.
     await dragHandle(page, 'Jolene').focus();
@@ -68,7 +76,7 @@ test.describe('Setlists polish', () => {
     await expect(dragHandle(page, 'Jolene')).toBeFocused();
 
     // The sung flag (R43) stays with its song.
-    await expect(setlistSongRow(page, 'Mr. Brightside').locator('.flag')).toHaveText('Sung here · last 2026-10-15');
+    await expect(setlistSongRow(page, 'Mr. Brightside').locator('.here')).toHaveText(/^1× · 15 Oct( 2026)?$/);
     await expect.poll(() => storedOrder(page)).toEqual(idsOf(['Mr. Brightside', 'Dancing Queen', 'Jolene', 'Valerie']));
 
     await page.reload();
@@ -79,6 +87,7 @@ test.describe('Setlists polish', () => {
     // Remove still works on a reordered list, and Up and Down follow the new ends.
     await removeFromSetlist(page, { title: 'Mr. Brightside', artist: 'The Killers' });
     await expect(setlistSongTitles(page)).toHaveText(['Dancing Queen', 'Jolene', 'Valerie']);
+    await openSongMenu(page, 'Dancing Queen');
     await expect(moveButton(page, 'Dancing Queen', 'up')).toBeDisabled();
     await expect.poll(() => storedOrder(page)).toEqual(idsOf(['Dancing Queen', 'Jolene', 'Valerie']));
   });
@@ -101,6 +110,7 @@ test.describe('Setlists polish', () => {
     });
     await expect(setlistSongTitles(page)).toHaveText(['Jolene', 'Valerie', 'Dancing Queen', 'Mr. Brightside']);
     await expect(page.locator('li.setlist-song.dragging')).toHaveCount(0);
+    await openSongMenu(page, 'Jolene');
     await expect(moveButton(page, 'Jolene', 'up')).toBeDisabled();
     await expect.poll(() => storedOrder(page)).toEqual(idsOf(['Jolene', 'Valerie', 'Dancing Queen', 'Mr. Brightside']));
 
@@ -160,6 +170,7 @@ test.describe('Setlists polish', () => {
     await openMix(page);
     await expect(mixLine(page, 'Genres')).toHaveText('Rock 2 · Soul 2 · Pop 1 · No genre 1');
     await expect(mixLine(page, 'Decades')).toHaveText('1970s 2 · 2000s 3 · No year 1');
+    await openSongMenu(page, 'Back to Black');
     await moveButton(page, 'Back to Black', 'up').click();
     await expect(setlistSongTitles(page).last()).toHaveText('Mystery Song');
     await expect(mixLine(page, 'Genres')).toHaveText('Rock 2 · Soul 2 · Pop 1 · No genre 1');

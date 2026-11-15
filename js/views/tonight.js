@@ -75,8 +75,9 @@ function shortDate(iso, today) {
   return String(year) === today.slice(0, 4) ? base : `${base} ${year}`;
 }
 
-// A row's sings here: '2× · 17 Oct', or 'New here' (under Overall, across every venue).
-function hereShort(stat, atVenue, today) {
+// A row's sings here: '2× · 17 Oct', or 'New here' (under Overall, across every
+// venue). The Lists scope's rows use it too (R43).
+export function hereShort(stat, atVenue, today) {
   if (stat && stat.count) return `${stat.count}× · ${shortDate(stat.lastSung, today)}`;
   return atVenue ? 'New here' : 'Never sung';
 }

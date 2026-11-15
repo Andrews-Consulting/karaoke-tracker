@@ -7,6 +7,7 @@ import {
   openSetlists, openSetlist, backToSetlists, setlistSongRow, setlistSongRows, setlistSongTitles,
   dragHandle, moveButton, removeFromSetlist, openMix, mixLine, suggestForm, suggest,
 } from './helpers-setlists.js';
+import { openSongMenu } from './helpers-lists.js';
 
 // Stores songs (partial fields, completed by makeSong) and returns { title: id }.
 async function seedSongs(page, songs) {
@@ -83,8 +84,9 @@ test.describe('Setlists: suggest', () => {
       expect(decadeOf(inGenre[0])).not.toBe(decadeOf(inGenre[1]));
     }
 
-    // Never sung here, so no sung flags; the mix and the stored setlist follow.
-    await expect(setlistSongRows(page).locator('.flag')).toHaveCount(0);
+    // Never sung here, so every one is new here; the mix and the stored setlist follow.
+    await expect(setlistSongRows(page).locator('.here.sung')).toHaveCount(0);
+    await expect(setlistSongRows(page).locator('.here')).toHaveText(Array(7).fill('New here'));
     await expect(mixLine(page, 'Genres')).toHaveText('Soul 3 · Pop 2 · Rock 2');
     await expect.poll(async () => (await readStore(page, 'setlists'))[0].songIds)
       .toEqual(titles.map((title) => ids[title]));
@@ -92,6 +94,7 @@ test.describe('Setlists: suggest', () => {
     // The result is a start to edit: songs can be removed and moved as usual.
     const last = added.at(-1);
     await removeFromSetlist(page, { title: last, artist: byTitle.get(last).artist });
+    await openSongMenu(page, added[0]);
     await moveButton(page, added[0], 'up').click();
     await expect(setlistSongTitles(page).first()).toHaveText(added[0]);
     await expect(dragHandle(page, added[0])).toBeVisible();
@@ -143,6 +146,6 @@ test.describe('Setlists: suggest', () => {
     await suggest(page, 5, 'Added 3 songs (only 3 never sung were left).');
     expect((await setlistSongTitles(page).allTextContents()).sort())
       .toEqual(['Born to Run', 'Livin\' on a Prayer', 'Valerie']);
-    await expect(page.getByText('Sung here')).toHaveCount(0);
+    await expect(setlistSongRows(page).locator('.here')).toHaveCount(0); // no label venue, no sings here
   });
 });

@@ -1,20 +1,24 @@
-// Steps for the Venues e2e tests (Wave 1 C). openApp and addSong live in helpers.js.
+// Steps for the Venues e2e tests (Wave 1 C), on the History scope since
+// Design B: the venue list is its "Venues" screen, a venue's history is a chip
+// at the top, and Overall is "All venues". openApp and addSong live in
+// helpers.js; the newer History steps are in helpers-lists.js.
 import { expect } from '@playwright/test';
 import { openScope } from './helpers.js';
+import { openHistory, showHistoryOf, logSingForm, openLogSing, historyDate } from './helpers-lists.js';
 
-// Taps History (which holds the venue list for now) and waits for the venue list.
+// Opens the venue list: History, then its Venues button.
 export async function openVenues(page) {
-  await openScope(page, 'History');
+  await openHistory(page);
+  await page.getByRole('button', { name: 'Venues', exact: true }).click();
   await expect(page.getByRole('form', { name: 'Add a venue' })).toBeVisible();
 }
 
 // The venue's row in the venue list (not while it is being renamed).
 export function venueRow(page, name) {
   return page.getByRole('list', { name: 'Venues' }).getByRole('listitem')
-    .filter({ has: page.getByRole('button', { name: `Open ${name}`, exact: true }) });
+    .filter({ has: page.locator('.title', { hasText: new RegExp(`^${escapeRegExp(name)}$`) }) });
 }
 
-// Rows for real venues only (the "Overall" row has no venue id).
 export function venueRows(page) {
   return page.getByRole('list', { name: 'Venues' }).locator('li[data-venue-id]');
 }
@@ -26,33 +30,40 @@ export async function addVenue(page, name) {
   await expect(venueRow(page, name.trim())).toBeVisible();
 }
 
+// Shows the venue's history: History with its chip chosen.
 export async function openVenue(page, name) {
-  await page.getByRole('button', { name: `Open ${name}`, exact: true }).click();
-  await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
+  await openScope(page, 'History');
+  await showHistoryOf(page, name);
 }
 
+// Shows the history of every venue: the All venues chip.
 export async function openOverall(page) {
-  await page.getByRole('button', { name: 'Open overall stats' }).click();
-  await expect(page.getByRole('heading', { name: 'Overall', exact: true })).toBeVisible();
+  await openVenue(page, 'All venues');
 }
 
+// Back to the venue list from anywhere in History.
 export async function backToVenues(page) {
-  await page.getByRole('button', { name: '‹ All venues' }).click();
-  await expect(page.getByRole('form', { name: 'Add a venue' })).toBeVisible();
+  await openVenues(page);
 }
 
-// Logs a sing at the open venue: search, tap the song, set the date, log it.
-export async function logSing(page, { title, artist, date }) {
-  const form = page.getByRole('form', { name: 'Log a sing' });
+// Logs a sing on the Log a sing screen (opening it from History unless it
+// shows): the venue when given, search, tap the song, set the date, log it.
+// Stays on the screen, for the next one.
+export async function logSing(page, { title, artist, date, venue }) {
+  if (!(await logSingForm(page).isVisible())) await openLogSing(page);
+  const form = logSingForm(page);
+  const where = form.getByLabel('Venue', { exact: true });
+  if (venue) await where.selectOption({ label: venue });
+  const venueName = (await where.locator('option:checked').textContent()).trim();
   await form.getByRole('searchbox', { name: 'Find a song to log' }).fill(title);
   await form.getByRole('button', { name: `${title} by ${artist}`, exact: true }).click();
   await expect(form.getByText(`Song: ${title} — ${artist}`)).toBeVisible();
   await form.getByLabel('Date', { exact: true }).fill(date);
   await form.getByRole('button', { name: 'Log sing' }).click();
-  await expect(form.getByRole('status')).toHaveText(`Logged “${title}” on ${date}.`);
+  await expect(form.getByRole('status')).toHaveText(`Logged “${title}” at ${venueName} on ${historyDate(date)}.`);
 }
 
-// The open screen's sing history: one row per song.
+// History's By song list: one row per song.
 export function historyList(page) {
   return page.getByRole('list', { name: 'Sing history' });
 }

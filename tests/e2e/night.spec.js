@@ -10,7 +10,8 @@ import {
   findContext, shownVenue,
 } from './helpers-find.js';
 import { openSetlists, setlistRow, editSetlist, openSetlist, pageToday } from './helpers-setlists.js';
-import { openVenues, openVenue, historyRow } from './helpers-venues.js';
+import { openVenue, historyRow } from './helpers-venues.js';
+import { deleteOpenList, historyDate } from './helpers-lists.js';
 import { tonightListName } from '../../js/lib/night.js';
 
 const VALERIE = { title: 'Valerie', artist: 'Amy Winehouse', genre: 'Soul', year: 2006 };
@@ -178,8 +179,9 @@ test.describe('Night out', () => {
 
     // A remembered set that was deleted gives way to the venue's first by name.
     await openSetlists(page);
+    await openSetlist(page, 'Crown Friday');
     page.once('dialog', (dialog) => dialog.accept());
-    await setlistRow(page, 'Crown Friday').getByRole('button', { name: 'Delete Crown Friday' }).click();
+    await deleteOpenList(page, 'Crown Friday');
     await expect(setlistRow(page, 'Crown Friday')).toHaveCount(0);
     await openScope(page, 'Tonight');
     await expect(shownSet(page)).toHaveText('Another');
@@ -401,9 +403,8 @@ test.describe('Night out', () => {
     await expect(toggle(page, 'Dancing Queen')).toHaveText('+');
 
     // So does the venue's history.
-    await openVenues(page);
     await openVenue(page, 'Viking');
-    await expect(historyRow(page, 'Dancing Queen')).toContainText(`Last sung ${today}`);
+    await expect(historyRow(page, 'Dancing Queen')).toContainText(historyDate(today));
   });
 
   test('R49: Park moves the song to the venue\'s Next time list, which can be renamed', async ({ page }) => {
@@ -447,9 +448,8 @@ test.describe('Night out', () => {
     const form = await editSetlist(page, 'Next time (2)');
     await form.getByLabel('Setlist name').fill('Maybe later');
     await form.getByRole('button', { name: 'Save' }).click();
-    await expect(setlistRow(page, 'Maybe later')).toBeVisible();
-    await openSetlist(page, 'Maybe later');
-    await expect(page.getByRole('button', { name: 'Tonight' }).and(page.locator('main *'))).toHaveCount(0);
+    await expect(page.getByRole('heading', { level: 2, name: 'Maybe later', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Tonight', exact: true }).and(page.locator('main *'))).toHaveCount(0);
     await expect(page.getByRole('checkbox')).toHaveCount(0);
 
     await openScope(page, 'Tonight');
@@ -469,8 +469,9 @@ test.describe('Night out', () => {
 
     // Deleted, it is made again the next time it is needed.
     await openSetlists(page);
+    await openSetlist(page, 'Maybe later');
     page.once('dialog', (dialog) => dialog.accept());
-    await setlistRow(page, 'Maybe later').getByRole('button', { name: 'Delete Maybe later' }).click();
+    await deleteOpenList(page, 'Maybe later');
     await expect(setlistRow(page, 'Maybe later')).toHaveCount(0);
     await openScope(page, 'Tonight');
     await expect(shownSet(page)).toHaveText('Friday');

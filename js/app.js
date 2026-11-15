@@ -3,7 +3,7 @@
 import { renderTonight } from './views/tonight.js';
 import { renderSongs, goToBackup } from './views/songs.js';
 import { renderSetlists } from './views/setlists.js';
-import { renderVenues } from './views/venues.js';
+import { renderHistory } from './views/venues.js';
 import { renderSettings } from './views/settings.js';
 import { rootScreen, openScreen, setViewSwitcher, onDraw, viewInHistory } from './ui.js';
 import * as dock from './dock.js';
@@ -14,13 +14,11 @@ initTheme(); // R32: dark by default, light or the phone's setting when chosen
 
 const titleEl = document.getElementById('view-title');
 
-// Lists and History wrap the Setlists and Venues views until they get the
-// Design B treatment.
 const scopes = {
   tonight: { title: 'Tonight', render: renderTonight },
   songs: { title: 'Songs', render: renderSongs },
   lists: { title: 'Lists', render: renderSetlists },
-  history: { title: 'History', render: renderVenues },
+  history: { title: 'History', render: renderHistory },
 };
 
 // The page title (for screen readers and printouts, R58) follows the scope;

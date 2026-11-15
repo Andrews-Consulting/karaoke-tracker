@@ -6,8 +6,11 @@ import {
   openApp, addSong, openSong, putRecords, expectTab, openScope, openSettings, scopeBar,
 } from './helpers.js';
 import { seed, chooseVenue } from './helpers-find.js';
-import { openVenues, openVenue, openOverall, backToVenues } from './helpers-venues.js';
+import { openVenues, openVenue, openOverall } from './helpers-venues.js';
 import { openSetlists, openSetlist } from './helpers-setlists.js';
+import {
+  listsHeading, historyHeading, openLogSing, groupHistory, openSongMenu,
+} from './helpers-lists.js';
 
 const MIN = 44;
 
@@ -64,22 +67,23 @@ test.describe('UX', () => {
     expect(page.url()).not.toBe('about:blank');
   });
 
-  test('R31: the back gesture returns from a venue, overall and a setlist to their lists', async ({ page }) => {
+  test('R31: the back gesture returns from Venues, Log a sing and a list to their scope', async ({ page }) => {
     await openApp(page);
     await seedEverything(page);
 
     await openVenues(page);
-    await openVenue(page, 'The Crown');
     await page.goBack();
-    await expect(page.getByRole('form', { name: 'Add a venue' })).toBeVisible();
-    await openOverall(page);
+    await expect(historyHeading(page)).toBeVisible();
+    await expect(page.getByRole('form', { name: 'Add a venue' })).toHaveCount(0);
+    await openLogSing(page);
     await page.goBack();
-    await expect(page.getByRole('form', { name: 'Add a venue' })).toBeVisible();
+    await expect(historyHeading(page)).toBeVisible();
+    await expect(page.getByRole('form', { name: 'Log a sing' })).toHaveCount(0);
 
     await openSetlists(page);
     await openSetlist(page, 'Friday');
     await page.goBack();
-    await expect(page.getByRole('form', { name: 'New setlist' })).toBeVisible();
+    await expect(listsHeading(page)).toBeVisible();
     expect(page.url()).not.toBe('about:blank');
   });
 
@@ -118,20 +122,25 @@ test.describe('UX', () => {
     await expectTapTargets(page, 'Venues list, renaming');
     await page.getByRole('form', { name: 'Rename The Crown' }).getByRole('button', { name: 'Cancel' }).click();
     await openVenue(page, 'The Crown');
-    await page.getByRole('searchbox', { name: 'Find a song to log' }).fill('a');
     for (const summary of await page.locator('.history details > summary').all()) await summary.click();
-    await expectTapTargets(page, 'Venue detail');
-    await backToVenues(page);
+    await expectTapTargets(page, 'History by song');
+    await groupHistory(page, 'By night');
+    await expectTapTargets(page, 'History by night');
     await openOverall(page);
-    await expectTapTargets(page, 'Overall');
+    await expectTapTargets(page, 'History, all venues');
+    await openLogSing(page);
+    await page.getByRole('searchbox', { name: 'Find a song to log' }).fill('a');
+    await expectTapTargets(page, 'Log a sing');
 
     await openSetlists(page);
-    await expectTapTargets(page, 'Setlists list');
-    await page.getByRole('button', { name: 'Edit Friday' }).click();
-    await expectTapTargets(page, 'Setlists list, editing');
-    await page.getByRole('form', { name: 'Edit Friday' }).getByRole('button', { name: 'Cancel' }).click();
+    await expectTapTargets(page, 'Lists');
+    await page.getByRole('button', { name: 'New list', exact: true }).click();
+    await expectTapTargets(page, 'Lists, new list');
     await openSetlist(page, 'Friday');
-    await expectTapTargets(page, 'Setlist detail');
+    await expectTapTargets(page, 'A list');
+    await page.getByRole('button', { name: 'Rename and label', exact: true }).click();
+    await openSongMenu(page, 'Valerie');
+    await expectTapTargets(page, 'A list, renaming, with a song\'s actions');
 
     await openSettings(page);
     await expectTapTargets(page, 'Settings');
