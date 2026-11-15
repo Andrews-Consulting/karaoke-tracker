@@ -82,12 +82,12 @@ test.describe('Blank status (R64)', () => {
     await openApp(page);
     const form = await openAddForm(page);
     await expect(form.getByLabel('Status')).toHaveValue('');
-    await expect(form.getByLabel('Status').locator('option')).toHaveText(['Not set', 'Active', 'Want to try', 'Retired']);
+    await expect(form.getByLabel('Status').locator('option')).toHaveText(['Not set', 'Go-to', 'Want to try', 'Retired']);
     await addSong(page, { title: 'Valerie', artist: 'Amy Winehouse' });
 
     // On the song page none of the three status toggles is pressed.
     await openSong(page, 'Valerie');
-    await expect(statusToggle(page, 'Active')).toHaveAttribute('aria-pressed', 'false');
+    await expect(statusToggle(page, 'Go-to')).toHaveAttribute('aria-pressed', 'false');
     await expect(statusToggle(page, 'Want to try')).toHaveAttribute('aria-pressed', 'false');
     await expect(statusToggle(page, 'Retired')).toHaveAttribute('aria-pressed', 'false');
     await backToSongs(page);
@@ -95,7 +95,7 @@ test.describe('Blank status (R64)', () => {
     await openFilters(page);
     await choose(page, 'Status', 'Not set');
     await expect(page.getByText('1 of 1 songs')).toBeVisible();
-    await choose(page, 'Status', 'Active');
+    await choose(page, 'Status', 'Go-to');
     await expect(page.getByText('0 of 1 songs')).toBeVisible();
     await choose(page, 'Status', 'Any status');
     await closeFilters(page);

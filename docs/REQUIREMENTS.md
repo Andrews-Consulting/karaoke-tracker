@@ -55,7 +55,7 @@ Finding the next song to sing and working a list through the night; adding songs
 | R36 | A genre and a year per song, for sorting and finding by decade | Must | Done | Year is a single number; for a decade-only song enter any year in it. e2e: "R36: edits genre and year" |
 | R5 | My own tags on a song | Should | Done | E.g. duet, crowd-pleaser, slow. e2e: "R2: edits tags (R5), key (R6), status (R7) and rating (R4), and they survive a reload" |
 | R6 | My key change for each song, as set on the karaoke machine | Should | Done | E.g. -2 or +1. Same e2e test as R5 |
-| R7 | Mark a song Active, Want to try or Retired | Should | Done | "Active" (the songs in my rotation) read "Go-to" until 2026-11-15; the stored value is still go-to. Same e2e test as R5 |
+| R7 | Mark a song Go-to, Want to try or Retired | Should | Done | Read "Active" for a day on 2026-11-15, then back to Go-to: "Not set" (R64) is the everyday state and Go-to is for the sure things. Same e2e test as R5 |
 | R64 | A new song's status is "Not set" until I choose one, and "Not set" can be filtered | Must | Done | e2e: "R64: a new song has no status until one is chosen, and \"Not set\" can be filtered" |
 | R4 | Rate a song 1 to 5 for how well I sing it | Could | Done | Same e2e test as R5 |
 | R38 | Look a song up on the web, to listen to it outside the venue | Should | Done | Opens a YouTube search for "title artist" in a new tab; nothing fetched or saved. e2e: "R38: a song has a video search link for its title and artist" |

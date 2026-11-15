@@ -99,7 +99,7 @@ describe('songKey', () => {
 
 describe('statusLabel (R7)', () => {
   it('labels every status', () => {
-    expect(statusLabel('go-to')).toBe('Active');
+    expect(statusLabel('go-to')).toBe('Go-to');
     expect(statusLabel('want-to-try')).toBe('Want to try');
     expect(statusLabel('retired')).toBe('Retired');
     expect(Object.keys(STATUS_LABELS)).toEqual(SONG_STATUSES);

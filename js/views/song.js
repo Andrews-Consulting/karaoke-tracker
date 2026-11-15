@@ -142,7 +142,7 @@ async function renderSong(id, back) {
 
   // ---- Changed in place ----
 
-  // A labelled line: "STATUS  [Active] [Want to try] [Retired]".
+  // A labelled line: "STATUS  [Go-to] [Want to try] [Retired]".
   const line = (label, ...content) => el('div', { class: 'song-line' },
     el('p', { class: 'cap song-label', text: label }), ...content);
 
