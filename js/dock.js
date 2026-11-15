@@ -121,10 +121,21 @@ searchRow.addEventListener('submit', (e) => {
   if (searchOpts && searchOpts.onSubmit) searchOpts.onSubmit(input.value);
 });
 
+// Clearing keeps the keyboard up only if it was up: mid-typing, the field
+// stays focused for the next search; with the keyboard down (coming back to a
+// scope with an old search) the tap just empties the field, and the phone
+// does not raise the keyboard. The check is made on pointerdown, before the
+// tap can move focus, and the default is stopped then so focus never moves.
+let fieldHadFocus = false;
+clearButton.addEventListener('pointerdown', (e) => {
+  fieldHadFocus = document.activeElement === input;
+  if (fieldHadFocus) e.preventDefault();
+});
 clearButton.addEventListener('click', () => {
   input.value = '';
   clearButton.hidden = true;
-  input.focus();
+  if (fieldHadFocus) input.focus();
+  fieldHadFocus = false;
   if (searchOpts && searchOpts.onInput) searchOpts.onInput('');
 });
 
