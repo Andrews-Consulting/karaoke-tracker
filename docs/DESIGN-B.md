@@ -71,7 +71,7 @@ Taken from the prototype, not re-invented: blue-black ground (`#0C1015` page, `#
 
 ## Build order
 
-Everything lands on the `redesign-b` branch, merged to `dev` only when the whole suite is green again.
+Everything lands on the `redesign-b` branch, merged to `dev` only when the whole suite is green again. Steps 1 to 3 were built on 2026-11-14 (cache v32, app version 0.3.0); the phone check is the owner's. Where a worker's decision differed from the text above, the REQUIREMENTS Notes for the affected rows say what was built.
 
 1. **Shell, palette and Tonight** (one worker): `js/dock.js`, `index.html`, `js/app.js`, `css/app.css` tokens and dock, Tonight scope from today's `songs.js` List/Sung/night-bar code, KJ view with the landscape rule, Settings behind the gear, the e2e helpers (`expectTab` → scopes) and the tests that touch Tonight. Lists and History wrap today's setlists and venues views for the moment.
 2. **Songs scope and the song page** (second worker, in parallel): `js/views/find.js` from today's Find mode with tokens and the panel sheet, the song page, the add form as a sheet, and their tests.

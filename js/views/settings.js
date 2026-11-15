@@ -19,7 +19,7 @@ import {
   KARAFUN_LIST_URL, catalogStatusText, loadProgressText, loadResultMessage,
 } from '../lib/karafun.js';
 
-export const APP_VERSION = '0.2.0';
+export const APP_VERSION = '0.3.0';
 
 const errorText = (err) => (err && err.message) || String(err);
 
