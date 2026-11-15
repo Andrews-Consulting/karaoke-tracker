@@ -68,4 +68,26 @@ test.describe('Songs', () => {
     const item = page.getByRole('listitem').filter({ hasText: 'Valerie' });
     await expect(item).toContainText('Amy Winehouse');
   });
+
+  test('R31: with the keyboard taking half the screen, the first match and the field are both in view', async ({ page }) => {
+    await openApp(page);
+    await addSong(page, { title: 'Valerie', artist: 'Amy Winehouse' });
+    await addSong(page, { title: 'Rehab', artist: 'Amy Winehouse' });
+    await addSong(page, { title: 'Dancing Queen', artist: 'ABBA' });
+
+    // A phone keyboard leaves about this much of the screen; the page must fit
+    // it, with the dock at its bottom and the list scrolled to its top.
+    await page.setViewportSize({ width: 390, height: 420 });
+    const field = page.getByRole('searchbox', { name: 'Search songs' });
+    await field.fill('amy');
+    await expect(page.getByText('2 of 3 songs')).toBeVisible();
+
+    const first = page.locator('li.song-item').first();
+    const row = await first.boundingBox();
+    const box = await field.boundingBox();
+    expect(row.y).toBeGreaterThanOrEqual(0);
+    expect(row.y + row.height).toBeLessThanOrEqual(420);
+    expect(box.y + box.height).toBeLessThanOrEqual(420);
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  });
 });

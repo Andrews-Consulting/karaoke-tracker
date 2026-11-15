@@ -173,11 +173,18 @@ onDraw(({ depth }) => {
   }
 });
 
-// The visible height, which shrinks when a phone's keyboard opens; the
-// matches above the field size themselves to it (css/app.css, --vvh).
+// The visible height, which shrinks when a phone's keyboard opens. The page
+// is sized to it (css/app.css, --vvh), so the dock sits on the keyboard and
+// <main> shrinks and scrolls inside rather than the page scrolling to the
+// field and hiding the top of the screen. Safari still nudges the page when
+// the field takes focus; scrolling back to the top keeps the layout honest.
 if (window.visualViewport) {
   const vv = window.visualViewport;
-  const setHeight = () => document.documentElement.style.setProperty('--vvh', `${Math.round(vv.height)}px`);
-  vv.addEventListener('resize', setHeight);
-  setHeight();
+  const fit = () => {
+    document.documentElement.style.setProperty('--vvh', `${Math.round(vv.height)}px`);
+    if (window.scrollY || vv.offsetTop) window.scrollTo(0, 0);
+  };
+  vv.addEventListener('resize', fit);
+  vv.addEventListener('scroll', fit);
+  fit();
 }

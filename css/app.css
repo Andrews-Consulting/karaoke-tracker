@@ -57,6 +57,13 @@
 
 html, body { height: 100%; }
 
+/* The page is exactly as tall as what is visible. On an iPhone the keyboard
+   shrinks only the visual viewport, not the layout, and Safari then scrolls
+   the page to show the focused field, which left <main>'s top half hidden
+   above the screen. js/dock.js keeps --vvh at the visible height, so the
+   dock sits on the keyboard and <main> shrinks and scrolls inside instead. */
+body { height: var(--vvh, 100%); }
+
 body {
   margin: 0;
   display: flex;
