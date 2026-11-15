@@ -153,25 +153,33 @@ const SCREENS = [
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.getByRole('button', { name: 'Save' }).waitFor();
   }],
-  ['history', async (page) => { await tab(page, 'History'); await page.getByRole('form', { name: 'Add a venue' }).waitFor(); }],
-  ['venue', async (page) => {
-    await page.getByRole('button', { name: 'Open Viking', exact: true }).click();
-    await heading(page, 'Viking', 2);
-    for (const s of await page.locator('.history details > summary').all()) await s.click();
+  ['history', async (page) => {
+    await tab(page, 'History');
+    await heading(page, 'History', 2);
+    const first = page.locator('.history details > summary').first();
+    if (await first.count()) await first.click();
   }],
-  ['venue-log', async (page) => {
+  ['history-night', async (page) => {
+    await page.getByRole('group', { name: 'Group the history' }).getByRole('button', { name: 'By night', exact: true }).click();
+    await page.getByRole('group', { name: 'Show the history of' }).getByRole('button', { name: 'All venues', exact: true }).click();
+  }],
+  ['history-log', async (page) => {
+    await page.getByRole('button', { name: 'Log a sing', exact: true }).click();
+    await page.getByRole('form', { name: 'Log a sing' }).waitFor();
     await page.getByRole('searchbox', { name: 'Find a song to log' }).fill('bro');
   }],
-  ['overall', async (page) => {
-    await page.getByRole('button', { name: '‹ All venues' }).click();
-    await page.getByRole('button', { name: 'Open overall stats' }).click();
-    await heading(page, 'Overall', 2);
+  ['venues', async (page) => {
+    await page.goBack();
+    await heading(page, 'History', 2);
+    await page.getByRole('button', { name: 'Venues', exact: true }).click();
+    await page.getByRole('form', { name: 'Add a venue' }).waitFor();
   }],
-  ['lists', async (page) => { await tab(page, 'Lists'); await page.getByRole('form', { name: 'New setlist' }).waitFor(); }],
+  ['lists', async (page) => { await tab(page, 'Lists'); await heading(page, 'Lists', 2); }],
   ['setlist', async (page) => {
-    await page.getByRole('button', { name: 'Open Friday at Viking', exact: true }).click();
-    await heading(page, 'Friday at Viking', 2);
-    await page.locator('details.mix > summary').click();
+    await page.getByRole('button', { name: /^Friday at Viking/ }).click();
+    await page.getByRole('button', { name: 'Back to Lists' }).waitFor();
+    const mix = page.locator('details.mix > summary');
+    if (await mix.count()) await mix.click();
   }],
   ['settings', async (page) => {
     await tab(page, 'Settings');
