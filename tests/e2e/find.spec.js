@@ -2,12 +2,12 @@
 // R8), never sung here or not since a date (R41), tag, status and rating
 // (R11), genre and decade (R42). Every filter combines with the search (R10).
 import { test, expect } from '@playwright/test';
-import { openApp, openSong } from './helpers.js';
+import { openApp, openSong, openScope } from './helpers.js';
 import { openVenues, venueRow, venueRows } from './helpers-venues.js';
 import { openSetlists, setlistRow, setlistRows } from './helpers-setlists.js';
 import {
   seed, reloadList, venueSelect, expectRememberedVenue, filtersForm, filtersSummary, openFilters, filter, choose,
-  shownTitles, songRow, sungLine, expectTapTarget,
+  shownTitles, songRow, sungLine, expectTapTarget, chooseVenue, findContext,
 } from './helpers-find.js';
 
 const VALERIE = { title: 'Valerie', artist: 'Amy Winehouse', genre: 'Soul', year: 2006 };
@@ -22,9 +22,8 @@ async function backToList(page) {
   await expect(search(page)).toBeVisible();
 }
 
-async function showTab(page, name) {
-  await page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name }).click();
-}
+// The venue the Songs scope works at, from its line at the top.
+const atVenue = (page, name) => expect(findContext(page)).toHaveText(new RegExp(`^${name} · `));
 
 test.describe('Find', () => {
   test('R37: selecting a venue shows times sung and last sung there in the list', async ({ page }) => {
@@ -40,36 +39,41 @@ test.describe('Find', () => {
       ],
     });
 
-    // Overall by default, then every venue by name.
+    // Overall by default. The venue is picked on Tonight: every venue by name, then Overall.
+    await atVenue(page, 'Overall');
+    await openScope(page, 'Tonight');
     await expect(venueSelect(page)).toHaveValue('');
-    await expect(venueSelect(page).locator('option')).toHaveText(['Overall', 'Anchor', 'The Crown']);
+    await expect(venueSelect(page).locator('option')).toHaveText(['Anchor', 'The Crown', 'Overall', 'Manage venues…']);
     await expectTapTarget(venueSelect(page));
+    await openScope(page, 'Songs');
     await expect(sungLine(page, 'Valerie')).toHaveText('Sung 3 times · last 2026-11-05');
     await expect(sungLine(page, 'Dancing Queen')).toHaveText('Sung 1 time · last 2026-10-15');
     await expect(sungLine(page, 'Mr. Brightside')).toHaveText('Never sung');
     // The artist line is unchanged.
     await expect(songRow(page, 'Valerie').locator('.sub')).toHaveText('Amy Winehouse · Soul · 2006');
 
-    await venueSelect(page).selectOption({ label: 'The Crown' });
+    await chooseVenue(page, 'The Crown');
     await expect(sungLine(page, 'Valerie')).toHaveText('Sung 2 times · last 2026-10-01');
     await expect(sungLine(page, 'Dancing Queen')).toHaveText('Sung 1 time · last 2026-10-15');
     await expect(sungLine(page, 'Mr. Brightside')).toHaveText('Never sung here');
     await expect(page.getByText('3 of 3 songs')).toBeVisible();
 
-    await venueSelect(page).selectOption({ label: 'Anchor' });
+    await chooseVenue(page, 'Anchor');
     await expect(sungLine(page, 'Valerie')).toHaveText('Sung 1 time · last 2026-11-05');
     await expect(sungLine(page, 'Dancing Queen')).toHaveText('Never sung here');
 
-    // Opening a song and coming back keeps the venue, and so does another tab.
+    // Opening a song and coming back keeps the venue, and so does another scope.
     await openSong(page, 'Valerie');
     await backToList(page);
-    await expect(venueSelect(page)).toHaveValue(String(venueIds.Anchor));
+    await atVenue(page, 'Anchor');
     await expect(sungLine(page, 'Valerie')).toHaveText('Sung 1 time · last 2026-11-05');
 
     await openVenues(page);
-    await showTab(page, 'Songs');
-    await expect(venueSelect(page)).toHaveValue(String(venueIds.Anchor));
+    await openScope(page, 'Songs');
+    await atVenue(page, 'Anchor');
     await expect(sungLine(page, 'Dancing Queen')).toHaveText('Never sung here');
+    await openScope(page, 'Tonight');
+    await expect(venueSelect(page)).toHaveValue(String(venueIds.Anchor));
   });
 
   test('R37: the venue selection survives a reload', async ({ page }) => {
@@ -80,16 +84,16 @@ test.describe('Find', () => {
       sings: [{ title: 'Valerie', venue: 'The Crown', date: '2026-10-01' }],
     });
 
-    await venueSelect(page).selectOption({ label: 'The Crown' });
+    await chooseVenue(page, 'The Crown');
     await expectRememberedVenue(page, venueIds['The Crown']);
     await reloadList(page, 1);
-    await expect(venueSelect(page)).toHaveValue(String(venueIds['The Crown']));
+    await atVenue(page, 'The Crown');
     await expect(sungLine(page, 'Valerie')).toHaveText('Sung 1 time · last 2026-10-01');
 
-    await venueSelect(page).selectOption({ label: 'Spare room' });
+    await chooseVenue(page, 'Spare room');
     await expectRememberedVenue(page, venueIds['Spare room']);
     await reloadList(page, 1);
-    await expect(venueSelect(page)).toHaveValue(String(venueIds['Spare room']));
+    await atVenue(page, 'Spare room');
     await expect(sungLine(page, 'Valerie')).toHaveText('Never sung here');
 
     // Once the remembered venue is deleted, the list falls back to Overall.
@@ -103,20 +107,23 @@ test.describe('Find', () => {
     await expect(venueRows(page)).toHaveCount(1);
     await openSetlists(page);
     await expect(setlistRow(page, 'Spare room')).toContainText('Any venue');
-    await showTab(page, 'Songs');
-    await expect(venueSelect(page)).toHaveValue('');
-    await expect(venueSelect(page).locator('option')).toHaveText(['Overall', 'The Crown']);
+    await openScope(page, 'Songs');
+    await atVenue(page, 'Overall');
     await expect(sungLine(page, 'Valerie')).toHaveText('Sung 1 time · last 2026-10-01');
-    await reloadList(page, 1);
+    await openScope(page, 'Tonight');
     await expect(venueSelect(page)).toHaveValue('');
+    await expect(venueSelect(page).locator('option')).toHaveText(['The Crown', 'Overall', 'Manage venues…']);
+    await openScope(page, 'Songs');
+    await reloadList(page, 1);
+    await atVenue(page, 'Overall');
 
     // Overall is remembered too.
-    await venueSelect(page).selectOption({ label: 'The Crown' });
+    await chooseVenue(page, 'The Crown');
     await expectRememberedVenue(page, venueIds['The Crown']);
-    await venueSelect(page).selectOption({ label: 'Overall' });
+    await chooseVenue(page, 'Overall');
     await expectRememberedVenue(page, null);
     await reloadList(page, 1);
-    await expect(venueSelect(page)).toHaveValue('');
+    await atVenue(page, 'Overall');
   });
 
   test('R41: filters to songs never sung at the selected venue', async ({ page }) => {
@@ -134,19 +141,21 @@ test.describe('Find', () => {
     await expect(filtersSummary(page)).toHaveText('Filters');
     await expect(filtersForm(page)).toBeHidden();
 
-    await venueSelect(page).selectOption({ label: 'The Crown' });
+    await chooseVenue(page, 'The Crown');
     await openFilters(page);
     await choose(page, 'Sung', 'Never at this venue');
     await expect(shownTitles(page)).toHaveText(['Dancing Queen', 'Mr. Brightside']);
     await expect(page.getByText('2 of 3 songs')).toBeVisible();
     await expect(filtersSummary(page)).toHaveText('Filters (1)');
 
-    await venueSelect(page).selectOption({ label: 'Anchor' });
+    await chooseVenue(page, 'Anchor');
     await expect(shownTitles(page)).toHaveText(['Mr. Brightside', 'Valerie']);
+    await openFilters(page);
     await expect(filter(page, 'Sung').locator('option:checked')).toHaveText('Never at this venue');
 
     // Overall: never sung anywhere.
-    await venueSelect(page).selectOption({ label: 'Overall' });
+    await chooseVenue(page, 'Overall');
+    await openFilters(page);
     await expect(filter(page, 'Sung').locator('option:checked')).toHaveText('Never');
     await expect(shownTitles(page)).toHaveText(['Mr. Brightside']);
     await expect(sungLine(page, 'Mr. Brightside')).toHaveText('Never sung');
@@ -174,7 +183,7 @@ test.describe('Find', () => {
       ],
     });
 
-    await venueSelect(page).selectOption({ label: 'The Crown' });
+    await chooseVenue(page, 'The Crown');
     await openFilters(page);
     await expect(filter(page, 'Since')).toBeHidden();
     await choose(page, 'Sung', 'Not since');
@@ -198,10 +207,11 @@ test.describe('Find', () => {
     // Overall looks at every venue.
     await filter(page, 'Since').fill('2026-10-15');
     await expect(shownTitles(page)).toHaveText(['Africa', 'Dancing Queen', 'Mr. Brightside', 'Valerie']);
-    await venueSelect(page).selectOption({ label: 'Overall' });
+    await chooseVenue(page, 'Overall');
     await expect(shownTitles(page)).toHaveText(['Africa', 'Dancing Queen', 'Valerie']);
     await expect(page.getByText('3 of 4 songs')).toBeVisible();
 
+    await openFilters(page);
     await choose(page, 'Sung', 'Any');
     await expect(filter(page, 'Since')).toBeHidden();
     await expect(page.getByText('4 of 4 songs')).toBeVisible();

@@ -22,7 +22,8 @@ const SONGS = [
 ];
 
 const songItem = (page, title) => page.getByRole('listitem').filter({ hasText: title });
-const tabBar = (page) => page.getByRole('navigation', { name: 'Sections' });
+// The dock at the bottom: the scope bar and, on Tonight, the search field.
+const tabBar = (page) => page.locator('#dock');
 
 // The styles that make a printout black on white.
 function printColours(page) {
@@ -211,7 +212,7 @@ test.describe('Updates', () => {
       expect(box.height).toBeGreaterThanOrEqual(44);
       expect(box.width).toBeGreaterThanOrEqual(44);
     }
-    // Above the tabs, within thumb reach.
+    // Above the dock, within thumb reach.
     const [bannerBox, tabsBox] = [await banner.boundingBox(), await tabBar(page).boundingBox()];
     expect(bannerBox.y + bannerBox.height).toBeLessThanOrEqual(tabsBox.y + 1);
     await later.click();

@@ -6,22 +6,51 @@ import { expect } from '@playwright/test';
 // helpers-find.js). openApp() lets those requests through to that mock.
 export const mockedMusicBrainz = new WeakSet();
 
-// Opens the app and waits until the Songs view has rendered. No test may reach
-// the real MusicBrainz (R35): every lookup is refused here, unless the test
-// registered its own answer with mockMusicBrainz(), which then gets it.
+// Opens the app, which starts on Tonight, then the Songs scope, where most
+// tests begin, and waits until its list has rendered. A reload keeps the
+// scope. No test may reach the real MusicBrainz (R35): every lookup is
+// refused here, unless the test registered its own answer with
+// mockMusicBrainz(), which then gets it.
 export async function openApp(page) {
   await page.route('https://musicbrainz.org/**', (route) =>
     (mockedMusicBrainz.has(page) ? route.fallback() : route.abort('internetdisconnected')));
   await page.goto('./');
-  await expectTab(page, 'Songs');
+  await expectTab(page, 'Tonight');
+  await openScope(page, 'Songs');
   await expect(page.getByText(/of \d+ songs/)).toBeVisible();
 }
 
-// Checks that the tab named `name` is the selected one. There is no title bar
-// (R58): the tabs say where you are, and the page title is for screen readers.
+// The dock's scope bar: Tonight, Songs, Lists, History and the Settings gear.
+export function scopeBar(page) {
+  return page.getByRole('navigation', { name: 'Scopes' });
+}
+
+// The tests' older names for the scopes: the Setlists tab is Lists, Venues is History.
+const SCOPE_NAMES = { Setlists: 'Lists', Venues: 'History' };
+
+function scopeButton(page, name) {
+  return scopeBar(page).getByRole('button', { name: SCOPE_NAMES[name] ?? name, exact: true });
+}
+
+// Checks that the scope named `name` is the selected one, or for 'Settings'
+// that Settings is showing (its gear is then the selected one). There is no
+// title bar (R58): the scope bar says where you are, and the page title is
+// for screen readers.
 export async function expectTab(page, name) {
-  const tab = page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name, exact: true });
-  await expect(tab).toHaveAttribute('aria-current', 'page');
+  await expect(scopeButton(page, name)).toHaveAttribute('aria-current', 'page');
+}
+
+// Taps a scope in the dock: 'Tonight', 'Songs', 'Lists' (or 'Setlists'), 'History' (or 'Venues').
+export async function openScope(page, name) {
+  await scopeButton(page, name).click();
+  await expectTab(page, name);
+}
+
+// Opens Settings from the gear.
+export async function openSettings(page) {
+  await scopeButton(page, 'Settings').click();
+  await expectTab(page, 'Settings');
+  await expect(page.getByText('Appearance', { exact: true })).toBeVisible();
 }
 
 // Adds a song through the form the way a user would.

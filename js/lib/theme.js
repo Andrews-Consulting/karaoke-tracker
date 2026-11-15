@@ -14,20 +14,21 @@ export const DEFAULT_THEME_CHOICE = 'dark';
 
 // The browser-chrome colour (meta theme-color) for each theme; the same values
 // as --bg in css/app.css.
-export const THEME_COLORS = { dark: '#14121a', light: '#f6f3fb' };
+export const THEME_COLORS = { dark: '#0c1015', light: '#f4f7fa' };
 
 // Accent colours (R55): the first is the default. Each has a dark-theme value
 // and a deeper light-theme partner; css/app.css carries the same numbers under
-// :root[data-accent="…"]. Contrast on the dark background: green 7:1,
-// amber 10:1, lime 14:1, pink 6:1.
+// :root[data-accent="…"]. Contrast on the dark background: sky 10:1,
+// green 7:1, amber 11:1, lime 15:1, pink 6.5:1.
 export const ACCENT_CHOICES = [
+  ['sky', 'Sky'],
   ['green', 'Green'],
   ['amber', 'Amber'],
   ['lime', 'Lime'],
   ['pink', 'Pink'],
 ];
 
-export const DEFAULT_ACCENT_CHOICE = 'green';
+export const DEFAULT_ACCENT_CHOICE = 'sky';
 
 export function normalizeAccentChoice(value) {
   return ACCENT_CHOICES.some(([key]) => key === value) ? value : DEFAULT_ACCENT_CHOICE;

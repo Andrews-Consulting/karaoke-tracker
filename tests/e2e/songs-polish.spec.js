@@ -3,7 +3,7 @@
 // for me" (R13). Every test answers MusicBrainz itself (mockMusicBrainz), so
 // none reaches the real site.
 import { test, expect } from '@playwright/test';
-import { openApp, expectTab } from './helpers.js';
+import { openApp, openScope, openSettings } from './helpers.js';
 import {
   seed, openFilters, choose, filter, shownTitles, expectTapTarget,
   openAddForm, mbRecording, mockMusicBrainz, suggestionList, suggestionsSwitch,
@@ -23,9 +23,10 @@ const QUIET_MS = 1200;
 
 const search = (page) => page.getByRole('searchbox', { name: 'Search songs' });
 
+// Settings is behind the dock's gear; the rest are scopes.
 async function showTab(page, name) {
-  await page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name }).click();
-  await expectTab(page, name);
+  if (name === 'Settings') await openSettings(page);
+  else await openScope(page, name);
 }
 
 async function backToList(page) {

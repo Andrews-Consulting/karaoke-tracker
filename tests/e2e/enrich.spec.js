@@ -2,7 +2,7 @@
 // R64: a new song's status starts blank; R65: moving data from Safari to the
 // installed app is pointed out at both ends.
 import { test, expect } from '@playwright/test';
-import { openApp, addSong, openSong, expectTab, readStore } from './helpers.js';
+import { openApp, addSong, openSong, expectTab, readStore, openScope } from './helpers.js';
 import { mockMusicBrainz, mbRecording, openAddForm, suggestionList, openFilters, choose } from './helpers-find.js';
 
 const QUIET_MS = 700; // longer than the 400 ms typing pause
@@ -143,7 +143,7 @@ test.describe('Moving from Safari (R65)', () => {
     await expectTab(page, 'Settings');
     await expect(page.getByText('Restore from backup', { exact: true })).toBeVisible();
 
-    await page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name: 'Songs' }).click();
+    await openScope(page, 'Songs');
     await addSong(page, { title: 'Valerie', artist: 'Amy Winehouse' });
     await expect(card).toHaveCount(0);
   });

@@ -2,8 +2,10 @@
 // screen, and the phone's back gesture returns from a detail screen instead of
 // leaving the installed app.
 import { test, expect } from '@playwright/test';
-import { openApp, addSong, openSong, putRecords, expectTab } from './helpers.js';
-import { seed } from './helpers-find.js';
+import {
+  openApp, addSong, openSong, putRecords, expectTab, openScope, openSettings, scopeBar,
+} from './helpers.js';
+import { seed, chooseVenue } from './helpers-find.js';
 import { openVenues, openVenue, openOverall, backToVenues } from './helpers-venues.js';
 import { openSetlists, openSetlist } from './helpers-setlists.js';
 
@@ -131,33 +133,49 @@ test.describe('UX', () => {
     await openSetlist(page, 'Friday');
     await expectTapTargets(page, 'Setlist detail');
 
-    await page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name: 'Settings' }).click();
-    await expectTab(page, 'Settings');
+    await openSettings(page);
     await expectTapTargets(page, 'Settings');
+
+    // Tonight at the venue: the menus, the Sung strip, a row's "…" actions,
+    // the Up next card, the field with matches, and the KJ view.
+    await putRecords(page, 'songs', [{
+      title: 'Africa', artist: 'Toto', genre: 'Rock', year: 1982, key: '-1', notes: '', rating: null, status: '', tags: [],
+      createdAt: new Date().toISOString(), karafunId: null,
+    }]);
+    await openScope(page, 'Songs');
+    await chooseVenue(page, 'The Crown');
+    await page.getByRole('button', { name: 'Add Africa to the set' }).click();
+    await page.getByRole('button', { name: 'Add Dancing Queen to the set' }).click();
+    await openScope(page, 'Tonight');
+    await page.getByRole('button', { name: 'More for Africa' }).click();
+    await page.getByRole('searchbox', { name: 'Add a song to tonight\'s set' }).fill('a');
+    await expectTapTargets(page, 'Tonight');
+    await page.getByRole('searchbox', { name: 'Add a song to tonight\'s set' }).fill('');
+    await page.getByRole('button', { name: /^Sang it/ }).click();
+    await expect(page.getByRole('region', { name: 'For the KJ' })).toBeVisible();
+    await expectTapTargets(page, 'KJ view');
+    await page.getByRole('button', { name: 'Done' }).click();
+    await expect(page.getByRole('button', { name: /^Sung · 1/ })).toBeVisible();
+    await expectTapTargets(page, 'Tonight with the Sung strip');
   });
 });
 
 const bodyBackground = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 const themeColor = (page) => page.locator('meta[name="theme-color"]').getAttribute('content');
-const DARK_BG = 'rgb(20, 18, 26)';
-const LIGHT_BG = 'rgb(246, 243, 251)';
-
-async function openSettings(page) {
-  await page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name: 'Settings' }).click();
-  await expectTab(page, 'Settings');
-}
+const DARK_BG = 'rgb(12, 16, 21)';
+const LIGHT_BG = 'rgb(244, 247, 250)';
 
 test.describe('Theme', () => {
   test('R32: is dark by default and a light option survives a reload', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'light' }); // the phone prefers light, the app still starts dark
     await openApp(page);
     expect(await bodyBackground(page)).toBe(DARK_BG);
-    expect(await themeColor(page)).toBe('#14121a');
+    expect(await themeColor(page)).toBe('#0c1015');
 
     await openSettings(page);
     await page.getByLabel('Theme', { exact: true }).selectOption('light');
     await expect.poll(() => bodyBackground(page)).toBe(LIGHT_BG);
-    expect(await themeColor(page)).toBe('#f6f3fb');
+    expect(await themeColor(page)).toBe('#f4f7fa');
 
     await page.reload();
     await expectTab(page, 'Songs');
@@ -186,13 +204,13 @@ test.describe('Theme', () => {
 });
 
 test.describe('Accent', () => {
-  // The selected tab is filled with the accent (R58).
+  // The selected scope (or the gear, while Settings shows) is filled with the accent (R58).
   const activeTabColor = (page) => page.evaluate(() =>
-    getComputedStyle(document.querySelector('.tabs button[aria-current="page"]')).backgroundColor);
+    getComputedStyle(document.querySelector('.scopes button[aria-current="page"]')).backgroundColor);
 
   test('R55: the accent colour can be changed in Settings and survives a reload', async ({ page }) => {
     await openApp(page);
-    expect(await activeTabColor(page)).toBe('rgb(19, 184, 106)'); // green by default
+    expect(await activeTabColor(page)).toBe('rgb(108, 196, 255)'); // sky by default
 
     await openSettings(page);
     await page.getByLabel('Accent colour', { exact: true }).selectOption('pink');
@@ -209,14 +227,16 @@ test.describe('Accent', () => {
     await expect.poll(() => activeTabColor(page)).toBe('rgb(158, 79, 0)');
 
     await page.getByLabel('Theme', { exact: true }).selectOption('dark');
-    await page.getByLabel('Accent colour', { exact: true }).selectOption('green');
+    await page.getByLabel('Accent colour', { exact: true }).selectOption('green'); // the old default stays a choice
     await expect.poll(() => activeTabColor(page)).toBe('rgb(19, 184, 106)');
+    await page.getByLabel('Accent colour', { exact: true }).selectOption('sky');
+    await expect.poll(() => activeTabColor(page)).toBe('rgb(108, 196, 255)');
     expect(await page.evaluate(() => document.documentElement.dataset.accent)).toBeUndefined();
   });
 });
 
 test.describe('Tabs', () => {
-  test('R58: there is no title bar; the selected tab is filled with the accent and larger', async ({ page }) => {
+  test('R58: there is no title bar; the dock\'s selected scope is filled with the accent and larger', async ({ page }) => {
     await openApp(page);
     await openVenues(page);
 
@@ -231,21 +251,41 @@ test.describe('Tabs', () => {
 
     // The page title stays for screen readers, taking no space.
     const title = page.locator('#view-title');
-    await expect(title).toHaveText('Venues');
-    await expect(page.getByRole('heading', { level: 1, name: 'Venues' })).toHaveCount(1);
+    await expect(title).toHaveText('History');
+    await expect(page.getByRole('heading', { level: 1, name: 'History' })).toHaveCount(1);
     expect((await title.boundingBox()).height).toBeLessThanOrEqual(1);
 
-    // The selected tab: its label on the accent, and larger than the others.
-    const tabStyle = (name) => page.getByRole('navigation', { name: 'Sections' })
+    // The dock sits at the bottom, under <main>: the four scopes and the gear,
+    // with the search field on Tonight just above them.
+    const viewport = page.viewportSize();
+    const dock = await page.locator('#dock').boundingBox();
+    expect(dock.y + dock.height).toBeGreaterThanOrEqual(viewport.height - 1);
+    expect((await page.locator('main').boundingBox()).y + (await page.locator('main').boundingBox()).height)
+      .toBeLessThanOrEqual(dock.y + 1);
+    await expect(scopeBar(page).getByRole('button')).toHaveText(['Tonight', 'Songs', 'Lists', 'History', '']);
+    await expect(scopeBar(page).getByRole('button').last()).toHaveAccessibleName('Settings');
+    await expect(page.getByRole('searchbox', { name: 'Add a song to tonight\'s set' })).toBeHidden();
+    await openScope(page, 'Tonight');
+    const field = await page.getByRole('searchbox', { name: 'Add a song to tonight\'s set' }).boundingBox();
+    expect(field.y).toBeGreaterThan((await page.locator('#dock').boundingBox()).y);
+    expect(field.y + field.height).toBeLessThanOrEqual((await scopeBar(page).boundingBox()).y);
+    await openScope(page, 'History');
+
+    // The selected scope: its label on the accent, a pill, and larger than the others.
+    const tabStyle = (name) => scopeBar(page)
       .getByRole('button', { name, exact: true })
       .evaluate((node) => {
         const style = getComputedStyle(node);
-        return { background: style.backgroundColor, color: style.color, fontSize: parseFloat(style.fontSize) };
+        return {
+          background: style.backgroundColor, color: style.color, fontSize: parseFloat(style.fontSize),
+          radius: parseFloat(style.borderTopLeftRadius), height: node.getBoundingClientRect().height,
+        };
       });
-    const selected = await tabStyle('Venues');
+    const selected = await tabStyle('History');
     const other = await tabStyle('Songs');
-    expect(selected.background).toBe('rgb(19, 184, 106)');
-    expect(selected.color).toBe('rgb(20, 18, 26)'); // --accent-text
+    expect(selected.background).toBe('rgb(108, 196, 255)');
+    expect(selected.color).toBe('rgb(4, 18, 29)'); // --accent-text
+    expect(selected.radius).toBeGreaterThanOrEqual(selected.height / 2);
     expect(selected.fontSize).toBeGreaterThan(other.fontSize);
     expect(other.background).toBe('rgba(0, 0, 0, 0)');
   });
@@ -262,7 +302,7 @@ test.describe('Desktop', () => {
     expect(box.width).toBeLessThanOrEqual(720);
     expect(box.x).toBeGreaterThan(200); // centred, not stuck to the left edge
 
-    const tabs = await page.getByRole('navigation', { name: 'Sections' }).getByRole('button').all();
+    const tabs = await scopeBar(page).getByRole('button').all();
     for (const tab of tabs) expect((await tab.boundingBox()).width).toBeLessThanOrEqual(180);
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);

@@ -4,8 +4,8 @@ import { test, expect } from '@playwright/test';
 import { filterSongs, sortByTitle } from '../../js/lib/search.js';
 import { openApp, openSong } from './helpers.js';
 import {
-  seed, seedBigLibrary, venueSelect, filtersForm, filtersSummary, openFilters, filter, choose, shownTitles, songRow,
-  expectTapTarget,
+  seed, seedBigLibrary, filtersForm, filtersSummary, openFilters, filter, choose, shownTitles, songRow,
+  expectTapTarget, chooseVenue,
 } from './helpers-find.js';
 
 const search = (page) => page.getByRole('searchbox', { name: 'Search songs' });
@@ -108,20 +108,22 @@ test.describe('Library polish', () => {
     await choose(page, 'Sort by', 'Last sung, longest ago first');
     await expect(shownTitles(page)).toHaveText(['Africa', 'Dancing Queen', 'Mr. Brightside', 'Valerie']);
 
-    // A new venue re-sorts by the sings there, and each row says so.
-    await venueSelect(page).selectOption({ label: 'The Crown' });
+    // A new venue (picked on Tonight) re-sorts by the sings there, and each row says so.
+    await chooseVenue(page, 'The Crown');
     await expect(shownTitles(page)).toHaveText(['Africa', 'Mr. Brightside', 'Dancing Queen', 'Valerie']);
     await expect(songRow(page, 'Mr. Brightside').locator('.sung')).toHaveText('Never sung here');
+    await openFilters(page);
     await expect(filter(page, 'Sort by')).toHaveValue('last-sung-oldest');
 
     await choose(page, 'Sort by', 'Last sung, most recent first');
     await expect(shownTitles(page)).toHaveText(['Valerie', 'Dancing Queen', 'Africa', 'Mr. Brightside']);
 
-    await venueSelect(page).selectOption({ label: 'Anchor' });
+    await chooseVenue(page, 'Anchor');
     await expect(shownTitles(page)).toHaveText(['Valerie', 'Mr. Brightside', 'Africa', 'Dancing Queen']);
     await expect(songRow(page, 'Valerie').locator('.sung')).toHaveText('Sung 1 time · last 2026-11-05');
 
     // With the "never at this venue" filter, the sort still applies to what is left.
+    await openFilters(page);
     await choose(page, 'Sung', 'Never at this venue');
     await choose(page, 'Sort by', 'Last sung, longest ago first');
     await expect(shownTitles(page)).toHaveText(['Africa', 'Dancing Queen']);

@@ -1,39 +1,53 @@
-// Navigation and startup only. Each section lives in js/views/.
-import { renderSongs } from './views/songs.js';
+// Navigation and startup only. Each scope lives in js/views/; the dock that
+// switches between them is js/dock.js.
+import { renderTonight } from './views/tonight.js';
+import { renderSongs, goToBackup } from './views/songs.js';
 import { renderSetlists } from './views/setlists.js';
 import { renderVenues } from './views/venues.js';
 import { renderSettings } from './views/settings.js';
-import { rootScreen, setViewSwitcher } from './ui.js';
+import { rootScreen, openScreen, setViewSwitcher, onDraw, viewInHistory } from './ui.js';
+import * as dock from './dock.js';
 import { initTheme } from './theme.js';
 import { checkBackupReminder, checkSafariMove } from './reminder.js';
-import { goToBackup } from './views/songs.js';
 
 initTheme(); // R32: dark by default, light or the phone's setting when chosen
 
 const titleEl = document.getElementById('view-title');
-const tabButtons = document.querySelectorAll('.tabs button');
 
-const views = {
+// Lists and History wrap the Setlists and Venues views until they get the
+// Design B treatment.
+const scopes = {
+  tonight: { title: 'Tonight', render: renderTonight },
   songs: { title: 'Songs', render: renderSongs },
-  setlists: { title: 'Setlists', render: renderSetlists },
-  venues: { title: 'Venues', render: renderVenues },
-  settings: { title: 'Settings', render: renderSettings },
+  lists: { title: 'Lists', render: renderSetlists },
+  history: { title: 'History', render: renderVenues },
 };
 
-export function show(name) {
-  const view = views[name] || views.songs;
-  titleEl.textContent = view.title;
-  for (const button of tabButtons) {
-    if (button.dataset.view === name) button.setAttribute('aria-current', 'page');
-    else button.removeAttribute('aria-current');
-  }
-  rootScreen(name, view.render); // R31: detail screens stack on top of this one
+// The page title (for screen readers and printouts, R58) follows the scope;
+// Settings sets its own as it renders.
+onDraw(({ view }) => {
+  titleEl.textContent = (scopes[view] || scopes.tonight).title;
+});
+
+// Settings, from the gear: a screen on top of the scope showing, so the back
+// gesture returns to it (R31). A second tap while it shows does nothing.
+function openSettings() {
+  if (dock.settingsShowing()) return;
+  openScreen(() => {
+    titleEl.textContent = 'Settings';
+    dock.showingSettings(true);
+    return renderSettings();
+  });
 }
 
-for (const button of tabButtons) {
-  button.addEventListener('click', () => show(button.dataset.view));
-}
-setViewSwitcher(show);
+dock.onScope((name) => {
+  if (name === 'settings') {
+    openSettings();
+    return;
+  }
+  rootScreen(name, scopes[name].render); // R31: detail screens stack on top of this one
+});
+setViewSwitcher((name) => dock.scope(name));
 
 // ---------- Startup ----------
 
@@ -49,9 +63,12 @@ import('./update.js')
   .then(({ watchForUpdates }) => watchForUpdates('sw.js'))
   .catch((err) => console.warn('Update check unavailable:', err));
 
-show('songs');
+// Tonight is home. A reload (the new-version banner's Reload, say) keeps the
+// scope its history entry names.
+const reloaded = viewInHistory();
+dock.scope(scopes[reloaded] ? reloaded : 'tonight');
 
-// R25: a reminder above the tabs when the last backup is over 30 days old.
-checkBackupReminder(show);
+// R25: a reminder above the dock when the last backup is over 30 days old.
+checkBackupReminder((name) => dock.scope(name));
 // R65: in Safari on an iPhone, a nudge to move the data to the installed app.
 checkSafariMove(goToBackup);

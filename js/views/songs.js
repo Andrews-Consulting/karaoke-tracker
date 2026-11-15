@@ -1,32 +1,34 @@
-// Songs view, built around a night out. Pinned at the top: the venue (R37)
-// and the set open there (R47), any setlist whatever its venue label (R56),
-// then three modes of one screen:
+// The Songs scope: today's Find, until it moves into the dock (Design B, step
+// 2). The venue (R37) and tonight's set (R47, R56) are chosen on Tonight and
+// remembered in meta; a line at the top says which.
 //   Find (R48): search (R10), filters by sings, tag, status, rating, genre and
 //     decade with times sung per song (R41, R11, R42, R8), the R42 and R12
 //     sort orders, "Pick for me" (R13), a + on each row that adds the song to
-//     the set, and "Add a song" at the bottom (R1), with suggestions from
-//     MusicBrainz (R35) and a warning about a song already there (R9). Stays
-//     quick with 1,000 songs (R34): rows are built once and at most PAGE_SIZE
-//     are drawn at a time. Songs the KaraFun catalog has carry a KaraFun mark
-//     and can be filtered on (R68). Once a catalog is loaded, a "My songs |
-//     KaraFun" switch searches the catalog instead, with its own filters, and
-//     each catalog row adds the song to my songs or straight into the set (R67).
-//   List (R49): the set in order, with move up and down, "Sang it" and "Next time".
-//   Sung (R50): what was sung at the venue by date, with Undo for today.
-// Under Overall there is a set too (R56): + and List work, with Remove in
-// place of "Sang it" and "Next time"; Sung needs a venue.
-// "Find songs" on a setlist (R57) opens this tab in Find with that set.
-// One song's detail has a video search link (R38), an edit form and delete
-// (R2, R3, R36; the edit form also holds tags, key, status and rating).
+//     tonight's set, and "Add a song" at the bottom (R1), with suggestions
+//     from MusicBrainz (R35) and a warning about a song already there (R9).
+//     Stays quick with 1,000 songs (R34): rows are built once and at most
+//     PAGE_SIZE are drawn at a time. Songs the KaraFun catalog has carry a
+//     KaraFun mark and can be filtered on (R68). Once a catalog is loaded, a
+//     "My songs | KaraFun" switch searches the catalog instead, with its own
+//     filters, and each catalog row adds the song to my songs or straight into
+//     the set (R67).
+// "Find songs" on a setlist (R57) opens this scope with that set as tonight's.
+// One song's screen has the KJ button (R54), a video search link (R38), an
+// edit form and delete (R2, R3, R36; the edit form also holds tags, key,
+// status and rating). Tonight opens it too, for Details.
+// The set helpers here (openCurrentSet, startList) are shared with Tonight.
 import { db, request, CATALOG_STORE } from '../db.js';
-import { el, viewEl, confirmAction, openScreen, closeScreen } from '../ui.js';
+import {
+  el, viewEl, confirmAction, openScreen, closeScreen, screenTicket, screenStillShowing,
+} from '../ui.js';
+import * as dock from '../dock.js';
 import {
   makeSong, updateSong, validateSong, planSongDelete, describeSongDelete, songKey,
   SONG_STATUSES, STATUS_LABELS, NO_STATUS_LABEL, RATINGS, statusLabel, formatRating, formatTags,
 } from '../lib/song.js';
 import { pickRandom } from '../lib/pick.js';
 import { createSuggester, fetchArtistGenres } from '../musicbrainz.js';
-import { singStats, sortVenues, todayLocalISO } from '../lib/stats.js';
+import { singStats, sortVenues, plural } from '../lib/stats.js';
 import { filterSongs } from '../lib/search.js';
 import {
   SUNG_NOT_SINCE, SORT_MENU, MIN_RATING_OPTIONS, defaultFilters, decadeLabel, filterChoices, sungOptions,
@@ -37,22 +39,19 @@ import {
   catalogMayList, formatCount, prepareCatalog, catalogChoices, catalogSearcher, rowStyles, songFromCatalog,
   libraryIndex, librarySongFor,
 } from '../lib/catalog.js';
+import { makeSetlist, addSongId, removeSongId, setlistSongs } from '../lib/setlist.js';
 import {
-  makeSetlist, addSongId, removeSongId, moveSongId, moveSongIdBy, setlistSongs, sungFlags, tonightSing,
-} from '../lib/setlist.js';
-import { dragToReorder } from '../drag.js';
-import {
-  currentSetlistKey, nextSetlistKey, tonightListName, uniqueSetlistName, currentSetlistFor, setMenuGroups,
-  OVERALL_LIST_NAME, nextSetlistFor, putBackOnTop, groupSingsByDate,
+  currentSetlistKey, uniqueSetlistName, currentSetlistFor, OVERALL_LIST_NAME,
 } from '../lib/night.js';
+import { renderKj } from './kj.js';
 
-// The meta record that remembers the list's venue across visits and reloads (R37).
-const VENUE_KEY = 'findVenueId';
+// The meta record that remembers the venue across visits and reloads (R37).
+// Tonight's venue menu sets it; the Songs scope reads it.
+export const VENUE_KEY = 'findVenueId';
 
-// Opens Settings at the Backup card (R65). The tab button is the one way to
-// switch views from inside a view without a circular import of app.js.
+// Opens Settings at the Backup card (R65).
 export function goToBackup() {
-  document.querySelector('.tabs button[data-view="settings"]')?.click();
+  dock.scope('settings');
   setTimeout(() => document.getElementById('backup-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 250);
 }
 
@@ -60,30 +59,16 @@ export function goToBackup() {
 // The count line always gives the full number that match.
 const PAGE_SIZE = 200;
 
-// The Set menu's last option, which starts a new list for tonight (R47).
-const NEW_LIST = 'new';
-// The Set menu's value for Overall's list before it is first saved (R56).
-const UNSAVED = '';
-
-// The three modes (R47). The one showing is kept while the app is open and
-// is Find on a fresh load; switching modes is not a new screen, so it adds no
-// history entry.
-const MODES = [['find', 'Find'], ['list', 'List'], ['sung', 'Sung']];
-let mode = 'find';
-
-// Bumped on every screen change, so a slow load never paints over a newer screen.
+// Bumped on every Songs screen, so a slow load never paints over a newer one.
 let screen = 0;
 
-// True while a load started with `token` should still be shown: no newer
-// Songs screen has started and the Songs tab is still the selected one.
-function stillCurrent(token) {
-  const tab = document.querySelector('.tabs button[data-view="songs"]');
-  return token === screen && (!tab || tab.getAttribute('aria-current') === 'page');
+// True while a load started with `token` and screen `ticket` should still be
+// shown: no newer Songs screen has started and no other screen has been drawn.
+function stillCurrent(token, ticket) {
+  return token === screen && screenStillShowing(ticket);
 }
 
-const sameOrder = (a, b) => a.length === b.length && a.every((id, i) => id === b[i]);
-
-// ---------- Sets at a venue (R47, R49, R50, R56), each change in one transaction ----------
+// ---------- Sets at a venue (R47, R56), each change in one transaction ----------
 
 // Overall's list before anything is in it (R56): shown, but saved only when
 // the first song goes in, so opening the app never creates a setlist.
@@ -98,7 +83,7 @@ const unsavedOverallList = () => ({ id: null, ...makeSetlist(OVERALL_LIST_NAME, 
 // { set, setlists }, where setlists is every setlist as stored afterwards.
 // Skips the transaction when `setlists` and `meta` (key -> value) already
 // hold the remembered set.
-function openCurrentSet(venue, setlists, meta) {
+export function openCurrentSet(venue, setlists, meta) {
   const venueId = venue ? venue.id : null;
   const key = currentSetlistKey(venueId);
   const known = currentSetlistFor(setlists, venueId, meta.get(key));
@@ -124,7 +109,7 @@ function openCurrentSet(venue, setlists, meta) {
 // venue (labelled for it), or under Overall when `venue` is null (for any
 // venue). "New list for tonight" (R47) names it for today; Overall's first
 // list is "My list" (R56). Resolves with { set, setlists }.
-function startList(venue, name) {
+export function startList(venue, name) {
   const venueId = venue ? venue.id : null;
   return db.transaction(['setlists', 'meta'], 'readwrite', async (stores) => {
     const all = await request(stores.setlists.getAll());
@@ -135,57 +120,22 @@ function startList(venue, name) {
   });
 }
 
-// "Find songs" on a setlist (R57): makes it the current set at the venue the
-// Songs tab is on (or under Overall), then shows the Songs tab in Find mode.
-// The venue stays as it is.
+// "Find songs" on a setlist (R57): makes it tonight's set at the remembered
+// venue (or under Overall), then shows the Songs scope. The venue stays as it is.
 export async function showSetInFind(setlistId) {
   const [saved, venues] = await Promise.all([db.get('meta', VENUE_KEY), db.getAll('venues')]);
   const wanted = saved ? saved.value : null;
   const venueId = venues.some((v) => v.id === wanted) ? wanted : null; // a deleted venue means Overall
   await db.put('meta', { key: currentSetlistKey(venueId), value: setlistId });
-  mode = 'find';
-  document.querySelector('.tabs button[data-view="songs"]')?.click();
+  dock.scope('songs');
 }
 
-// "Next time" (R49): saves `from` (the set without the song) and appends the
-// song to the venue's Next time list, creating that list on first use or when
-// the remembered one is gone. Resolves with { target, setlists }.
-function moveToNextTime(venue, from, songId) {
-  return db.transaction(['setlists', 'meta'], 'readwrite', async (stores) => {
-    const all = await request(stores.setlists.getAll());
-    const key = nextSetlistKey(venue.id);
-    const saved = await request(stores.meta.get(key));
-    let target = nextSetlistFor(all, venue.id, saved ? saved.value : undefined);
-    if (target && target.id === from.id) throw new Error('this set is the Next time list');
-    if (!target) {
-      const fresh = makeSetlist(uniqueSetlistName('Next time', all), venue.id);
-      target = { ...fresh, id: await request(stores.setlists.add(fresh)) };
-      stores.meta.put({ key, value: target.id });
-    }
-    target = addSongId(target, songId);
-    stores.setlists.put(target);
-    stores.setlists.put(from);
-    const others = all.filter((s) => s.id !== target.id && s.id !== from.id);
-    return { target, setlists: [...others, target, from] };
-  });
-}
-
-// "Sang it" (R49): logs the sing and saves the set without the song, together.
-// Resolves with the sing as stored, id included.
-function logSing(sing, set) {
-  return db.transaction(['sings', 'setlists'], 'readwrite', async (stores) => {
-    const id = await request(stores.sings.add(sing));
-    stores.setlists.put(set);
-    return { ...sing, id };
-  });
-}
-
-// Undo (R50): deletes the sing and saves the set with the song back on top, together.
-function undoSing(singId, set) {
-  return db.transaction(['sings', 'setlists'], 'readwrite', async (stores) => {
-    stores.sings.delete(singId);
-    stores.setlists.put(set);
-  });
+// Tonight's catalog line and its "add as a new song" line: the Songs scope
+// with `query` in the search, searching the KaraFun catalog when `catalog`.
+export function findInSongs(query, { catalog = false } = {}) {
+  rememberedQuery = query;
+  if (catalog) source = 'karafun'; // falls back to my songs when no catalog is loaded
+  dock.scope('songs');
 }
 
 // A video search for the song, opened by the owner in a new tab (R38).
@@ -241,13 +191,6 @@ function fillSelect(select, options, value) {
 function findField(labelText, control, prefix = 'find') {
   control.id = `${prefix}-${control.name}`;
   return el('div', { class: 'find-field' }, el('label', { for: control.id, text: labelText }), control);
-}
-
-// A Venue or Set menu in the pinned bar (R47): the label sits inside the box,
-// before the value, so the bar stays one row high.
-function pickerField(labelText, control) {
-  control.id = `find-${control.name}`;
-  return el('div', { class: 'night-picker' }, el('label', { for: control.id, text: labelText }), control);
 }
 
 // Makes `items` the children of `parent`, in order. Rows that stay are left
@@ -381,16 +324,16 @@ function loadCatalog(loadedAt) {
   return catalogLoading.promise;
 }
 
-// The Songs tab. Coming back from a song passes back what the screen showed,
-// so it is restored: the search (`query`), the venue (`venueId`; undefined
-// means the one remembered in meta), the filters and sort (`filters`) and
-// whether the filters were open (`filtersOpen`). Also the song to scroll to
-// (`focusId`) and an optional status line (`message`). The set comes from
-// meta and the mode from module state, so both come back too.
+// The Songs scope. Coming back from a song passes back what the screen
+// showed, so it is restored: the search (`query`), the filters and sort
+// (`filters`) and whether the filters were open (`filtersOpen`). Also the
+// song to scroll to (`focusId`) and an optional status line (`message`). The
+// venue and the set come from meta, so they come back too.
 export async function renderSongs({
-  query, venueId, filters, filtersOpen = false, focusId = null, message = '',
+  query, filters, filtersOpen = false, focusId = null, message = '',
 } = {}) {
   const token = ++screen;
+  const ticket = screenTicket();
   // Nothing passed means "as the owner left it": saved filters, remembered search (R53).
   if (query === undefined) query = rememberedQuery;
   if (filters === undefined) filters = loadSavedFilters();
@@ -402,7 +345,7 @@ export async function renderSongs({
     db.getAll('meta'),
     db.count(CATALOG_STORE),
   ]);
-  if (!stillCurrent(token)) return;
+  if (!stillCurrent(token, ticket)) return;
   // Songs added from the KaraFun catalog join these while the screen is up (R67).
   let songs = titleOrder(songRecords);
   const songsById = new Map(songs.map((s) => [s.id, s]));
@@ -413,34 +356,30 @@ export async function renderSongs({
   const hasCatalog = catalogCount > 0;
   const catalogLoadedAt = meta.get(CATALOG_LOADED_KEY) ?? null;
   forgetStaleCatalog(hasCatalog, catalogLoadedAt);
-  // Kept in step with every sing and setlist this screen saves.
-  let sings = singRecords;
-  let setlists = setlistRecords;
-
   // A remembered venue that has since been deleted falls back to Overall.
-  const wanted = venueId === undefined ? (meta.has(VENUE_KEY) ? meta.get(VENUE_KEY) : null) : venueId;
+  const wanted = meta.has(VENUE_KEY) ? meta.get(VENUE_KEY) : null;
   const state = {
     query,
     venueId: venues.some((v) => v.id === wanted) ? wanted : null,
     filters: { ...defaultFilters(), ...filters },
     catalogFilters: loadSavedCatalogFilters(), // the KaraFun source's own (R67)
-    set: null, // the set open at the venue or under Overall (R47, R56); id null while Overall's is unsaved
+    set: null, // tonight's set at the venue or under Overall (R47, R56); id null while Overall's is unsaved
   };
   rememberedQuery = state.query;
   const currentVenue = () => venues.find((v) => v.id === state.venueId) || null;
+  let setlists = setlistRecords;
   {
     const opened = await openCurrentSet(currentVenue(), setlists, meta);
-    if (!stillCurrent(token)) return;
+    if (!stillCurrent(token, ticket)) return;
     ({ set: state.set, setlists } = opened);
     if (state.set.id != null) meta.set(currentSetlistKey(state.venueId), state.set.id);
   }
-  if (state.venueId == null && mode === 'sung') mode = 'find'; // Sung needs a venue
   let inSet = new Set(state.set.songIds);
-  let stats = singStats(sings, state.venueId);
+  const stats = singStats(singRecords, state.venueId);
 
   // What to restore when coming back from a song.
   const backState = () => ({
-    query: state.query, venueId: state.venueId, filters: { ...state.filters }, filtersOpen: filtersBox.open,
+    query: state.query, filters: { ...state.filters }, filtersOpen: filtersBox.open,
   });
 
   // Opens a song; Back returns to this screen as it is now (R31).
@@ -449,7 +388,7 @@ export async function renderSongs({
     openScreen(() => renderSong(songId, back));
   }
 
-  // The line under the bar that says what a tap did, or why it failed.
+  // The line at the top that says what a tap did, or why it failed.
   const status = el('p', { class: 'notice night-status', role: 'status', text: message });
   const say = (text) => { status.textContent = text; };
 
@@ -491,12 +430,6 @@ export async function renderSongs({
       rows.set(s.id, item);
     }
     return item;
-  }
-
-  // Rows are built again the next time they are drawn.
-  function forgetRows() {
-    rows.clear();
-    toggles.clear();
   }
 
   const moreButton = el('button', {
@@ -657,10 +590,10 @@ export async function renderSongs({
         catalogWait = null;
         if (!root.isConnected) return;
         syncCatalogFilters(); // the menus' choices come from the rows
-        if (source === 'karafun' && mode === 'find') draw();
+        if (source === 'karafun') draw();
       }, (err) => {
         catalogWait = null;
-        if (root.isConnected && source === 'karafun' && mode === 'find') {
+        if (root.isConnected && source === 'karafun') {
           setChildren(list, [el('li', { class: 'error', text: `Could not read the KaraFun catalog: ${err.message}` })]);
         }
       });
@@ -791,88 +724,23 @@ export async function renderSongs({
     showMoreButton();
   }
 
-  // ---- Venue (R37) and set (R47) ----
+  // ---- Tonight's set (R47, R56), chosen on Tonight ----
 
-  const venueSelect = fillSelect(el('select', { name: 'venue' }),
-    [['', 'Overall'], ...venues.map((v) => [String(v.id), v.name])],
-    state.venueId == null ? '' : String(state.venueId));
-  let venueChange = 0; // the newest venue choice, so a slow one never wins
-  venueSelect.addEventListener('change', async () => {
-    const ticket = ++venueChange;
-    const venue = venues.find((v) => String(v.id) === venueSelect.value) || null;
-    state.venueId = venue ? venue.id : null;
-    db.put('meta', { key: VENUE_KEY, value: state.venueId })
-      .catch((err) => console.warn('Could not remember the venue:', err));
-    let set;
-    try {
-      ({ set, setlists } = await openCurrentSet(venue, setlists, meta));
-    } catch (err) {
-      failed(err);
-      return;
-    }
-    if (ticket !== venueChange || !root.isConnected) return;
-    if (set.id != null) meta.set(currentSetlistKey(state.venueId), set.id);
-    if (!venue && mode === 'sung') mode = 'find'; // Sung needs a venue
-    state.set = set;
-    inSet = new Set(set.songIds);
-    stats = singStats(sings, state.venueId);
-    forgetRows(); // every row's sing line is for the old venue
-    say('');
-    syncFilters();
-    fillSetSelect();
-    syncModes();
-    showMode(); // in Find, also re-sorts for the last-sung orders (R12)
-  });
+  // Which venue and set the + works on: "The Crown · Friday · 2 songs".
+  const context = el('p', { class: 'find-context' });
 
-  // The Set menu (R56): every setlist by name, grouped "For <venue>", "Any
-  // venue" and "Other venues" (under Overall: "Any venue" and "For a venue"),
-  // then "New list for tonight…" (under Overall "New list…", for any venue).
-  // Overall's unsaved "My list" shows first until its first song saves it.
-  const setSelect = el('select', { name: 'set' });
-  function fillSetSelect() {
-    const options = setMenuGroups(setlists, venues, state.venueId).map((group) => el('optgroup', { label: group.label },
-      ...group.items.map((item) => el('option', { value: String(item.id), text: item.text }))));
-    if (state.set.id == null) options.unshift(el('option', { value: UNSAVED, text: state.set.name }));
-    options.push(el('option', { value: NEW_LIST, text: state.venueId == null ? 'New list…' : 'New list for tonight…' }));
-    setSelect.replaceChildren(...options);
-    setSelect.value = state.set.id == null ? UNSAVED : String(state.set.id);
-    setSelect.disabled = false;
+  function syncContext() {
+    const venue = currentVenue();
+    const count = setlistSongs(state.set, songsById).length;
+    context.textContent = `${venue ? venue.name : 'Overall'} · ${state.set.name} · ${plural(count, 'song', 'songs')}`;
   }
 
-  setSelect.addEventListener('change', async () => {
-    const venue = currentVenue();
-    const venueId = state.venueId;
-    if (setSelect.value === NEW_LIST) {
-      setSelect.disabled = true; // one new list per choice
-      let made;
-      try {
-        made = await startList(venue, tonightListName(new Date()));
-      } catch (err) {
-        failed(err);
-        return;
-      }
-      if (state.venueId !== venueId || !root.isConnected) return;
-      setlists = made.setlists;
-      chooseSet(made.set);
-      say(`Started “${made.set.name}”.`);
-      return;
-    }
-    const chosen = setlists.find((s) => String(s.id) === setSelect.value);
-    if (!chosen) return;
-    chooseSet(chosen);
-    say('');
-    db.put('meta', { key: currentSetlistKey(venueId), value: chosen.id })
-      .catch((err) => console.warn('Could not remember the set:', err));
-  });
-
-  // Opens another set at the same venue (or under Overall).
+  // Overall's list once its first song saved it (R56).
   function chooseSet(set) {
     state.set = set;
     inSet = new Set(set.songIds);
     meta.set(currentSetlistKey(state.venueId), set.id);
-    fillSetSelect();
     syncSet();
-    if (mode === 'list') drawList();
   }
 
   // The current set with new contents, before it is saved.
@@ -883,305 +751,11 @@ export async function renderSongs({
     syncSet();
   }
 
-  // What shows the set outside List mode: the List (N) count and every + in
-  // Find, my songs' and the catalog's (R67).
+  // What shows the set: the line at the top and every +, my songs' and the catalog's (R67).
   function syncSet() {
-    syncModes();
+    syncContext();
     for (const [songId, button] of toggles) drawToggle(button, songsById.get(songId));
     for (const entry of catalogItems.values()) drawCatalogItem(entry);
-  }
-
-  // ---- Modes (R47) ----
-
-  const modeButtons = new Map(MODES.map(([key, label]) => [key, el('button', {
-    type: 'button', class: 'mode', role: 'tab', id: `mode-${key}`, text: label, onclick: () => switchMode(key),
-  })]));
-  const modes = el('div', { class: 'modes', role: 'tablist', 'aria-label': 'Songs tab' }, ...modeButtons.values());
-  // Arrow keys move between the modes, as in any tab list.
-  modes.addEventListener('keydown', (e) => {
-    const step = { ArrowLeft: -1, ArrowRight: 1 }[e.key];
-    if (!step) return;
-    const keys = MODES.map(([key]) => key).filter((key) => !modeButtons.get(key).disabled);
-    const next = keys[(keys.indexOf(mode) + step + keys.length) % keys.length];
-    e.preventDefault();
-    switchMode(next);
-    modeButtons.get(next).focus();
-  });
-  // Under Overall, says why Sung is greyed out and List has no "Sang it" (R56).
-  const overallNote = el('p', { class: 'muted night-note', text: 'Pick a venue to log a sing or use Sung.' });
-
-  function syncModes() {
-    const overall = state.venueId == null;
-    for (const [key, button] of modeButtons) {
-      button.setAttribute('aria-selected', String(key === mode));
-      button.tabIndex = key === mode ? 0 : -1;
-      button.disabled = overall && key === 'sung';
-    }
-    const listLabel = `List (${setlistSongs(state.set, songsById).length})`;
-    if (modeButtons.get('list').textContent !== listLabel) modeButtons.get('list').textContent = listLabel;
-    overallNote.hidden = !overall;
-  }
-
-  function switchMode(key) {
-    if (key === mode || (state.venueId == null && key === 'sung')) return;
-    mode = key;
-    say('');
-    syncModes();
-    showMode();
-    viewEl.scrollTop = 0;
-  }
-
-  // Draws the mode that is showing into the panel under the bar.
-  function showMode() {
-    if (mode === 'list') {
-      panel.replaceChildren(listPanel);
-      drawList();
-    } else if (mode === 'sung') {
-      panel.replaceChildren(sungPanel);
-      drawSung();
-    } else {
-      panel.replaceChildren(findPanel);
-      draw();
-    }
-  }
-
-  // Sings changed: the Find rows' sing lines and the filters on them are out of date.
-  function singsChanged() {
-    stats = singStats(sings, state.venueId);
-    forgetRows();
-  }
-
-  // ---- List mode (R49) ----
-
-  const setList = el('ol', { class: 'list night-list', 'aria-label': 'Songs in the set' });
-  const setEmpty = el('div', { class: 'night-empty' },
-    el('p', { class: 'muted', text: 'Nothing in this set yet. Find songs and tap + to add them.' }),
-    el('button', { type: 'button', class: 'btn primary', text: 'Find songs', onclick: () => switchMode('find') }));
-  const listPanel = el('div', { class: 'stack', role: 'tabpanel', 'aria-labelledby': 'mode-list' }, setList, setEmpty);
-  const moves = new Map(); // each row's ↑ and ↓ by song id, so focus can follow a moved song
-
-  // The venue's Next time list, when it has one (R49).
-  function nextTimeList() {
-    return nextSetlistFor(setlists, state.venueId, meta.get(nextSetlistKey(state.venueId)));
-  }
-
-  function drawList() {
-    const inList = setlistSongs(state.set, songsById);
-    // Flags say what was sung at the venue the set is open at, whatever its label (R56).
-    const flags = sungFlags({ ...state.set, venueId: state.venueId }, sings);
-    const next = nextTimeList();
-    const isNextTime = !!next && next.id === state.set.id; // never move a song onto itself
-    moves.clear();
-    setList.replaceChildren(...inList.map((song, i) => setRow(song, flags.get(song.id), i, inList.length, !isNextTime)));
-    setList.hidden = inList.length === 0;
-    setEmpty.hidden = inList.length > 0;
-  }
-
-  // A song in the set: title, artist and its sung flag (R43), which open the
-  // song, then ↑ ↓, "Sang it" and "Next time"; under Overall, which has no
-  // venue to log a sing at, ↑ ↓ and "Remove" (R56).
-  function setRow(song, lastSung, index, total, canMoveOn) {
-    // True when the tapped control had focus (a keyboard, or a desktop click),
-    // so focus follows the song; phones do not focus buttons on a tap.
-    const focused = (e) => document.activeElement === e.currentTarget;
-    const up = el('button', {
-      type: 'button', class: 'btn move', text: '↑', 'aria-label': `Move ${song.title} up`,
-      onclick: (e) => moveInSet(song, -1, focused(e) ? 'up' : null),
-    });
-    const down = el('button', {
-      type: 'button', class: 'btn move', text: '↓', 'aria-label': `Move ${song.title} down`,
-      onclick: (e) => moveInSet(song, 1, focused(e) ? 'down' : null),
-    });
-    up.disabled = index === 0;
-    down.disabled = index === total - 1;
-    moves.set(song.id, { up, down });
-    // A drag handle, as on the setlist screen (R61); arrow keys move the song too.
-    const handle = el('button', {
-      type: 'button', class: 'btn handle', text: '≡', 'aria-label': `Move ${song.title}`,
-      onkeydown: (e) => {
-        const delta = { ArrowUp: -1, ArrowDown: 1 }[e.key];
-        if (!delta) return;
-        e.preventDefault();
-        moveInSet(song, delta, 'handle');
-      },
-    });
-    moves.get(song.id).handle = handle;
-    const li = el('li', { class: 'night-song', 'data-song-id': song.id },
-      handle,
-      // Tapping the song shows it full screen for the KJ (R54); details are a tap further.
-      el('button', {
-        type: 'button', class: 'night-open', 'aria-label': `Show ${song.title} to the KJ`,
-        onclick: () => {
-          const back = backState();
-          openScreen(() => renderKjCard(song.id, back));
-        },
-      },
-        el('span', { class: 'title', text: song.title }),
-        el('span', { class: 'sub', text: song.artist }),
-        lastSung ? el('span', { class: 'flag' }, 'Sung here · last ', el('span', { class: 'nowrap', text: lastSung })) : null),
-      el('div', { class: 'night-actions' },
-        up,
-        down,
-        ...(state.venueId == null
-          ? [el('button', {
-            type: 'button', class: 'btn', text: 'Remove', 'aria-label': `Remove ${song.title} from the set`,
-            onclick: () => removeFromList(song),
-          })]
-          : [
-            el('button', {
-              type: 'button', class: 'btn sang', text: 'Sang it', 'aria-label': `Sang ${song.title}`,
-              onclick: () => sangIt(song),
-            }),
-            canMoveOn
-              ? el('button', {
-                type: 'button', class: 'btn', text: 'Next time', 'aria-label': `${song.title} next time`,
-                onclick: () => nextTime(song),
-              })
-              : null,
-          ])));
-    dragToReorder({
-      list: setList, li, handle,
-      onDrop: (newIndex, hadFocus) => moveInSetTo(song, newIndex, hadFocus),
-      onCancel: drawList,
-    });
-    return li;
-  }
-
-  // A drop at `newIndex` (R61): drawn at once, then saved.
-  async function moveInSetTo(song, newIndex, refocus) {
-    const next = moveSongId(state.set, song.id, newIndex, songsById);
-    if (sameOrder(next.songIds, state.set.songIds)) {
-      drawList();
-      return;
-    }
-    changeSet(next);
-    drawList();
-    if (refocus) moves.get(song.id)?.handle?.focus();
-    try {
-      await db.put('setlists', next);
-    } catch (err) {
-      failed(err);
-    }
-  }
-
-  // Takes a song off the set under Overall, with no confirmation: + puts it back (R56).
-  async function removeFromList(song) {
-    if (!inSet.has(song.id)) return; // a second tap finds it gone
-    const next = removeSongId(state.set, song.id);
-    changeSet(next);
-    say(`Removed “${song.title}” from the set.`);
-    if (mode === 'list') drawList();
-    try {
-      await db.put('setlists', next);
-    } catch (err) {
-      failed(err);
-    }
-  }
-
-  // ↑ (-1) or ↓ (1): drawn at once, then saved.
-  async function moveInSet(song, delta, which) {
-    const next = moveSongIdBy(state.set, song.id, delta, songsById);
-    if (sameOrder(next.songIds, state.set.songIds)) return;
-    changeSet(next);
-    drawList();
-    if (which) {
-      const row = moves.get(song.id);
-      const order = which === 'up' ? ['up', 'down'] : which === 'down' ? ['down', 'up'] : [];
-      const name = order.find((key) => !row[key].disabled) || 'handle';
-      row[name]?.focus();
-    }
-    try {
-      await db.put('setlists', next);
-    } catch (err) {
-      failed(err);
-    }
-  }
-
-  // Logs a sing here today and takes the song out of the set, with no
-  // confirmation: Undo is under Sung (R49, R50).
-  async function sangIt(song) {
-    const venue = currentVenue();
-    if (!venue || !inSet.has(song.id)) return; // a second tap finds it gone
-    const next = removeSongId(state.set, song.id);
-    const sing = tonightSing(song.id, venue.id, todayLocalISO());
-    changeSet(next);
-    try {
-      sings = [...sings, await logSing(sing, next)];
-    } catch (err) {
-      failed(err);
-      return;
-    }
-    singsChanged();
-    say(`Sang “${song.title}”. Undo is under Sung.`);
-    if (mode === 'list') drawList();
-  }
-
-  // Moves the song from the set to the end of the venue's Next time list (R49).
-  async function nextTime(song) {
-    const venue = currentVenue();
-    if (!venue || !inSet.has(song.id)) return;
-    const from = removeSongId(state.set, song.id);
-    changeSet(from);
-    try {
-      const moved = await moveToNextTime(venue, from, song.id);
-      setlists = moved.setlists;
-      meta.set(nextSetlistKey(venue.id), moved.target.id);
-    } catch (err) {
-      failed(err);
-      return;
-    }
-    fillSetSelect(); // a Next time list made just now joins the Set menu
-    say(`Moved “${song.title}” to Next time.`);
-    if (mode === 'list') drawList();
-  }
-
-  // ---- Sung mode (R50) ----
-
-  const sungList = el('div', { class: 'stack night-sung' });
-  const sungPanel = el('div', { role: 'tabpanel', 'aria-labelledby': 'mode-sung' }, sungList);
-
-  function drawSung() {
-    const today = todayLocalISO();
-    const groups = groupSingsByDate(sings, songsById, state.venueId, today);
-    if (!groups.length) {
-      sungList.replaceChildren(el('p', { class: 'muted', text: 'Nothing sung here yet.' }));
-      return;
-    }
-    sungList.replaceChildren(...groups.map((group) => el('section', { class: 'night-day', 'aria-label': group.label },
-      el('h3', { text: group.label }),
-      el('ul', { class: 'list' }, ...group.entries.map(({ sing, song }) => sungRow(sing, song, group.date === today))))));
-  }
-
-  // A sing: the song, which opens it, and for today's sings an Undo.
-  function sungRow(sing, song, today) {
-    return el('li', { class: 'night-song', 'data-song-id': song.id, 'data-sing-id': sing.id },
-      el('button', { type: 'button', class: 'night-open', onclick: () => openSong(song.id) },
-        el('span', { class: 'title', text: song.title }),
-        el('span', { class: 'sub', text: song.artist })),
-      today
-        ? el('div', { class: 'night-actions' },
-          el('button', {
-            type: 'button', class: 'btn', text: 'Undo', 'aria-label': `Undo ${song.title}`,
-            onclick: () => undo(sing, song),
-          }))
-        : null);
-  }
-
-  // Deletes the sing and puts the song back at the top of the set, with no confirmation (R50).
-  async function undo(sing, song) {
-    if (!state.set || !sings.some((s) => s.id === sing.id)) return; // a second tap finds it gone
-    sings = sings.filter((s) => s.id !== sing.id);
-    const next = putBackOnTop(state.set, song.id);
-    changeSet(next);
-    try {
-      await undoSing(sing.id, next);
-    } catch (err) {
-      failed(err);
-      return;
-    }
-    singsChanged();
-    say(`Put “${song.title}” back at the top of the set.`);
-    if (mode === 'sung') drawSung();
   }
 
   const search = el('input', {
@@ -1516,15 +1090,16 @@ export async function renderSongs({
     };
     if (showErrors(form, errorBox, validateSong(fields))) return;
     await db.add('songs', makeSong(fields));
-    // Search and filters start afresh so the new song shows; the venue stays.
-    renderSongs({ venueId: state.venueId, query: '' }); // the search clears so the new song shows; filters stay (R53)
+    renderSongs({ query: '' }); // the search clears so the new song shows; filters stay (R53)
   });
 
   // Adding a song is occasional, so it waits at the bottom of the list (R48).
   const addCard = el('details', { class: 'card add-song' }, el('summary', { text: 'Add a song' }), form);
 
   // The My songs | KaraFun switch heads Find once a catalog is loaded (R67).
-  const findPanel = el('div', { class: 'stack', role: 'tabpanel', 'aria-labelledby': 'mode-find' },
+  const root = el('div', { class: 'stack songs-view' },
+    context,
+    status,
     hasCatalog ? sourceSwitch : null,
     search,
     filtersBox,
@@ -1533,31 +1108,17 @@ export async function renderSongs({
     moreButton,
     addCard);
 
-  // The venue, the set and the modes stay pinned at the top while the rest scrolls (R47).
-  const bar = el('div', { class: 'night-bar' },
-    el('div', { class: 'night-pickers' }, pickerField('Venue', venueSelect), pickerField('Set', setSelect)),
-    modes,
-    overallNote);
-  const panel = el('div', { class: 'night-panel' });
-  const root = el('div', { class: 'stack songs-view' }, bar, status, panel);
-
   viewEl.replaceChildren(root);
-  fillSetSelect();
-  syncModes();
+  syncContext();
   syncSource();
-  showMode();
+  draw();
 
   // Only my songs open a song screen, so only they have a row to come back to.
-  if (focusId != null && !(mode === 'find' && source === 'karafun')) {
-    let row = null;
-    if (mode === 'find') {
-      // Coming back from a song further down than the first page draws enough pages to reach it.
-      const index = shown.findIndex((s) => s.id === focusId);
-      if (index >= limit) drawRows(Math.ceil((index + 1) / PAGE_SIZE) * PAGE_SIZE);
-      row = list.querySelector(`[data-song-id="${focusId}"] .song-row`);
-    } else {
-      row = panel.querySelector(`[data-song-id="${focusId}"] .night-open`);
-    }
+  if (focusId != null && source !== 'karafun') {
+    // Coming back from a song further down than the first page draws enough pages to reach it.
+    const index = shown.findIndex((s) => s.id === focusId);
+    if (index >= limit) drawRows(Math.ceil((index + 1) / PAGE_SIZE) * PAGE_SIZE);
+    const row = list.querySelector(`[data-song-id="${focusId}"] .song-row`);
     if (row) {
       row.scrollIntoView({ block: 'center' });
       row.focus({ preventScroll: true });
@@ -1565,15 +1126,29 @@ export async function renderSongs({
   }
 }
 
+// Opens a song's screen from another scope (Tonight's Details). `back` is
+// { label, render }: the Back button's words ('Back to Tonight') and the
+// render that returns there, given { focusId } or { message }.
+export function openSongScreen(songId, back) {
+  openScreen(() => renderSong(songId, back));
+}
+
+// Where a song screen returns to: the Songs scope with the state it had
+// (`back` is its search and filters), or another scope's { label, render }.
+function leaveSong(back, extra) {
+  return typeof back.render === 'function' ? back.render(extra) : renderSongs({ ...back, ...extra });
+}
+
 // One song: notes first (what matters at the venue), then the other fields,
 // with Edit and Delete at the bottom within thumb reach. `back` is the list's
-// state (search, venue, filters) to restore on the way back.
+// state (search, filters) to restore on the way back, or { label, render }.
 async function renderSong(id, back) {
   const token = ++screen;
+  const ticket = screenTicket();
   const song = await db.get('songs', id);
-  if (!stillCurrent(token)) return;
+  if (!stillCurrent(token, ticket)) return;
   if (!song) {
-    closeScreen(() => renderSongs({ ...back, message: 'That song is no longer in your library.' }));
+    closeScreen(() => leaveSong(back, { message: 'That song is no longer in your library.' }));
     return;
   }
 
@@ -1596,12 +1171,12 @@ async function renderSong(id, back) {
       errorBox.textContent = `Could not delete the song: ${err.message}`;
       return;
     }
-    closeScreen(() => renderSongs({ ...back, message: `Deleted “${song.title}”.` }));
+    closeScreen(() => leaveSong(back, { message: `Deleted “${song.title}”.` }));
   }
 
   viewEl.replaceChildren(
     el('div', { class: 'stack song-detail' },
-      backButton(() => closeScreen(() => renderSongs({ ...back, focusId: song.id }))),
+      backButton(back.label || 'Back to list', () => closeScreen(() => leaveSong(back, { focusId: song.id }))),
       el('section', { class: 'card stack', 'aria-label': 'Song details' },
         el('div', {},
           el('h2', { text: song.title }),
@@ -1620,9 +1195,10 @@ async function renderSong(id, back) {
           field('Tags', formatTags(song.tags)),
           field('KaraFun', song.karafunId != null ? 'Yes' : 'No')), // R68
         errorBox,
+        // The song full screen for the KJ (R54); Done comes back here.
         el('button', {
-          type: 'button', class: 'btn kj-button', text: 'Show to the KJ',
-          onclick: () => openScreen(() => renderKjCard(song.id, back)),
+          type: 'button', class: 'btn kj-button', text: 'KJ', 'aria-label': 'Show to the KJ',
+          onclick: () => openScreen(() => renderKj(song.id, { label: 'For the KJ' })),
         }),
         // Opens in a new tab, so the app stays where it was; nothing is fetched or saved (R38).
         el('a', { class: 'btn video-link', href: videoSearchUrl(song), target: '_blank', rel: 'noopener' },
@@ -1636,40 +1212,9 @@ async function renderSong(id, back) {
   viewEl.scrollTop = 0;
 }
 
-// The song full screen, in the biggest type that fits, to show the KJ (R54):
-// title, artist and the key change. The header, tabs and banners hide while it
-// is up (body[data-screen="kj"], cleared by the screen stack on any other
-// render), so a phone turned to landscape gives the title the whole width.
-async function renderKjCard(id, back) {
-  const token = ++screen;
-  const song = await db.get('songs', id);
-  if (!stillCurrent(token)) return;
-  if (!song) {
-    closeScreen(() => renderSongs({ ...back, message: 'That song is no longer in your library.' }));
-    return;
-  }
-  document.body.dataset.screen = 'kj';
-  viewEl.replaceChildren(
-    el('div', { class: 'kj-card', role: 'dialog', 'aria-label': 'Show to the KJ' },
-      el('div', { class: 'kj-text' },
-        el('p', { class: 'kj-title', text: song.title }),
-        el('p', { class: 'kj-artist', text: song.artist }),
-        song.key ? el('p', { class: 'kj-key', text: `Key ${song.key}` }) : null),
-      el('div', { class: 'row kj-actions' },
-        el('button', {
-          type: 'button', class: 'btn', text: 'Details',
-          onclick: () => openScreen(() => renderSong(song.id, back)),
-        }),
-        el('button', {
-          type: 'button', class: 'btn primary', text: 'Close',
-          onclick: () => closeScreen(() => renderSongs({ ...back, focusId: song.id })),
-        }))));
-  viewEl.scrollTop = 0;
-}
-
-function backButton(onclick) {
+function backButton(label, onclick) {
   return el('button', { type: 'button', class: 'btn back', onclick },
-    el('span', { 'aria-hidden': 'true', text: '‹ ' }), 'Back to list');
+    el('span', { 'aria-hidden': 'true', text: '‹ ' }), label);
 }
 
 // Every field of a song (R2, R3, R36, plus tags, key, status and rating).
