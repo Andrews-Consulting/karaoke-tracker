@@ -612,7 +612,7 @@ export async function renderSongs({
       const text = state.query.trim();
       if (source === 'karafun') {
         items.push(el('li', { class: 'muted', text: 'No KaraFun songs match the search and filters.' }));
-      } else if (text && filterSongs(songs, text).length === 0) {
+      } else if (text && filterSongs(songs, state.query).length === 0) {
         noMatchText.textContent = `No match for “${text}”.`;
         addFromSearchButton.textContent = `Add “${text}”`;
         items.push(noMatch);

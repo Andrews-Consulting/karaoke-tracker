@@ -92,10 +92,10 @@ const pad = (n) => String(n).padStart(2, '0');
 
 // Songs matching the field: titles that start with it first, then the rest,
 // each in title order.
-function rankMatches(songs, text) {
-  if (!text) return [];
-  const lower = text.toLowerCase();
-  const found = filterSongs(songs, text);
+function rankMatches(songs, query) {
+  const lower = (query || '').trim().toLowerCase();
+  if (!lower) return [];
+  const found = filterSongs(songs, query); // untrimmed: a trailing space asks for whole words (R10)
   const starts = (s) => s.title.toLowerCase().startsWith(lower);
   return [...found.filter(starts), ...found.filter((s) => !starts(s))];
 }
@@ -643,7 +643,7 @@ export async function renderTonight({ message = '', focusId = null } = {}) {
 
   function matchesPanel() {
     const text = query.trim();
-    const all = rankMatches(songs, text);
+    const all = rankMatches(songs, query);
     const head = all.length
       ? `Add to tonight · ${plural(all.length, 'match', 'matches')}${all.length > MATCH_LIMIT ? ` · top ${MATCH_LIMIT}` : ''}`
       : 'No songs match';
