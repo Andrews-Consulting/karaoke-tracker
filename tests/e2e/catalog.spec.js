@@ -1,12 +1,14 @@
-// The KaraFun catalog in Find (R67): a "My songs | KaraFun" switch once a
-// catalog is loaded, its own search and filters, and rows that add a song to
-// my songs or straight into the set. And the KaraFun flag on my songs (R68):
-// a mark on the row, a field on the song screen and an "In KaraFun" filter.
-// The catalog store is written directly here; loading the CSV is R66's.
+// The KaraFun catalog in the Songs scope (R67): a "My songs | KaraFun"
+// switch once a catalog is loaded, its own search and filters, and rows that
+// add a song to my songs or straight into the set. And the KaraFun flag on
+// my songs (R68): a mark on the row, a field on the song page and an "In
+// KaraFun" filter. The catalog store is written directly here; loading the
+// CSV is R66's.
 import { test, expect } from '@playwright/test';
-import { openApp, openSong, putRecords, readStore } from './helpers.js';
+import { openApp, openSong, putRecords, readStore, openScope } from './helpers.js';
 import {
-  seed, reloadList, openFilters, filter, choose, filtersForm, filtersSummary, shownTitles, songRow, expectTapTarget,
+  seed, reloadList, openFilters, closeFilters, filter, choose, filtersForm, expectFilterCount, filterTokens,
+  shownTitles, songRow, expectTapTarget, findContext, backToSongs,
 } from './helpers-find.js';
 import { songKey } from '../../js/lib/song.js';
 
@@ -77,8 +79,9 @@ const source = (page, name) => page.getByRole('radio', { name, exact: true });
 const catalogRows = (page) => page.locator('li.catalog-item');
 const countLine = (page) => page.locator('.pick-row .count');
 const hint = (page) => page.getByText('Type two or more letters, or choose a filter, to search the KaraFun catalog.');
-const modeTab = (page, name) => page.getByRole('tab', { name: new RegExp(`^${name}`) });
-const showTab = (page, name) => page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name }).click();
+// Tonight's set at The Crown, as the Songs scope's line at the top counts it.
+const crownSet = (page, count) => expect(findContext(page)).toHaveText(`The Crown · The Crown · ${count}`);
+const showTab = (page, name) => openScope(page, name);
 const songField = (page, name) => page.locator('.song-fields .field').filter({ has: page.locator('dt', { hasText: name }) }).locator('dd');
 
 async function showSource(page, name) {
@@ -113,9 +116,11 @@ test.describe('KaraFun catalog', () => {
     // With a catalog loaded, my songs' filters offer In KaraFun (R68).
     await openFilters(page);
     await expect(filter(page, 'KaraFun')).toBeVisible();
+    await closeFilters(page);
 
     // Nothing lists until two characters or a filter.
     await showSource(page, 'KaraFun');
+    await expect(search(page)).toHaveAttribute('placeholder', 'Search the KaraFun catalog');
     await expect(hint(page)).toBeVisible();
     await expect(countLine(page)).toHaveText('20 songs in the KaraFun catalog');
     await expect(catalogRows(page)).toHaveCount(0);
@@ -126,18 +131,19 @@ test.describe('KaraFun catalog', () => {
     await expect(shownTitles(page)).toHaveText(['Bohemian Rhapsody', 'Dancing Queen', 'Ne me quitte pas', 'Under Pressure']);
     await expect(countLine(page)).toHaveText('4 of 20 songs');
 
-    // A row: artist, year and styles, with a Duet or Explicit mark; no sing line, status or Pick for me.
+    // A row: artist, year and styles, with a Duet or Explicit mark; no sing line, status or Pick one.
     await expect(songRow(page, 'Bohemian Rhapsody').locator('.sub')).toHaveText('Queen · 1975 · Rock · Classic Rock');
     await expect(songRow(page, 'Under Pressure').locator('.sub')).toHaveText('Queen & David Bowie · 1981 · Rock Duet');
     await expect(songRow(page, 'Under Pressure').locator('.mark')).toHaveText('Duet');
     await expect(page.locator('li.catalog-item .sung')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Pick for me' })).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Pick one' })).toBeHidden();
     await expect(page.getByText('Add a song', { exact: true })).toBeHidden();
     await search(page).fill('eminem');
     await expect(songRow(page, 'Lose Yourself').locator('.mark')).toHaveText('Explicit');
 
     // The catalog's own filters; my songs' Sung, Tag, Status, Rating and KaraFun are not there.
     await search(page).fill('');
+    await openFilters(page);
     for (const label of ['Genre', 'Decade', 'Duet', 'Explicit', 'Language', 'Sort by']) await expect(filter(page, label)).toBeVisible();
     for (const label of ['Sung', 'Since', 'Tag', 'Status', 'Rating', 'KaraFun']) await expect(filter(page, label)).toHaveCount(0);
     await expect(filter(page, 'Genre').locator('option')).toHaveText(['Any genre', 'Alternative', 'Chanson', 'Classic Rock',
@@ -145,21 +151,21 @@ test.describe('KaraFun catalog', () => {
     await expect(filter(page, 'Language').locator('option')).toHaveText(['Any language', 'English', 'French', 'German', 'Spanish']);
     await expect(filter(page, 'Decade').locator('option')).toHaveText(
       ['Any decade', '1950s', '1970s', '1980s', '1990s', '2000s', '2010s', '2020s']);
-    await expect(filtersSummary(page)).toHaveText('Filters');
+    await expectFilterCount(page, 0);
 
     // A filter lists without a search, and filters combine.
     await choose(page, 'Genre', 'Country');
     await expect(shownTitles(page)).toHaveText(['Islands in the Stream', 'Jolene']);
     await expect(countLine(page)).toHaveText('2 of 20 songs');
-    await expect(filtersSummary(page)).toHaveText('Filters (1)');
+    await expectFilterCount(page, 1);
     await choose(page, 'Duet', 'Duets only');
     await expect(shownTitles(page)).toHaveText(['Islands in the Stream']);
-    await expect(filtersSummary(page)).toHaveText('Filters (2)');
+    await expectFilterCount(page, 2);
     await choose(page, 'Duet', 'No duets');
     await expect(shownTitles(page)).toHaveText(['Jolene']);
     await filtersForm(page).getByRole('button', { name: 'Clear filters' }).click();
     await expect(hint(page)).toBeVisible();
-    await expect(filtersSummary(page)).toHaveText('Filters');
+    await expectFilterCount(page, 0);
 
     await choose(page, 'Language', 'Spanish');
     await expect(shownTitles(page)).toHaveText(['Despacito', 'La Bamba']);
@@ -170,13 +176,18 @@ test.describe('KaraFun catalog', () => {
     // With a filter on, one character searches too.
     await choose(page, 'Explicit', 'Hide explicit');
     await expect(countLine(page)).toHaveText('18 of 20 songs');
+    await closeFilters(page);
     await search(page).fill('lo');
     await expect(shownTitles(page)).toHaveText(['99 Luftballons', 'Shallow']);
-    await choose(page, 'Explicit', 'Any');
+    // The catalog's filters show as tokens too (R69); the × turns one off.
+    await expect(filterTokens(page)).toHaveText(['no explicit']);
+    await page.getByRole('button', { name: 'Remove filter: no explicit', exact: true }).click();
     await expect(shownTitles(page)).toHaveText(['99 Luftballons', 'Lose Yourself', 'Shallow']);
+    await expect(filterTokens(page)).toHaveCount(0);
     await search(page).fill('');
 
     // Sorts, with ties in title order.
+    await openFilters(page);
     await choose(page, 'Genre', 'Rock');
     await choose(page, 'Sort by', 'Decade');
     await expect(shownTitles(page)).toHaveText(['La Bamba', 'Bohemian Rhapsody', 'Africa', "Don't Stop Believin'",
@@ -187,15 +198,21 @@ test.describe('KaraFun catalog', () => {
     await choose(page, 'Sort by', 'Added to KaraFun, newest first');
     await expect(shownTitles(page)).toHaveText(['Total Eclipse of the Heart', 'Africa', 'Under Pressure', 'Mr. Brightside',
       'Wonderwall', 'Bohemian Rhapsody', "Don't Stop Believin'", 'La Bamba']);
-    await expect(filtersSummary(page)).toHaveText('Filters (1)');
+    await expectFilterCount(page, 1);
     await expectAllTapTargets(page, 'Find, KaraFun');
+    await closeFilters(page);
+    await expect(filterTokens(page)).toHaveText(['Rock']);
+    await expect(page.getByRole('button', { name: 'Sort: Added to KaraFun, newest first. Change sort' })).toBeVisible();
 
     // My songs keep their own filters and count; the search is shared.
     await showSource(page, 'My songs');
-    await expect(filtersSummary(page)).toHaveText('Filters');
+    await expectFilterCount(page, 0);
+    await expect(filterTokens(page)).toHaveCount(0);
+    await openFilters(page);
     await expect(filter(page, 'Tag')).toBeVisible();
+    await closeFilters(page);
     await expect(page.getByText('1 of 1 songs')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Pick for me' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Pick one' })).toBeVisible();
     await search(page).fill('bri');
     await expect(page.getByText('No match for “bri”.')).toBeVisible();
     await page.getByRole('button', { name: 'Search the KaraFun catalog' }).click();
@@ -207,9 +224,9 @@ test.describe('KaraFun catalog', () => {
     await page.reload();
     await expect(page.getByText('1 of 1 songs')).toBeVisible();
     await expect(source(page, 'My songs')).toHaveAttribute('aria-checked', 'true');
-    await expect(filtersSummary(page)).toHaveText('Filters');
+    await expectFilterCount(page, 0);
     await showSource(page, 'KaraFun');
-    await expect(filtersSummary(page)).toHaveText('Filters (1)');
+    await expectFilterCount(page, 1);
     await openFilters(page);
     await expect(filter(page, 'Genre')).toHaveValue('Rock');
     await expect(filter(page, 'Sort by')).toHaveValue('added');
@@ -222,7 +239,7 @@ test.describe('KaraFun catalog', () => {
     await storeCatalog(page);
     await putRecords(page, 'meta', [{ key: 'findVenueId', value: venueIds['The Crown'] }]);
     await reloadList(page, 1);
-    await expect(modeTab(page, 'List')).toHaveText('List (0)');
+    await crownSet(page, '0 songs');
     await showSource(page, 'KaraFun');
 
     // A song already in my songs (same title and artist) is marked, with no Add.
@@ -238,7 +255,7 @@ test.describe('KaraFun catalog', () => {
     await jolene.getByRole('button', { name: 'Add Jolene to my songs' }).click();
     await expect(jolene.locator('.in-library')).toHaveText('✓ In my songs');
     await expect(page.locator('.night-status')).toHaveText('Added “Jolene” to your songs.');
-    await expect(modeTab(page, 'List')).toHaveText('List (0)');
+    await crownSet(page, '0 songs');
     const joleneSong = (await readStore(page, 'songs')).find((s) => s.title === 'Jolene');
     expect(joleneSong).toEqual({
       id: expect.any(Number), title: 'Jolene', artist: 'Dolly Parton', genre: 'Country', year: 1973, key: '', notes: '',
@@ -247,7 +264,7 @@ test.describe('KaraFun catalog', () => {
     // Then + puts it in the set, and ✓ shows it is there.
     await jolene.getByRole('button', { name: 'Add Jolene to the set' }).click();
     await expect(jolene.locator('.set-toggle')).toHaveText('✓');
-    await expect(modeTab(page, 'List')).toHaveText('List (1)');
+    await crownSet(page, '1 song');
 
     // + straight from the catalog adds the song to my songs and to the set; a duet gets the duet tag.
     await search(page).fill('islands');
@@ -256,7 +273,7 @@ test.describe('KaraFun catalog', () => {
     await islands.getByRole('button', { name: 'Add Islands in the Stream to the set' }).click();
     await expect(islands.locator('.set-toggle')).toHaveText('✓');
     await expect(islands.locator('.in-library')).toHaveText('✓ In my songs');
-    await expect(modeTab(page, 'List')).toHaveText('List (2)');
+    await crownSet(page, '2 songs');
     const islandsSong = (await readStore(page, 'songs')).find((s) => s.title === 'Islands in the Stream');
     expect(islandsSong).toMatchObject({
       artist: 'Dolly Parton & Kenny Rogers', genre: 'Country', year: 1983, tags: ['duet'], status: '', karafunId: 103,
@@ -267,7 +284,7 @@ test.describe('KaraFun catalog', () => {
     // ✓ takes it out of the set; it stays in my songs.
     await islands.getByRole('button', { name: 'Remove Islands in the Stream from the set' }).click();
     await expect(islands.locator('.set-toggle')).toHaveText('+');
-    await expect(modeTab(page, 'List')).toHaveText('List (1)');
+    await crownSet(page, '1 song');
     await expect(islands.locator('.in-library')).toBeVisible();
     await expect(songRow(page, 'Islands in the Stream')).toHaveCount(1);
 
@@ -279,8 +296,11 @@ test.describe('KaraFun catalog', () => {
     await expect(songRow(page, 'Jolene').locator('.set-toggle')).toHaveText('✓');
     await expect(songRow(page, 'Islands in the Stream').locator('.set-toggle')).toHaveText('+');
     await expect(songRow(page, 'Valerie').locator('.mark')).toHaveCount(0);
-    await modeTab(page, 'List').click();
-    await expect(page.getByRole('list', { name: 'Songs in the set' }).locator('.title')).toHaveText(['Jolene']);
+    // Tonight shows the set: Jolene alone, up next.
+    await openScope(page, 'Tonight');
+    await expect(page.locator('.up-next .up-title')).toHaveText('Jolene');
+    await expect(page.getByRole('list', { name: 'The rest of tonight\'s set' })).toBeHidden();
+    await openScope(page, 'Songs');
 
     // Nothing is added twice: after a reload both rows say In my songs.
     await reloadList(page, 3);
@@ -290,6 +310,16 @@ test.describe('KaraFun catalog', () => {
     await expect(catalogRows(page).locator('.in-library')).toHaveCount(2);
     await expect(songRow(page, 'Jolene').locator('.set-toggle')).toHaveText('✓');
     expect(await readStore(page, 'songs')).toHaveLength(3);
+
+    // Tonight's field: with fewer than three of my songs matching, it offers
+    // the catalog, which opens the Songs scope on KaraFun with the same text.
+    await showSource(page, 'My songs');
+    await openScope(page, 'Tonight');
+    await page.getByRole('searchbox', { name: 'Add a song to tonight\'s set' }).fill('jol');
+    await page.getByRole('button', { name: 'Search the KaraFun catalog for “jol”' }).click();
+    await expect(source(page, 'KaraFun')).toHaveAttribute('aria-checked', 'true');
+    await expect(search(page)).toHaveValue('jol');
+    await expect(shownTitles(page)).toHaveText(['Jolene']);
   });
 
   test('R67: without a catalog Find is unchanged', async ({ page }) => {
@@ -297,8 +327,8 @@ test.describe('KaraFun catalog', () => {
     await seed(page, { songs: [MY_VALERIE, { title: 'Dancing Queen', artist: 'ABBA', genre: 'Pop', year: 1976 }] });
     await expect(sourceSwitch(page)).toHaveCount(0);
     await expect(page.getByRole('radio')).toHaveCount(0);
-    await expect(search(page)).toHaveAttribute('placeholder', 'Search title or artist');
-    await expect(page.getByRole('button', { name: 'Pick for me' })).toBeVisible();
+    await expect(search(page)).toHaveAttribute('placeholder', 'Search 2 songs');
+    await expect(page.getByRole('button', { name: 'Pick one' })).toBeVisible();
     await expect(page.getByText('Add a song', { exact: true })).toBeVisible();
     await expect(songRow(page, 'Valerie').locator('.sub')).toHaveText('Amy Winehouse · Soul · 2006');
     await expect(page.locator('.mark')).toHaveCount(0);
@@ -306,6 +336,7 @@ test.describe('KaraFun catalog', () => {
     await openFilters(page);
     await expect(filter(page, 'KaraFun')).toBeHidden();
     await expect(filter(page, 'Tag')).toBeVisible();
+    await closeFilters(page);
     await search(page).fill('zzz');
     await expect(page.getByRole('button', { name: 'Add “zzz”' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Search the KaraFun catalog' })).toHaveCount(0);
@@ -356,6 +387,7 @@ test.describe('KaraFun catalog', () => {
     await expect(page.getByText('Add a song', { exact: true })).toBeHidden();
     await openFilters(page);
     await choose(page, 'Genre', 'Polka');
+    await closeFilters(page);
     await expect(countLine(page)).toHaveText('450 of 450 songs');
     await expect(catalogRows(page)).toHaveCount(200);
     await page.getByRole('button', { name: 'Show 200 more' }).click();
@@ -393,10 +425,11 @@ test.describe('KaraFun catalog', () => {
     await expectTapTarget(filter(page, 'KaraFun'));
     await choose(page, 'KaraFun', 'In KaraFun');
     await expect(shownTitles(page)).toHaveText(['Dancing Queen', 'Valerie']);
-    await expect(filtersSummary(page)).toHaveText('Filters (1)');
+    await expectFilterCount(page, 1);
     await choose(page, 'Genre', 'Pop');
     await expect(shownTitles(page)).toHaveText(['Dancing Queen']);
-    await expect(filtersSummary(page)).toHaveText('Filters (2)');
+    await expectFilterCount(page, 2);
+    await expect(filterTokens(page)).toHaveText(['Pop', 'in KaraFun']);
     await choose(page, 'Genre', 'Any genre');
     await choose(page, 'KaraFun', 'Not in KaraFun');
     await expect(shownTitles(page)).toHaveText(['Mr. Brightside']);
@@ -408,11 +441,12 @@ test.describe('KaraFun catalog', () => {
     await expect(filter(page, 'KaraFun')).toHaveValue('out');
     await choose(page, 'KaraFun', 'Any');
     await expect(page.getByText('3 of 3 songs')).toBeVisible();
+    await closeFilters(page);
 
-    // The song screen says whether KaraFun has it.
+    // The song page says whether KaraFun has it.
     await openSong(page, 'Valerie');
     await expect(songField(page, 'KaraFun')).toHaveText('Yes');
-    await page.getByRole('button', { name: 'Back to list' }).click();
+    await backToSongs(page);
     await openSong(page, 'Mr. Brightside');
     await expect(songField(page, 'KaraFun')).toHaveText('No');
   });

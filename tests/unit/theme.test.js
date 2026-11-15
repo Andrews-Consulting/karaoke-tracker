@@ -5,14 +5,14 @@ import {
 } from '../../js/lib/theme.js';
 
 describe('accent (R55)', () => {
-  it('offers green, amber, lime and pink, green first and default', () => {
-    expect(ACCENT_CHOICES.map(([key]) => key)).toEqual(['green', 'amber', 'lime', 'pink']);
-    expect(DEFAULT_ACCENT_CHOICE).toBe('green');
+  it('offers sky, green, amber, lime and pink, sky first and default', () => {
+    expect(ACCENT_CHOICES.map(([key]) => key)).toEqual(['sky', 'green', 'amber', 'lime', 'pink']);
+    expect(DEFAULT_ACCENT_CHOICE).toBe('sky');
   });
 
-  it('turns unknown saved values into green', () => {
-    for (const key of ['amber', 'lime', 'pink']) expect(normalizeAccentChoice(key)).toBe(key);
-    for (const bad of [null, undefined, '', 'teal', 'PINK', 3]) expect(normalizeAccentChoice(bad)).toBe('green');
+  it('turns unknown saved values into sky', () => {
+    for (const key of ['green', 'amber', 'lime', 'pink']) expect(normalizeAccentChoice(key)).toBe(key);
+    for (const bad of [null, undefined, '', 'teal', 'PINK', 3]) expect(normalizeAccentChoice(bad)).toBe('sky');
   });
 });
 

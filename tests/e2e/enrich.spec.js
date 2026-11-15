@@ -2,8 +2,10 @@
 // R64: a new song's status starts blank; R65: moving data from Safari to the
 // installed app is pointed out at both ends.
 import { test, expect } from '@playwright/test';
-import { openApp, addSong, openSong, expectTab, readStore } from './helpers.js';
-import { mockMusicBrainz, mbRecording, openAddForm, suggestionList, openFilters, choose } from './helpers-find.js';
+import { openApp, addSong, openSong, expectTab, readStore, openScope } from './helpers.js';
+import {
+  mockMusicBrainz, mbRecording, openAddForm, suggestionList, openFilters, closeFilters, choose, statusToggle, backToSongs,
+} from './helpers-find.js';
 
 const QUIET_MS = 700; // longer than the 400 ms typing pause
 
@@ -83,9 +85,12 @@ test.describe('Blank status (R64)', () => {
     await expect(form.getByLabel('Status').locator('option')).toHaveText(['Not set', 'Go-to', 'Want to try', 'Retired']);
     await addSong(page, { title: 'Valerie', artist: 'Amy Winehouse' });
 
+    // On the song page none of the three status toggles is pressed.
     await openSong(page, 'Valerie');
-    await expect(page.locator('.song-fields .field').filter({ hasText: 'Status' })).toContainText('—');
-    await page.getByRole('button', { name: 'Back to list' }).click();
+    await expect(statusToggle(page, 'Go-to')).toHaveAttribute('aria-pressed', 'false');
+    await expect(statusToggle(page, 'Want to try')).toHaveAttribute('aria-pressed', 'false');
+    await expect(statusToggle(page, 'Retired')).toHaveAttribute('aria-pressed', 'false');
+    await backToSongs(page);
 
     await openFilters(page);
     await choose(page, 'Status', 'Not set');
@@ -93,6 +98,7 @@ test.describe('Blank status (R64)', () => {
     await choose(page, 'Status', 'Go-to');
     await expect(page.getByText('0 of 1 songs')).toBeVisible();
     await choose(page, 'Status', 'Any status');
+    await closeFilters(page);
 
     // Choosing a status on the form stores it.
     const again = await openAddForm(page);
@@ -143,7 +149,7 @@ test.describe('Moving from Safari (R65)', () => {
     await expectTab(page, 'Settings');
     await expect(page.getByText('Restore from backup', { exact: true })).toBeVisible();
 
-    await page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name: 'Songs' }).click();
+    await openScope(page, 'Songs');
     await addSong(page, { title: 'Valerie', artist: 'Amy Winehouse' });
     await expect(card).toHaveCount(0);
   });

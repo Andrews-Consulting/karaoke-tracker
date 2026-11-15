@@ -1,56 +1,57 @@
-// Steps for the Setlists e2e tests (Wave 2 E). openApp, addSong, putRecords and
-// readStore live in helpers.js.
+// Steps for the Setlists e2e tests (Wave 2 E), on the Lists scope since
+// Design B. openApp, addSong, putRecords and readStore live in helpers.js;
+// the newer Lists steps are in helpers-lists.js.
 import { expect } from '@playwright/test';
-import { expectTab } from './helpers.js';
+import { openScope, expectTab } from './helpers.js';
+import { listsHeading, openSongMenu } from './helpers-lists.js';
 
-// Taps the Setlists tab and waits for the setlist list.
-// Taps the Setlists tab and lands on the setlist list. Within a few minutes of
-// leaving a setlist the tab reopens it (R60), so this steps back out to the list.
+// Taps Lists and lands on the lists. Within a few minutes of leaving a list
+// the scope reopens it (R60), so this steps back out to the lists.
 export async function openSetlists(page) {
-  await page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name: 'Setlists' }).click();
-  await expectTab(page, 'Setlists');
-  const form = page.getByRole('form', { name: 'New setlist' });
-  const back = page.getByRole('button', { name: '‹ All setlists' });
-  await expect(form.or(back)).toBeVisible();
+  await openScope(page, 'Lists');
+  const back = page.getByRole('button', { name: 'Back to Lists' });
+  await expect(listsHeading(page).or(back)).toBeVisible();
   if (await back.isVisible()) await back.click();
-  await expect(form).toBeVisible();
+  await expect(listsHeading(page)).toBeVisible();
 }
 
-// The setlist's row in the list (not while it is being edited).
+// The list's card among the lists.
 export function setlistRow(page, name) {
-  return page.getByRole('list', { name: 'Setlists' }).getByRole('listitem')
-    .filter({ has: page.getByRole('button', { name: `Open ${name}`, exact: true }) });
+  return setlistRows(page)
+    .filter({ has: page.locator('.title', { hasText: new RegExp(`^${escapeRegExp(name)}$`) }) });
 }
 
 export function setlistRows(page) {
-  return page.getByRole('list', { name: 'Setlists' }).locator('li[data-setlist-id]');
+  return page.getByRole('list', { name: 'Your lists' }).locator('li[data-setlist-id]');
 }
 
-// Creates a setlist through the "New setlist" form. venue is the label option (R56).
+// Creates a list through "New list". venue is the label option (R56).
 export async function createSetlist(page, name, venue = 'Any venue') {
-  const form = page.getByRole('form', { name: 'New setlist' });
+  const form = page.getByRole('form', { name: 'New list' });
+  if (!(await form.isVisible())) await page.getByRole('button', { name: 'New list', exact: true }).click();
   await form.getByLabel('Setlist name').fill(name);
   await form.getByLabel('For venue (optional)').selectOption({ label: venue });
-  await form.getByRole('button', { name: 'Create setlist' }).click();
+  await form.getByRole('button', { name: 'Create list' }).click();
   await expect(setlistRow(page, name.trim())).toBeVisible();
 }
 
-// Opens the edit form for a setlist and returns it.
+// Opens the list (unless it is open) and its "Rename and label" form, and returns the form.
 export async function editSetlist(page, name) {
-  await setlistRow(page, name).getByRole('button', { name: `Edit ${name}`, exact: true }).click();
+  if (!(await page.getByRole('heading', { level: 2, name, exact: true }).isVisible())) await openSetlist(page, name);
+  await page.getByRole('button', { name: 'Rename and label', exact: true }).click();
   const form = page.getByRole('form', { name: `Edit ${name}`, exact: true });
   await expect(form).toBeVisible();
   return form;
 }
 
 export async function openSetlist(page, name) {
-  await page.getByRole('button', { name: `Open ${name}`, exact: true }).click();
+  await setlistRow(page, name).locator('button.list-open').click();
   await expect(page.getByRole('heading', { level: 2, name, exact: true })).toBeVisible();
 }
 
 export async function backToSetlists(page) {
-  await page.getByRole('button', { name: '‹ All setlists' }).click();
-  await expect(page.getByRole('form', { name: 'New setlist' })).toBeVisible();
+  await page.getByRole('button', { name: 'Back to Lists' }).click();
+  await expect(listsHeading(page)).toBeVisible();
 }
 
 // Rows of the open setlist's songs, in setlist order.
@@ -68,14 +69,14 @@ export function setlistSongRow(page, title) {
 }
 
 // Adds songs to the open setlist the R57 way: "Find songs" opens the Songs
-// tab in Find with this set, + adds each song there (searching for it), and
-// the setlist opens again. Songs go to the end in the order given. Leaves the
-// search empty, since it persists across tabs (R53).
+// scope with this set as tonight's, + adds each song there (searching for
+// it), and the setlist opens again. Songs go to the end in the order given.
+// Leaves the search empty, since it persists across scopes (R53).
 export async function addToSetlist(page, setlistName, ...songs) {
   await page.getByRole('button', { name: 'Find songs', exact: true }).click();
   const search = page.getByRole('searchbox', { name: 'Search songs' });
-  await expect(page.getByRole('tab', { name: 'Find' })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByLabel('Set', { exact: true }).locator('option:checked')).toHaveText(new RegExp(`^${escapeRegExp(setlistName)}( · |$)`));
+  await expectTab(page, 'Songs');
+  await expect(page.locator('.find-context')).toContainText(` · ${setlistName} · `);
   for (const { title } of songs) {
     await search.fill(title);
     await page.getByRole('button', { name: `Add ${title} to the set`, exact: true }).click();
@@ -87,7 +88,9 @@ export async function addToSetlist(page, setlistName, ...songs) {
   for (const { title } of songs) await expect(setlistSongRow(page, title)).toBeVisible();
 }
 
+// Removes a song from the open list, through its "…".
 export async function removeFromSetlist(page, { title, artist }) {
+  await openSongMenu(page, title);
   await setlistSongRow(page, title).getByRole('button', { name: `Remove ${title} by ${artist}`, exact: true }).click();
   await expect(setlistSongRow(page, title)).toHaveCount(0);
 }
@@ -104,7 +107,7 @@ export function dragHandle(page, title) {
     .getByRole('button', { name: `Move ${title}`, exact: true });
 }
 
-// A song's Up or Down button: direction is 'up' or 'down'.
+// A song's Up or Down button, under its "…" (openSongMenu): direction is 'up' or 'down'.
 export function moveButton(page, title, direction) {
   return page.getByRole('list', { name: 'Songs in this setlist' })
     .getByRole('button', { name: `Move ${title} ${direction}`, exact: true });

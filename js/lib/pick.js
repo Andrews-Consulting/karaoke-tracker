@@ -1,4 +1,4 @@
-// "Pick for me" (R13). Pure: no DOM, no IndexedDB.
+// "Pick one" (R13). Pure: no DOM, no IndexedDB.
 
 // One item of `items` at random, or null when there are none. `random`
 // returns a number in [0, 1), like Math.random; tests pass their own.

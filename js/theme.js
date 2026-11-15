@@ -42,7 +42,7 @@ export function applyThemeChoice(value) {
   paint(choice);
 }
 
-// ---- Accent (R55): green by default, or amber, lime or pink ----
+// ---- Accent (R55): sky by default, or green, amber, lime or pink ----
 
 export function savedAccentChoice() {
   try {

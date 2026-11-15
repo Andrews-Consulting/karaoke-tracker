@@ -59,7 +59,7 @@ async function seed(page) {
   const venue = Object.fromEntries(VENUES.map((n, i) => [n, venueIds[i]]));
   await put(page, 'sings', SINGS.map(([t, v, date]) => ({ songId: song[t], venueId: venue[v], date })));
   const setlistIds = await put(page, 'setlists', SETLISTS.map((s) => ({ name: s.name, venueId: s.venue ? venue[s.venue] : null, songIds: s.songs.map((t) => song[t]) })));
-  // Open at Viking with "Friday at Viking" as the set, and one sing logged today for Sung mode.
+  // Open at Viking with "Friday at Viking" as the set, and one sing logged today for the Sung strip.
   const pad = (n) => String(n).padStart(2, '0');
   const d = new Date();
   const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -93,62 +93,93 @@ function put(page, store, records) {
 
 // ---------- Screens ----------
 
-const tab = (page, name) => page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name }).click();
+// The dock's scope bar (Design B): Tonight, Songs, Lists, History and the Settings gear.
+const scopes = (page) => page.getByRole('navigation', { name: 'Scopes' });
+const tab = (page, name) => scopes(page).getByRole('button', { name, exact: true }).click();
 const heading = (page, name, level) => page.getByRole('heading', { name, level, exact: true }).waitFor();
-// No title bar (R58): the selected tab says which screen is showing.
-const selected = (page, name) => page.getByRole('navigation', { name: 'Sections' })
-  .locator('button[aria-current="page"]').filter({ hasText: new RegExp(`^${name}$`) }).waitFor();
+// No title bar (R58): the selected scope (or the gear, for Settings) says which screen is showing.
+const selected = (page, name) => scopes(page).getByRole('button', { name, exact: true })
+  .and(page.locator('[aria-current="page"]')).waitFor();
+const tonightField = (page) => page.getByRole('searchbox', { name: 'Add a song to tonight\'s set' });
 
 // Each entry: a name and the steps that get the screen on the page.
 const SCREENS = [
-  ['songs', async (page) => { await selected(page, 'Songs'); await page.getByText(/of \d+ songs/).waitFor(); }],
+  ['tonight', async (page) => { await selected(page, 'Tonight'); await page.locator('.up-next').waitFor(); }],
+  ['tonight-typing', async (page) => {
+    await tonightField(page).fill('br');
+    await page.getByRole('region', { name: 'Add to tonight' }).waitFor();
+  }],
+  ['tonight-row', async (page) => {
+    await tonightField(page).fill('');
+    await page.getByRole('button', { name: 'More for Drive' }).click();
+  }],
+  ['kj-after-sang-it', async (page) => {
+    await page.getByRole('button', { name: /^Sang it/ }).click();
+    await page.getByRole('region', { name: 'For the KJ' }).waitFor();
+  }],
+  ['kj-landscape', async (page) => {
+    const { width, height } = page.viewportSize();
+    await page.setViewportSize({ width: height, height: width });
+  }],
+  ['sung', async (page) => {
+    const { width, height } = page.viewportSize();
+    await page.setViewportSize({ width: height, height: width });
+    await page.getByRole('button', { name: 'Done' }).click();
+    await page.getByRole('button', { name: /^Sung · / }).click();
+    await page.getByRole('button', { name: /^Undo / }).first().waitFor();
+  }],
+  ['songs', async (page) => { await tab(page, 'Songs'); await page.getByText(/of \d+ songs/).waitFor(); }],
   ['songs-filters', async (page) => {
-    await page.locator('details.find-filters > summary').click();
+    await page.locator('#dock .dock-filter').click();
     await page.getByRole('form', { name: 'Filters' }).getByLabel('Sung', { exact: true }).selectOption('never');
   }],
+  ['songs-tokens', async (page) => {
+    await page.locator('.sheet-done').click();
+    await page.getByRole('group', { name: 'Filters on' }).waitFor();
+  }],
   ['songs-add', async (page) => {
-    await page.locator('details.find-filters > summary').click();
     await page.getByText('Add a song', { exact: true }).click();
     await page.getByRole('form', { name: 'Add a song' }).getByLabel('Title').fill('Sweet Caroline');
   }],
-  ['list-mode', async (page) => {
+  ['song', async (page) => {
     // Filters persist across reloads (R53), so drop the "never sung" one set above.
     await page.evaluate(() => localStorage.removeItem('findFilters'));
-    await page.reload(); // closes the Add form too
-    await page.getByText(/of \d+ songs/).waitFor();
-    await page.getByRole('tab', { name: /^List/ }).click();
-    await page.getByRole('button', { name: /^Sang / }).first().waitFor();
-  }],
-  ['sung-mode', async (page) => {
-    await page.getByRole('tab', { name: 'Sung' }).click();
-    await page.getByRole('button', { name: /^Undo / }).first().waitFor();
-  }],
-  ['song', async (page) => {
-    await page.reload(); // back to Find mode
+    await page.reload(); // closes the Add sheet; a reload keeps the scope
     await page.getByText(/of \d+ songs/).waitFor();
     await page.getByRole('listitem').filter({ hasText: 'Come and Get Your Love' }).locator('button.song-row').click();
     await heading(page, 'Come and Get Your Love', 2);
   }],
-  ['song-edit', async (page) => { await page.getByRole('button', { name: 'Edit' }).click(); await page.getByRole('button', { name: 'Save' }).waitFor(); }],
-  ['venues', async (page) => { await tab(page, 'Venues'); await page.getByRole('form', { name: 'Add a venue' }).waitFor(); }],
-  ['venue', async (page) => {
-    await page.getByRole('button', { name: 'Open Viking', exact: true }).click();
-    await heading(page, 'Viking', 2);
-    for (const s of await page.locator('.history details > summary').all()) await s.click();
+  ['song-edit', async (page) => {
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await page.getByRole('button', { name: 'Save' }).waitFor();
   }],
-  ['venue-log', async (page) => {
+  ['history', async (page) => {
+    await tab(page, 'History');
+    await heading(page, 'History', 2);
+    const first = page.locator('.history details > summary').first();
+    if (await first.count()) await first.click();
+  }],
+  ['history-night', async (page) => {
+    await page.getByRole('group', { name: 'Group the history' }).getByRole('button', { name: 'By night', exact: true }).click();
+    await page.getByRole('group', { name: 'Show the history of' }).getByRole('button', { name: 'All venues', exact: true }).click();
+  }],
+  ['history-log', async (page) => {
+    await page.getByRole('button', { name: 'Log a sing', exact: true }).click();
+    await page.getByRole('form', { name: 'Log a sing' }).waitFor();
     await page.getByRole('searchbox', { name: 'Find a song to log' }).fill('bro');
   }],
-  ['overall', async (page) => {
-    await page.getByRole('button', { name: '‹ All venues' }).click();
-    await page.getByRole('button', { name: 'Open overall stats' }).click();
-    await heading(page, 'Overall', 2);
+  ['venues', async (page) => {
+    await page.goBack();
+    await heading(page, 'History', 2);
+    await page.getByRole('button', { name: 'Venues', exact: true }).click();
+    await page.getByRole('form', { name: 'Add a venue' }).waitFor();
   }],
-  ['setlists', async (page) => { await tab(page, 'Setlists'); await page.getByRole('form', { name: 'New setlist' }).waitFor(); }],
+  ['lists', async (page) => { await tab(page, 'Lists'); await heading(page, 'Lists', 2); }],
   ['setlist', async (page) => {
-    await page.getByRole('button', { name: 'Open Friday at Viking', exact: true }).click();
-    await heading(page, 'Friday at Viking', 2);
-    await page.locator('details.mix > summary').click();
+    await page.getByRole('button', { name: /^Friday at Viking/ }).click();
+    await page.getByRole('button', { name: 'Back to Lists' }).waitFor();
+    const mix = page.locator('details.mix > summary');
+    if (await mix.count()) await mix.click();
   }],
   ['settings', async (page) => {
     await tab(page, 'Settings');
@@ -168,7 +199,7 @@ async function shoot(deviceKey, theme) {
   await mkdir(dir, { recursive: true });
 
   await page.goto('./');
-  await page.getByText(/of \d+ songs/).waitFor();
+  await selected(page, 'Tonight');
   await seed(page);
   await page.reload();
 

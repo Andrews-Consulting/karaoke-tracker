@@ -6,7 +6,7 @@ The internal id is `mic-jaunt` too: the IndexedDB name, the cache prefix, the ba
 
 No build step, no dependencies, no server. Plain HTML, CSS and JavaScript modules.
 
-Requirements live in [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
+Requirements live in [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md), which describes the app as it is; [docs/USER-STORIES.md](docs/USER-STORIES.md) says the same as what the singer wants and why, without reference to the screens.
 
 ## Run it locally
 
@@ -22,11 +22,12 @@ Then open <http://localhost:8000>. The VS Code "Live Server" extension works too
 
 | Path | What it is |
 |---|---|
-| `index.html` | Page shell, tab bar, PWA meta tags |
-| `css/app.css` | Styles; theme colors are CSS variables at the top |
-| `js/app.js` | Navigation and startup only |
-| `js/views/` | One module per section: `songs.js`, `setlists.js`, `venues.js`, `settings.js` |
-| `js/ui.js` | The `el()` DOM helper, confirmations and other shared UI |
+| `index.html` | Page shell, the dock's markup (scope bar, search field, slot), PWA meta tags |
+| `css/app.css` | Styles; the Design B palette is CSS variables at the top |
+| `js/app.js` | Scope routing and startup only |
+| `js/dock.js` | The dock at the bottom: selects a scope, hands the search field, filter button and slot to the scope showing |
+| `js/views/` | One module per scope or screen: `tonight.js` (home), `find.js` (Songs, with the Filters sheet), `song.js` (the song page and its edit form), `songs.js` (what those share: tonight's set at a venue, delete, the Add a song sheet), `setlists.js` (Lists), `venues.js` (History), `settings.js` (behind the gear), `kj.js` (the KJ view) |
+| `js/ui.js` | The `el()` DOM helper, icons, confirmations, and the screen stack behind the back gesture |
 | `js/lib/` | Pure logic (search, song records, later CSV and backup formats): no DOM, no IndexedDB, unit-tested |
 | `js/db.js` | IndexedDB wrapper, schema and record shapes |
 | `js/karafun.js` | Stores, replaces and removes the KaraFun catalog and flags the songs it has (R66, R68); parsing and matching are in `js/lib/karafun.js` |
@@ -38,6 +39,7 @@ Then open <http://localhost:8000>. The VS Code "Live Server" extension works too
 | `tests/unit/` | Vitest tests for `js/lib/` |
 | `tests/e2e/` | Playwright tests, named by requirement ID |
 | `docs/REQUIREMENTS.md` | Requirements and their status |
+| `docs/DESIGN-B.md` | The redesign being built: how the chosen direction maps onto the app, and the build order; `docs/design/` holds the designer's files |
 
 ## Tests
 
@@ -63,20 +65,24 @@ npm run test:e2e    # Playwright, tests/e2e/, mobile Chromium + mobile WebKit
 ## What works today
 
 - Installable shell with offline cache (R26, R27, R29)
-- Songs tab, built around a night out (R47–R50): the venue and the set you are working sit at the top, with three modes. **Find** searches and filters the library, shows times sung and last sung at the venue, and adds a song to the set with one tap. **List** is the set in order: move up and down, "Sang it" logs the sing and takes the song off, "Next time" parks it on the venue's Next time list. **Sung** shows what you sang here by date, with Undo for today
-- Library: add (at the bottom of Find, or straight from a search that matched nothing), open, edit every field (notes, genre, year, key, tags, status, rating), delete with confirmation (R1, R10, R2, R3, R36, R4–R7); title, artist, year and genre suggestions from MusicBrainz while typing, matching word prefixes, with an off switch in Settings (R35, R63); a new song's status starts as "Not set" (R64); a warning when the song is already there (R9); "Pick for me" (R13)
-- Find filters: never sung here / not since a date, tag, status, rating, genre, decade and In KaraFun; sort by title, artist, rating, last sung, date added, genre or decade (R37, R41, R11, R42, R12, R68). Fast with 1,000 songs (R34); each song has a video search link (R38)
-- KaraFun catalog in Find: once a catalog is loaded, a "My songs | KaraFun" switch searches it by genre, decade, duet, explicit and language, and each row adds the song to my songs or straight into the set with + (R67); songs KaraFun has carry a KaraFun mark (R68)
-- Setlists tab, for building and tidying lists: each list is labelled "For a venue" or "Any venue" and can be opened at any venue (R56); create, edit, delete; "Find songs" jumps to the Songs tab to add with + (R57); remove and drag to reorder; "Merge into…" moves a list's songs onto the end of another (R59); "Sung here" flags; a Mix card counts genres and decades; "Suggest songs" fills a set with never-sung songs spread across genres and decades (R14, R15, R43, R16, R44, R45)
-- No title bar: the selected bottom tab is an accent pill, and content starts at the top edge (R58). The Setlists tab reopens the setlist you were on if you come back within five minutes (R60); List mode has the same drag handle as the setlist screen (R61)
+- A dock at the bottom of every screen (Design B, see docs/DESIGN-B.md): the scope bar (Tonight, Songs, Lists, History and a gear for Settings) and the search field, which belongs to whichever scope is showing; the Up next card sits above it on Tonight and the filter button beside it on Songs
+- **Tonight**, the home scope, built around a night out (R47–R50, R74): the venue and tonight's set are chosen in the header, with the date. A Sung strip says what you sang here today, with Undo last; tap it for every sing here by date, with Undo for today's. Up next is docked above the field: **Sang it** logs the sing, takes the song off the set and shows the next song to the KJ in one tap, with Undo on that screen; **KJ** shows it full screen. After that comes the rest of the set, dragged to reorder (R61), each with Park (to the venue's Next time list), Remove and Details. Typing in the field lists your matching songs with + to add them, and offers the KaraFun catalog when few match. Under Overall the set can be built but not sung (R56)
+- **Songs**: the whole library, searched from the dock's field ("Search 412 songs"). The count line ("38 of 412 songs") has **Pick one** (R13) and the sort as a token; the dock's filter button, with a badge for how many are on, opens the Filters sheet over the list, and the filters on show as tokens above it, each removed with its ×, with Clear all (R69). Each row shows the song, its sings at tonight's venue ("2× · 17 Oct" or "New here"), a KaraFun mark, and + to add it to tonight's set (R48); tapping it opens the song page
+- **The song page** (R70): the title, artist and key large, for the KJ, with a KJ button for the full-screen view; status and rating as toggles, the key with − and +, and On set / Add to set, each saved on tap; notes, tags, the sings here and at every venue, genre, year and KaraFun; Listen (a video search), Edit and Delete
+- The KJ view (R54): title, artist and key as large as fit, the key with its meaning in words; turned to landscape it shows only the title, artist and key
+- Library: add (the Add a song sheet at the end of Songs, or straight from a search that matched nothing), open, edit every field (notes, genre, year, key, tags, status, rating), delete with confirmation (R1, R10, R2, R3, R36, R4–R7); title, artist, year and genre suggestions from MusicBrainz while typing, matching word prefixes, with an off switch in Settings (R35, R63); a new song's status starts as "Not set" (R64); a warning when the song is already there (R9)
+- Filters: never sung here / not since a date, tag, status, rating, genre, decade and In KaraFun; sort by title, artist, rating, last sung, date added, genre or decade (R37, R41, R11, R42, R12, R68). Fast with 1,000 songs (R34); each song has a video search link (R38)
+- KaraFun catalog in Songs: once a catalog is loaded, a "My songs | KaraFun" switch searches it by genre, decade, duet, explicit and language, and each row adds the song to my songs or straight into the set with + (R67); songs KaraFun has carry a KaraFun mark (R68)
+- **Lists**, for building and tidying lists: each list shows its label ("For The Crown" or "Any venue"; any list can be opened at any venue, R56), its song count, a genre line and a decade line, and how many of its songs are in tonight's set; "New list" at the top, and the dock's field filters them. A list opens on top with + / ✓ on each song for tonight's set ("✓ = in tonight's set"), each song's sings at the list's venue as Tonight shows them, a drag handle and "…" for Up, Down and Remove; its actions are "Find songs" (the Songs scope with + to add, R57), "Rename and label", "Merge into…" (onto the end of another, R59) and Delete, with the Mix card and "Suggest songs" (never-sung songs spread across genres and decades) under the songs (R14, R15, R43, R16, R44, R45)
+- No title bar: the selected scope in the dock is an accent pill, and content starts at the top edge (R58). Lists reopens the list you were on if you come back within five minutes (R60)
 - Settings: CSV import of songs and, via a venue column, sings; CSV export; JSON backup by download or, on a phone, the share sheet; "Check a backup file"; restore (R22, R46, R23, R20, R62, R21). The KaraFun catalog: load KaraFun's CSV, see when and how many, replace or remove it; loading marks which of your songs KaraFun has (R66, R68). In Safari on an iPhone a banner explains that data does not follow the app to the Home Screen, and a fresh install offers to restore (R65)
 - Print-friendly song list, setlist and venue history from the browser's print menu (R24); new-version banner with Reload (R30); iPhone icon and status-bar tags (R29); a reminder when the last backup is over 30 days old (R25)
-- Venues: add, rename, delete when unused; log a sing with date and venue; times sung and last sung per venue and overall (R40, R8)
+- **History**: a chip for each venue and All venues, starting at Tonight's venue; By song lists each song with times and last sung, opening to every sing with Delete, and By night lists the same sings by date; the dock's field searches by title or artist (R8, R72). "Log a sing" logs one you forgot or from another night, finding the song by typing, dated today unless changed (R71). "Venues" (also Tonight's "Manage venues…") adds, renames and deletes venues, a venue only when no sing uses it (R40)
 - Data stored in IndexedDB, with a persistent-storage request (R18, R19)
 
-- One-handed layout: bottom tabs, 44 px controls everywhere, actions at the bottom of detail screens, and the back gesture returns from a detail screen instead of leaving the app (R31)
-- Dark by default with a green accent (R51), or amber, lime or pink from Settings (R55); a light option and "Match the phone" (R32); readable at desktop widths (R33)
-- Filters persist across tabs and reloads (R53); a sung filter hides the redundant "never sung here" lines (R52); tap a song in List mode to show it full screen to the KJ (R54)
+- One-handed layout: the dock at the bottom, 44 px controls everywhere, actions at the bottom of detail screens, and the back gesture returns from a detail screen instead of leaving the app (R31)
+- Dark by default on a blue-black ground with a sky accent (R51), or green, amber, lime or pink from Settings (R55); system fonts only, monospace for dates, counts and keys; a light option and "Match the phone" (R32); readable at desktop widths (R33)
+- Filters persist across scopes and reloads (R53); a sung filter hides the redundant "never sung here" lines (R52)
 
 ## Still to build
 
