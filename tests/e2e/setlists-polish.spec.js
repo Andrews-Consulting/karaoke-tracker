@@ -5,7 +5,7 @@ import { makeSong } from '../../js/lib/song.js';
 import { openApp, putRecords, readStore } from './helpers.js';
 import {
   openSetlists, openSetlist, backToSetlists, setlistRow, setlistSongRow, setlistSongTitles, addToSetlist,
-  removeFromSetlist, dragHandle, dragSong, mixLine, mixText, mixToggle, openListSong,
+  removeFromSetlist, dragHandle, dragSong, mixLine, mixText, mixToggle, openListSong, editSetlist,
 } from './helpers-setlists.js';
 import { openSongMenu, tonightToggle } from './helpers-lists.js';
 import { swipeClosed } from './helpers-tonight.js';
@@ -35,6 +35,45 @@ async function storedOrder(page) {
 }
 
 test.describe('Setlists polish', () => {
+  test('R78: a form field on the screen stays in view with the keyboard up, and the dock gives way', async ({ page }) => {
+    await openApp(page);
+    const ids = await seedSongs(page, SONGS);
+    const [crown] = await putRecords(page, 'venues', [{ name: 'The Crown' }]);
+    await putRecords(page, 'setlists', [{
+      name: 'Friday', venueId: crown, songIds: [ids.Valerie, ids['Dancing Queen'], ids['Mr. Brightside'], ids.Jolene],
+    }]);
+    await openSetlists(page);
+    const form = await editSetlist(page, 'Friday');
+    const name = form.getByLabel('Setlist name');
+    await name.focus();
+
+    // The keyboard comes up: the window shrinks to what is left above it. The
+    // header and the dock would leave the rename form under a one-line window,
+    // so the dock gives way and the field is scrolled into view.
+    await page.setViewportSize({ width: 390, height: 420 });
+    await expect(page.locator('html[data-kb]')).toHaveCount(1);
+    await expect(page.locator('html[data-kb-form]')).toHaveCount(1);
+    await expect(page.locator('#dock')).toBeHidden();
+    const box = await name.boundingBox();
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height).toBeLessThanOrEqual(420);
+    await expect(form.getByRole('button', { name: 'Save' })).toBeVisible();
+
+    // Moving to the next field keeps the dock away; leaving the form brings it back.
+    await form.getByLabel('For venue (optional)').focus();
+    await expect(page.locator('html[data-kb-form]')).toHaveCount(1);
+    await form.getByRole('button', { name: 'Cancel' }).focus();
+    await expect(page.locator('html[data-kb-form]')).toHaveCount(0);
+    await expect(page.locator('#dock')).toBeVisible();
+
+    // The keyboard goes: everything is as it was.
+    await name.focus();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.locator('html[data-kb]')).toHaveCount(0);
+    await expect(page.locator('html[data-kb-form]')).toHaveCount(0);
+    await expect(page.locator('#dock')).toBeVisible();
+  });
+
   test('R16: the arrow keys on a song\'s handle move it, and the order survives a reload', async ({ page }) => {
     await openApp(page);
     const ids = await seedSongs(page, SONGS);
@@ -147,9 +186,17 @@ test.describe('Setlists polish', () => {
     // The screen scrolls by itself, the others making room, until the end of the list is in view.
     await expect(setlistSongTitles(page).last()).toHaveText('Song 01', { timeout: 40_000 });
     expect(await main.evaluate((m) => m.scrollTop)).toBeGreaterThan(0);
-    const settled = await main.evaluate((m) => m.scrollTop);
-    await page.waitForTimeout(300);
-    expect(await main.evaluate((m) => m.scrollTop)).toBe(settled); // it stops there
+    // It scrolls on a little past that, until the end of the list is clear of
+    // the edge zone, then stops there: two reads 300 ms apart agree. Polled,
+    // because on a loaded machine those last frames can take longer than that.
+    let settled = await main.evaluate((m) => m.scrollTop);
+    await expect.poll(async () => {
+      await page.waitForTimeout(300);
+      const now = await main.evaluate((m) => m.scrollTop);
+      const still = now === settled;
+      settled = now;
+      return still;
+    }, { timeout: 20_000 }).toBe(true);
     await page.mouse.up();
 
     // It lands at the end of the list, and the order is saved.

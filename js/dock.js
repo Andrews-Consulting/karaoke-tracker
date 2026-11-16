@@ -203,9 +203,36 @@ function fit() {
   const orientation = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
   tallest[orientation] = Math.max(tallest[orientation], height);
   document.documentElement.style.setProperty('--vvh', `${height}px`);
-  document.documentElement.toggleAttribute('data-kb', height < tallest[orientation] - KEYBOARD_DROP);
+  const kb = height < tallest[orientation] - KEYBOARD_DROP;
+  document.documentElement.toggleAttribute('data-kb', kb);
+  placeFormField(kb);
   if (vv && (window.scrollY || vv.offsetTop)) window.scrollTo(0, 0);
 }
+
+// Typing into a form on the screen (a list's name, a venue, a song's notes)
+// rather than the dock's field: the dock gives way (html[data-kb-form],
+// css/app.css), since the scope bar is no use mid-form and the room is
+// needed, and <main> scrolls the field into view, which the shrink would
+// otherwise leave below the fold (a list's rename form sat under a one-line
+// window on an iPhone, 2026-11-16).
+function isFormField(node) {
+  if (!node || node === document.body || dockEl.contains(node)) return false;
+  if (node.isContentEditable || node.tagName === 'TEXTAREA' || node.tagName === 'SELECT') return true;
+  return node.tagName === 'INPUT' && !/^(button|checkbox|radio|range|file|submit|reset|color)$/.test(node.type);
+}
+
+function placeFormField(kb) {
+  const active = document.activeElement;
+  const inForm = kb && isFormField(active);
+  document.documentElement.toggleAttribute('data-kb-form', inForm);
+  if (inForm) active.scrollIntoView({ block: 'center' });
+}
+
+document.addEventListener('focusin', () => placeFormField(document.documentElement.hasAttribute('data-kb')));
+document.addEventListener('focusout', () => {
+  // After the tick, so a move straight to another field keeps the dock away.
+  setTimeout(() => placeFormField(document.documentElement.hasAttribute('data-kb')), 0);
+});
 
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', fit);
