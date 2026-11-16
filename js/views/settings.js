@@ -1,8 +1,9 @@
-// Settings view: persistent storage (R19), CSV import (R22, with sings R46),
-// CSV export (R23), JSON backup (R20) and restore (R21), and the KaraFun
-// catalog (R66).
+// Settings view: Help at the top (R76), persistent storage (R19), CSV import
+// (R22, with sings R46), CSV export (R23), JSON backup (R20) and restore
+// (R21), and the KaraFun catalog (R66).
 import { db, request } from '../db.js';
-import { el, viewEl, confirmAction } from '../ui.js';
+import { el, viewEl, confirmAction, openScreen } from '../ui.js';
+import { renderHelp } from './help.js';
 import {
   parseCsv, planImport, importSummary, songsToCsv, csvFileName,
 } from '../lib/csv.js';
@@ -364,8 +365,14 @@ export async function renderSettings() {
     watchCatalogLoad(karafunLoad);
   }
 
+  // ---- R76: Help, on top of Settings so Back returns here ----
+  const helpButton = el('button', {
+    class: 'btn help-open', type: 'button', text: 'Help', onclick: () => openScreen(renderHelp),
+  });
+
   viewEl.replaceChildren(
     el('div', { class: 'stack' },
+      helpButton,
       appearance,
       onlineSuggestions,
       el('div', { class: 'card stack' }, el('strong', { text: 'Storage' }), status, ask, askResult),

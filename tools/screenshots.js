@@ -195,6 +195,10 @@ const SCREENS = [
     await selected(page, 'Settings');
     await page.getByLabel('Theme', { exact: true }).waitFor();
   }],
+  ['help', async (page) => {
+    await page.getByRole('button', { name: 'Help', exact: true }).click();
+    await heading(page, 'Help', 2);
+  }],
 ];
 
 async function shoot(deviceKey, theme) {

@@ -90,6 +90,7 @@ Everything the app does today, written as what the singer wants and why, without
 - As a singer, I want it served securely from a plain address, so that installing and updating need nothing but a browser. (R28)
 - As a singer, I want to be told when a new version is ready and reload when I choose, so that updates never interrupt a night. (R30)
 - As a singer, I want to see which version I have, so that I can tell whether an update arrived. (R73)
+- As a singer, I want a short explanation inside the app of what it is for and how a night out works, with a fuller guide a tap away, so that I can get going, or pick it up again after a while, without guessing. (R76)
 
 ## Look and feel
 
