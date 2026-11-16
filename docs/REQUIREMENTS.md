@@ -129,6 +129,7 @@ KaraFun publishes its whole catalog (about 100,000 songs) as a free CSV: `Id;Tit
 | R51 | High contrast: text and accent read at about 7:1 on the dark background | Must | Done | Design B's blue-black ground: text 16:1, muted text 7.8:1, the sky accent 10:1; every pair at least 4.5:1, light theme included. System fonts only. Checked in screenshots; no e2e test |
 | R55 | Choose the accent colour: sky (default), green, amber, lime or pink | Must | Done | Each has a deeper partner for the light theme. e2e: "R55: the accent colour can be changed in Settings and survives a reload" |
 | R33 | Readable at desktop widths too | Should | Done | Content stays at 720 px, centred. e2e: "R33: works at a desktop width with readable line lengths and no sideways scroll" |
+| R76 | A short Help screen in the app says what Mic Jaunt is for, names the screens, walks through a night and the first steps, and links to a fuller guide on the site | Should | Done | Added 2026-11-16. "Help" at the top of Settings opens it on top of Settings, so Back and the back gesture return there (R31) and the gear stays selected; the text is in `js/views/help.js`, one idea per line. "Full guide" opens `help/index.html` (micjaunt.app/help/) in the browser: a longer page for the singer with iPhone screenshots in `help/img/`, left out of the offline cache, so it needs a connection. e2e: "R76: Help opens from the top of Settings, names the screens, links to the full guide, and Back returns to Settings" |
 
 ## History
 

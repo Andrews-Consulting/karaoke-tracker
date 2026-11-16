@@ -70,7 +70,7 @@ Back · KJ. Title and artist in the KJ-sized header; key with a stepper (R6); st
 
 ## Settings
 
-Reached from the gear in the scope bar. Same cards as today: Appearance (theme, accent), Online suggestions, Storage, Import songs, Export songs, Backup, KaraFun catalog, version. The move-to-Home-Screen banner, backup reminder and new-version banner render above the dock as today.
+Reached from the gear in the scope bar. Same cards as today: Appearance (theme, accent), Online suggestions, Storage, Import songs, Export songs, Backup, KaraFun catalog, version. The move-to-Home-Screen banner, backup reminder and new-version banner render above the dock as today. A **Help** button above the cards (added 2026-11-16, R76) opens a short help screen on top of Settings, with the gear still selected; its "Full guide" link opens the longer guide at `help/` on the site in the browser.
 
 ## Look
 

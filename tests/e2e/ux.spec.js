@@ -154,6 +154,10 @@ test.describe('UX', () => {
 
     await openSettings(page);
     await expectTapTargets(page, 'Settings');
+    await page.getByRole('button', { name: 'Help', exact: true }).click();
+    await expect(page.getByRole('heading', { level: 2, name: 'Help' })).toBeVisible();
+    await expectTapTargets(page, 'Help');
+    await page.getByRole('button', { name: 'Back to Settings' }).click();
 
     // Tonight at the venue: the menus, the Sung strip, a row's "…" actions,
     // the Up next card, the field with matches, and the KJ view.
