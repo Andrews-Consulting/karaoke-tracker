@@ -58,6 +58,18 @@ npm run test:e2e    # Playwright, tests/e2e/, mobile Chromium + mobile WebKit
 - Playwright starts `tools/serve.js` on `PORT` (default 8000). Run `PORT=8001 npm run test:e2e` to test a second checkout at the same time.
 - Every test gets a fresh browser context, so IndexedDB starts empty.
 - E2E test names carry the requirement ID they prove, e.g. `R10: searches by title or artist as I type`.
+- Two unit tests guard the bookkeeping. `tests/unit/requirements.test.js` reads `docs/REQUIREMENTS.md` and the e2e specs: every test a row names must exist with that title, every `Rnn:` test must be named by a row and its `Rnn` must be a current row, a Done row names at least one e2e test and a Built or Planned row names none. `tests/unit/app-shell.test.js` reads `sw.js`: every module reachable from `js/app.js` must be in `APP_SHELL`, and every path there must exist.
+
+## Changing the app
+
+The guards above are how the quality of the app is kept, so a change that adds or alters behaviour comes with all of these, and the unit suite fails until it does:
+
+1. A row in `docs/REQUIREMENTS.md`, new or updated, that says what the app does now, in plain words, and a matching line in `docs/USER-STORIES.md`. A replaced behaviour goes to the History table there; IDs are never reused.
+2. An e2e test in `tests/e2e/` whose title starts with the row's ID and says what it proves, named in the row's Notes. A row without a test reads Built, not Done.
+3. For a new file under `js/`, its path in `APP_SHELL` in `sw.js`; for any change to a cached file, `CACHE_VERSION` bumped.
+4. `npm test` green, both browsers.
+
+The guards check that the pieces are present and agree with each other. They cannot check that a test's title is true of what it asserts, or that a row describes the code: that is what review is for.
 
 ## Screenshots
 
