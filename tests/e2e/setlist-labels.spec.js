@@ -8,7 +8,7 @@ import {
   seed, reloadList, venueSelect, songRow, findContext, shownVenue,
 } from './helpers-find.js';
 import {
-  openSetlists, openSetlist, backToSetlists, setlistRow, setlistSongTitles, suggestForm, mixCard, pageToday,
+  openSetlists, openSetlist, backToSetlists, setlistRow, setlistSongTitles, suggestForm, mixLine, pageToday,
 } from './helpers-setlists.js';
 import { openVenues, venueRow, venueRows } from './helpers-venues.js';
 import { tonightListName } from '../../js/lib/night.js';
@@ -416,13 +416,13 @@ test.describe('Setlist labels, Find songs and merge', () => {
     await expect(shownSet(page)).toHaveText('Viking');
 
     // The setlist screen: no picker (the only search is the dock's, which
-    // filters the list), Find songs at the top, Suggest songs and Mix stay.
+    // filters the list), Find songs at the top, Suggest songs and the mix lines stay.
     await openSetlists(page);
     await openSetlist(page, 'Crown Sat');
     await expect(page.getByRole('region', { name: 'Add songs' })).toHaveCount(0);
     await expect(page.getByRole('searchbox')).toHaveAccessibleName('Search Crown Sat');
     await expect(suggestForm(page)).toBeVisible();
-    await expect(mixCard(page)).toBeVisible();
+    await expect(mixLine(page, 'genre')).toBeVisible();
     const find = button(page, 'Find songs');
     await expect(find).toHaveCount(1);
     await expectTapTarget(find);

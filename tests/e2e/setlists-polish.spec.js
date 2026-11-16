@@ -1,14 +1,20 @@
 // Setlists polish (Wave 3 G): reorder songs (R16), swipe for Remove (R15),
-// and the mix by genre and decade (R44).
+// the mix by genre and decade (R44), and a song opening its page (R70).
 import { test, expect } from '@playwright/test';
 import { makeSong } from '../../js/lib/song.js';
 import { openApp, putRecords, readStore } from './helpers.js';
 import {
-  openSetlists, openSetlist, backToSetlists, setlistSongRow, setlistSongTitles, addToSetlist, removeFromSetlist,
-  dragHandle, dragSong, mixCard, openMix, mixLine,
+  openSetlists, openSetlist, backToSetlists, setlistRow, setlistSongRow, setlistSongTitles, addToSetlist,
+  removeFromSetlist, dragHandle, dragSong, mixLine, mixText, mixToggle, openListSong,
 } from './helpers-setlists.js';
-import { openSongMenu } from './helpers-lists.js';
+import { openSongMenu, tonightToggle } from './helpers-lists.js';
 import { swipeClosed } from './helpers-tonight.js';
+
+async function expectTapTarget(locator) {
+  const box = await locator.boundingBox();
+  expect(box.width).toBeGreaterThanOrEqual(44);
+  expect(box.height).toBeGreaterThanOrEqual(44);
+}
 
 const SONGS = [
   { title: 'Valerie', artist: 'Amy Winehouse', genre: 'Soul', year: 2006 },
@@ -222,53 +228,151 @@ test.describe('Setlists polish', () => {
       { title: 'Valerie', artist: 'Amy Winehouse', genre: 'Soul', year: 2006 },
       { title: 'Mr. Brightside', artist: 'The Killers', genre: 'ROCK', year: 2004 },
       { title: 'Mystery Song', artist: 'Nobody' }, // no genre, no year
+      { title: 'Respect', artist: 'Aretha Franklin', genre: 'soul', year: 1967 },
+      { title: 'Wonderwall', artist: 'Oasis', genre: 'Rock', year: 1995 },
       { title: 'Back to Black', artist: 'Amy Winehouse', genre: 'soul', year: 2006 },
     ]);
     await putRecords(page, 'setlists', [
       {
         name: 'Friday',
         venueId: null,
-        songIds: ['Hotel California', 'Dancing Queen', 'Livin\' on a Prayer', 'Valerie', 'Mr. Brightside', 'Mystery Song']
-          .map((title) => ids[title]),
+        songIds: ['Hotel California', 'Dancing Queen', 'Livin\' on a Prayer', 'Valerie', 'Mr. Brightside', 'Mystery Song',
+          'Respect', 'Wonderwall'].map((title) => ids[title]),
       },
+      { name: 'Small', venueId: null, songIds: [ids.Valerie, ids['Dancing Queen']] },
       { name: 'Empty', venueId: null, songIds: [] },
     ]);
     await openSetlists(page);
     await openSetlist(page, 'Friday');
 
-    // Closed by default, with a 44 px summary.
-    const card = mixCard(page);
-    await expect(card).toBeVisible();
-    await expect(card).toHaveJSProperty('open', false);
-    await expect(mixLine(page, 'Genres')).toBeHidden();
-    expect((await card.locator('summary').boundingBox()).height).toBeGreaterThanOrEqual(44);
+    // One mix, at the top: no Mix card under the songs.
+    await expect(page.locator('details.mix')).toHaveCount(0);
+    await expect(page.getByText('Mix', { exact: true })).toHaveCount(0);
 
-    // Genres match ignoring case, most first then by name; decades oldest first; gaps last.
-    await openMix(page);
-    await expect(mixLine(page, 'Genres')).toHaveText('Rock 3 · Pop 1 · Soul 1 · No genre 1');
-    await expect(mixLine(page, 'Decades')).toHaveText('1970s 2 · 1980s 1 · 2000s 2 · No year 1');
+    // The biggest groups, then "+N more": genres most first then by name, matching
+    // ignoring case; decades oldest first.
+    await expect(mixText(page, 'genre')).toHaveText('Rock 4 · Soul 2 · Pop 1');
+    await expect(mixText(page, 'decade')).toHaveText('1960s 1 · 1970s 2 · 1980s 1 · 2000s 2');
+    const genres = mixToggle(page, 'genre');
+    const decades = mixToggle(page, 'decade');
+    await expect(genres).toHaveText('+1 more genre'); // "genre" for screen readers only
+    await expect(genres).toHaveAccessibleName('+1 more genre');
+    await expect(genres).toHaveAttribute('aria-expanded', 'false');
+    await expect(decades).toHaveAccessibleName('+2 more decades');
+    await expectTapTarget(genres);
+    await expectTapTarget(decades);
 
+    // "+N more" unfolds every group in place, "No genre" and "No year" last; tapped again it folds back.
+    await genres.click();
+    await expect(mixText(page, 'genre')).toHaveText('Rock 4 · Soul 2 · Pop 1 · No genre 1');
+    await expect(genres).toHaveAccessibleName('fewer genres');
+    await expect(genres).toHaveAttribute('aria-expanded', 'true');
+    await expect(mixText(page, 'decade')).toHaveText('1960s 1 · 1970s 2 · 1980s 1 · 2000s 2'); // still folded
+    await decades.click();
+    await expect(mixText(page, 'decade')).toHaveText('1960s 1 · 1970s 2 · 1980s 1 · 1990s 1 · 2000s 2 · No year 1');
+    await expectTapTarget(decades);
+    await decades.click();
+    await expect(mixText(page, 'decade')).toHaveText('1960s 1 · 1970s 2 · 1980s 1 · 2000s 2');
+    await expect(decades).toHaveAccessibleName('+2 more decades');
+
+    // Removing a song updates both lines, each staying folded or unfolded.
     await removeFromSetlist(page, { title: 'Livin\' on a Prayer', artist: 'Bon Jovi' });
-    await expect(card).toHaveJSProperty('open', true);
-    await expect(mixLine(page, 'Genres')).toHaveText('Rock 2 · Pop 1 · Soul 1 · No genre 1');
-    await expect(mixLine(page, 'Decades')).toHaveText('1970s 2 · 2000s 2 · No year 1');
+    await expect(mixText(page, 'genre')).toHaveText('Rock 3 · Soul 2 · Pop 1 · No genre 1');
+    await expect(mixText(page, 'decade')).toHaveText('1960s 1 · 1970s 2 · 1990s 1 · 2000s 2');
+    await expect(decades).toHaveAccessibleName('+1 more decade');
 
-    // Adding a song (with Find songs, R57) updates it too; reordering changes no count.
+    // Adding a song (with Find songs, R57) updates them too; reordering changes no count.
     await addToSetlist(page, 'Friday', { title: 'Back to Black', artist: 'Amy Winehouse' });
-    await openMix(page);
-    await expect(mixLine(page, 'Genres')).toHaveText('Rock 2 · Soul 2 · Pop 1 · No genre 1');
-    await expect(mixLine(page, 'Decades')).toHaveText('1970s 2 · 2000s 3 · No year 1');
+    await expect(mixText(page, 'genre')).toHaveText('Rock 3 · Soul 3 · Pop 1');
+    await expect(mixText(page, 'decade')).toHaveText('1960s 1 · 1970s 2 · 1990s 1 · 2000s 3');
     await dragHandle(page, 'Back to Black').focus();
     await page.keyboard.press('ArrowUp');
-    await expect(setlistSongTitles(page).last()).toHaveText('Mystery Song');
-    await expect(mixLine(page, 'Genres')).toHaveText('Rock 2 · Soul 2 · Pop 1 · No genre 1');
-    await expect(mixLine(page, 'Decades')).toHaveText('1970s 2 · 2000s 3 · No year 1');
+    await expect(setlistSongTitles(page).last()).toHaveText('Wonderwall');
+    await expect(mixText(page, 'genre')).toHaveText('Rock 3 · Soul 3 · Pop 1');
+    await mixToggle(page, 'decade').click();
+    await expect(mixText(page, 'decade')).toHaveText('1960s 1 · 1970s 2 · 1990s 1 · 2000s 3 · No year 1');
 
-    // An empty setlist says so.
+    // The list's card among the lists keeps the miniature.
+    await backToSetlists(page);
+    await expect(setlistRow(page, 'Friday')).toContainText('Rock 3 · Soul 3 · Pop 1 · +1 more');
+
+    // A list with few groups shows them all, with nothing to unfold.
+    await openSetlist(page, 'Small');
+    await expect(mixText(page, 'genre')).toHaveText('Pop 1 · Soul 1');
+    await expect(mixText(page, 'decade')).toHaveText('1970s 1 · 2000s 1');
+    await expect(page.locator('.list-head').getByRole('button')).toHaveCount(0);
+
+    // An empty list has no mix lines.
     await backToSetlists(page);
     await openSetlist(page, 'Empty');
-    await openMix(page);
-    await expect(mixCard(page)).toContainText('No songs yet.');
-    await expect(mixLine(page, 'Genres')).toBeHidden();
+    await expect(mixLine(page, 'genre')).toBeHidden();
+    await expect(mixLine(page, 'decade')).toBeHidden();
+  });
+
+  test('R70: tapping a song on a list opens it, and Back returns to the list', async ({ page }) => {
+    page.on('dialog', (dialog) => dialog.accept());
+    await openApp(page);
+    const ids = await seedSongs(page, SONGS);
+    // "Anytime" sorts first, so it is tonight's set under Overall, and Friday has + / ✓.
+    await putRecords(page, 'setlists', [
+      { name: 'Friday', venueId: null, songIds: [ids.Valerie, ids['Dancing Queen'], ids['Mr. Brightside'], ids.Jolene] },
+      { name: 'Anytime', venueId: null, songIds: [] },
+    ]);
+    const friday = page.getByRole('heading', { level: 2, name: 'Friday', exact: true });
+    const songPage = page.getByRole('region', { name: 'Song details' });
+    await openSetlists(page);
+    await openSetlist(page, 'Friday');
+
+    // A tap on the title opens the song page, whose Back names the list and
+    // returns to it with the song in view.
+    await expectTapTarget(setlistSongRow(page, 'Jolene').locator('.song-open'));
+    await openListSong(page, 'Jolene');
+    await expect(songPage.getByText('Dolly Parton', { exact: true })).toBeVisible();
+    const back = page.getByRole('button', { name: 'Back to Friday', exact: true });
+    await expect(back).toContainText('Friday');
+    await back.click();
+    await expect(friday).toBeVisible();
+    await expect(setlistSongRow(page, 'Jolene').locator('.song-open')).toBeFocused();
+    await expect(setlistSongTitles(page)).toHaveText(['Valerie', 'Dancing Queen', 'Mr. Brightside', 'Jolene']);
+
+    // The phone's back gesture returns to the list as well.
+    await openListSong(page, 'Valerie');
+    await page.goBack();
+    await expect(friday).toBeVisible();
+
+    // A swipe that ends on the title opens the row, not the song; a tap on
+    // the open row closes it; so does a swipe back that starts and ends on the title.
+    const queen = setlistSongRow(page, 'Dancing Queen');
+    const title = await queen.locator('.song-open').boundingBox();
+    const y = title.y + title.height / 2;
+    await page.mouse.move(title.x + title.width - 8, y);
+    await page.mouse.down();
+    await page.mouse.move(title.x + title.width - 48, y, { steps: 4 });
+    await page.mouse.move(title.x + title.width - 168, y, { steps: 6 });
+    await page.mouse.up();
+    await expect(queen).toHaveClass(/\bopen\b/);
+    await expect(friday).toBeVisible();
+    await expect(songPage).toHaveCount(0);
+    await queen.locator('.song-open').click({ position: { x: 8, y: 8 } });
+    await expect(queen).not.toHaveClass(/\bopen\b/);
+    await expect(songPage).toHaveCount(0);
+    await openSongMenu(page, 'Dancing Queen');
+    await swipeClosed(page, queen);
+    await expect(friday).toBeVisible();
+    await expect(songPage).toHaveCount(0);
+
+    // Neither the handle nor + opens it.
+    await dragHandle(page, 'Valerie').click();
+    await tonightToggle(page, 'Valerie').click();
+    await expect(tonightToggle(page, 'Valerie')).toHaveText('✓');
+    await expect(friday).toBeVisible();
+    await expect(songPage).toHaveCount(0);
+
+    // What changes on the song page shows on the way back: a song deleted there is gone from the list.
+    await openListSong(page, 'Mr. Brightside');
+    await songPage.getByRole('button', { name: 'Delete', exact: true }).click();
+    await expect(friday).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: 'Deleted “Mr. Brightside”.' })).toBeVisible();
+    await expect(setlistSongTitles(page)).toHaveText(['Valerie', 'Dancing Queen', 'Jolene']);
   });
 });

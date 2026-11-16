@@ -7,6 +7,7 @@ import {
 import { moveSongId, moveSongIdBy, mixByGenre, mixByDecade, formatMix } from '../../js/lib/setlist.js';
 import {
   suggestCount, roundRobin, suggestCandidates, suggestSongs, describeSuggestion,
+  SUGGEST_MATCH, SUGGEST_SPREAD, apportion, genreYear,
   tonightSing, findTonightSing, sungOn,
 } from '../../js/lib/setlist.js';
 
@@ -634,16 +635,18 @@ describe('R45 suggestSongs', () => {
   it('never suggests a song in the setlist or one sung at its venue', () => {
     const setlist = { ...emptyAt(CROWN), songIds: [101, 401] };
     for (const seed of SEEDS) {
-      const out = ids(suggestSongs(pool, sings, setlist, 50, seeded(seed)));
+      const out = ids(suggestSongs(pool, sings, setlist, 50, { mode: SUGGEST_SPREAD, random: seeded(seed) }));
       expect(out).toHaveLength(pool.length - 4);
       for (const id of [101, 401, 102, 202]) expect(out).not.toContain(id);
       expect(out).toContain(301); // sung only at Anchor
+      const matched = ids(suggestSongs(pool, sings, setlist, 50, { mode: SUGGEST_MATCH, random: seeded(seed) }));
+      for (const id of [101, 401, 102, 202]) expect(matched).not.toContain(id);
     }
   });
 
   it('for a general setlist never suggests a song sung anywhere', () => {
     for (const seed of SEEDS) {
-      const out = ids(suggestSongs(pool, sings, emptyAt(null), 50, seeded(seed)));
+      const out = ids(suggestSongs(pool, sings, emptyAt(null), 50, { random: seeded(seed) }));
       expect(out).toHaveLength(pool.length - 3);
       for (const id of [102, 202, 301]) expect(out).not.toContain(id);
     }
@@ -652,7 +655,7 @@ describe('R45 suggestSongs', () => {
   it('spreads 6 songs from 3 genres 2 per genre, the first three from three different genres', () => {
     const three = pool.filter((s) => [101, 102, 103, 104, 201, 202, 203, 301, 302, 303].includes(s.id));
     for (const seed of SEEDS) {
-      const out = ids(suggestSongs(three, [], emptyAt(CROWN), 6, seeded(seed)));
+      const out = ids(suggestSongs(three, [], emptyAt(CROWN), 6, { random: seeded(seed) }));
       expect(out).toHaveLength(6);
       const genres = out.map(genreOf);
       expect(new Set(genres.slice(0, 3)).size).toBe(3);
@@ -663,7 +666,7 @@ describe('R45 suggestSongs', () => {
 
   it('takes a genre\'s songs from each of its decades before repeating one', () => {
     for (const seed of SEEDS) {
-      const out = suggestSongs(pool, [], emptyAt(CROWN), 50, seeded(seed));
+      const out = suggestSongs(pool, [], emptyAt(CROWN), 50, { random: seeded(seed) });
       const decadesOf = (genre) => out.filter((s) => genreOf(s.id) === genre).map((s) => (s.year == null ? null : Math.floor(s.year / 10)));
       // Rock: two decades, two songs each, so the first two differ and the last two differ.
       const rock = decadesOf('rock');
@@ -675,36 +678,38 @@ describe('R45 suggestSongs', () => {
   });
 
   it('cycles genres, and decades within each genre, in the order first seen when nothing is shuffled', () => {
-    expect(ids(suggestSongs(pool, [], emptyAt(CROWN), 50, NO_SHUFFLE))).toEqual([
+    expect(ids(suggestSongs(pool, [], emptyAt(CROWN), 50, { random: NO_SHUFFLE }))).toEqual([
       101, 201, 301, 401, // rock 70s, pop 70s, soul 00s, no genre 90s
       103, 202, 302, 402, // rock 00s, pop 80s, soul 60s, no genre 90s
       102, 203, 303, // rock 70s, pop 80s, soul no year
       104, // rock 00s
     ]);
-    expect(ids(suggestSongs(pool, [], emptyAt(CROWN), 5, NO_SHUFFLE))).toEqual([101, 201, 301, 401, 103]);
+    expect(ids(suggestSongs(pool, [], emptyAt(CROWN), 5, { random: NO_SHUFFLE }))).toEqual([101, 201, 301, 401, 103]);
   });
 
-  it('gives every candidate once when fewer are left than asked for', () => {
+  it('gives every candidate once when fewer are left than asked for, in either mode', () => {
     const setlist = { ...emptyAt(CROWN), songIds: pool.slice(3).map((s) => s.id) };
     for (const seed of SEEDS) {
-      const out = ids(suggestSongs(pool, [], setlist, 10, seeded(seed)));
-      expect([...out].sort()).toEqual([101, 102, 103]);
+      for (const mode of [SUGGEST_MATCH, SUGGEST_SPREAD]) {
+        const out = ids(suggestSongs(pool, [], setlist, 10, { mode, random: seeded(seed) }));
+        expect([...out].sort()).toEqual([101, 102, 103]);
+      }
     }
-    expect(suggestSongs(pool, [], { ...setlist, songIds: ids(pool) }, 10, seeded(1))).toEqual([]);
+    expect(suggestSongs(pool, [], { ...setlist, songIds: ids(pool) }, 10, { random: seeded(1) })).toEqual([]);
   });
 
   it('gives nothing for n of 0 or less, or not a number, and drops a fraction', () => {
     for (const n of [0, -1, NaN, undefined, null, '', 'ten']) {
-      expect(suggestSongs(pool, [], emptyAt(CROWN), n, seeded(1))).toEqual([]);
+      expect(suggestSongs(pool, [], emptyAt(CROWN), n, { random: seeded(1) })).toEqual([]);
     }
-    expect(suggestSongs(pool, [], emptyAt(CROWN), 2.7, seeded(1))).toHaveLength(2);
-    expect(suggestSongs(pool, [], emptyAt(CROWN), '3', seeded(1))).toHaveLength(3);
+    expect(suggestSongs(pool, [], emptyAt(CROWN), 2.7, { random: seeded(1) })).toHaveLength(2);
+    expect(suggestSongs(pool, [], emptyAt(CROWN), '3', { random: seeded(1) })).toHaveLength(3);
   });
 
   it('never suggests a song twice, even when the library lists it twice', () => {
     const doubled = [...pool, ...pool.map((s) => ({ ...s }))];
     for (const seed of SEEDS) {
-      const out = ids(suggestSongs(doubled, [], emptyAt(CROWN), 50, seeded(seed)));
+      const out = ids(suggestSongs(doubled, [], emptyAt(CROWN), 50, { random: seeded(seed) }));
       expect(out).toHaveLength(pool.length);
       expect(new Set(out).size).toBe(out.length);
     }
@@ -713,28 +718,184 @@ describe('R45 suggestSongs', () => {
   it('works with Math.random by default and does not change its inputs', () => {
     const setlist = { ...emptyAt(CROWN), songIds: [101] };
     const copies = structuredClone({ pool, sings, setlist });
-    const out = suggestSongs(pool, sings, setlist, 4);
-    expect(out).toHaveLength(4);
-    expect(new Set(ids(out).map(genreOf)).size).toBe(4);
+    const spread = suggestSongs(pool, sings, setlist, 4, { mode: SUGGEST_SPREAD });
+    expect(spread).toHaveLength(4);
+    expect(new Set(ids(spread).map(genreOf)).size).toBe(4);
+    // Match this list is the default: the list is all Rock, and 103 and 104 are the Rock left (102 is sung here).
+    expect(ids(suggestSongs(pool, sings, setlist, 4)).sort()).toEqual([103, 104]);
     expect({ pool, sings, setlist }).toEqual(copies);
   });
 });
 
+// A genre's songs for the Match tests: `count` of them with ids from `base`,
+// their years taking turns through `years`.
+function shelf(genre, base, count, years = [1960, 1970, 1980, 1990]) {
+  return Array.from({ length: count }, (_, i) => ({ id: base + i, title: `${genre} ${i + 1}`, genre, year: years[i % years.length] }));
+}
+
+describe('R45 suggestSongs: Match this list', () => {
+  const christmas = shelf('Christmas', 1000, 12);
+  const country = shelf('Country', 2000, 12);
+  const rock = shelf('Rock', 3000, 12);
+  const library = [...christmas, ...country, ...rock];
+  const listOf = (...songs) => ({ id: 20, name: 'Mine', venueId: CROWN, songIds: songs.map((s) => s.id) });
+  const match = (songs, list, n, seed, sings = []) => suggestSongs(songs, sings, list, n, { mode: SUGGEST_MATCH, random: seeded(seed) });
+  // How many of each genre, or of each year: { Christmas: 3, Rock: 2 }.
+  const tally = (out, field = 'genre') => out.reduce((counts, s) => ({ ...counts, [s[field]]: (counts[s[field]] || 0) + 1 }), {});
+
+  it('gives a list all of one genre only that genre, never a song already in it', () => {
+    const list = listOf(christmas[0], christmas[1], christmas[2]);
+    for (const seed of SEEDS) {
+      const out = match(library, list, 5, seed);
+      expect(out).toHaveLength(5);
+      expect(tally(out)).toEqual({ Christmas: 5 });
+      for (const song of out) expect(list.songIds).not.toContain(song.id);
+    }
+    expect(tally(suggestSongs(library, [], list, 9))).toEqual({ Christmas: 9 }); // the default mode, Math.random
+  });
+
+  it('keeps a half-and-half list half and half over 10 picks', () => {
+    const list = listOf(christmas[0], country[0], christmas[1], country[1]);
+    for (const seed of SEEDS) expect(tally(match(library, list, 10, seed))).toEqual({ Christmas: 5, Country: 5 });
+  });
+
+  it('shares the picks in proportion, the largest share taking what rounding leaves over', () => {
+    const threeToOne = listOf(christmas[0], christmas[1], christmas[2], rock[0]); // 7.5 and 2.5
+    const even = listOf(country[0], christmas[0], rock[0]); // 3⅓ each: the first genre in the list takes the odd one
+    for (const seed of SEEDS) {
+      expect(tally(match(library, threeToOne, 10, seed))).toEqual({ Christmas: 8, Rock: 2 });
+      expect(tally(match(library, even, 10, seed))).toEqual({ Country: 4, Christmas: 3, Rock: 3 });
+    }
+  });
+
+  it('passes the share of a genre that runs dry to the others', () => {
+    const list = listOf(christmas[0], country[0]);
+    // Every other Christmas song has been sung here but two.
+    const sings = christmas.slice(1, 10).map((s, i) => ({ id: i + 1, songId: s.id, venueId: CROWN, date: '2026-10-01' }));
+    for (const seed of SEEDS) {
+      const out = match(library, list, 10, seed, sings);
+      expect(tally(out)).toEqual({ Christmas: 2, Country: 8 });
+      expect(ids(out.filter((s) => s.genre === 'Christmas')).sort()).toEqual([christmas[10].id, christmas[11].id]);
+    }
+  });
+
+  it('keeps to the list\'s own genres, giving fewer songs when they run dry', () => {
+    const list = listOf(...christmas.slice(0, 9));
+    for (const seed of SEEDS) {
+      const out = match(library, list, 10, seed);
+      expect(ids(out).sort()).toEqual(ids(christmas.slice(9)));
+    }
+  });
+
+  it('follows the list\'s decades within a genre', () => {
+    const carols = shelf('Christmas', 5000, 30, [1950, 1960]);
+    const list = listOf(carols[0], carols[2], carols[1]); // 1950, 1950, 1960
+    for (const seed of SEEDS) expect(tally(match(carols, list, 6, seed), 'year')).toEqual({ 1950: 4, 1960: 2 });
+  });
+
+  it('makes up a genre\'s share from its other decades when the list\'s decades run dry', () => {
+    // The list's Christmas songs are from 1960 (two) and 1970 (one); one 1960 and two 1970 songs are left.
+    const list = listOf(christmas[0], christmas[4], christmas[1]);
+    for (const seed of SEEDS) {
+      expect(tally(match(library, list, 3, seed), 'year')).toEqual({ 1960: 1, 1970: 2 });
+      expect(tally(match(library, list, 5, seed), 'year')).toEqual({ 1960: 1, 1970: 2, 1980: 1, 1990: 1 });
+      expect(tally(match(library, list, 5, seed))).toEqual({ Christmas: 5 });
+    }
+  });
+
+  it('counts No genre and No year as groups of their own', () => {
+    const list = { ...emptyAt(CROWN), songIds: [401] }; // no genre, 1990s
+    for (const seed of SEEDS) expect(ids(match(pool, list, 5, seed))).toEqual([402]);
+    // A Soul list with no year: the undated Soul song left comes first, then Soul from other decades.
+    const withUndated = [...pool, { id: 304, title: 'Soul no year b', genre: 'Soul', year: null }];
+    const undated = { ...emptyAt(CROWN), songIds: [303] };
+    for (const seed of SEEDS) {
+      expect(ids(match(withUndated, undated, 1, seed))).toEqual([304]);
+      expect(ids(match(withUndated, undated, 3, seed)).sort()).toEqual([301, 302, 304]);
+    }
+  });
+
+  it('spreads the genres through the order, in proportion', () => {
+    const list = listOf(country[0], country[1], christmas[0]);
+    for (const seed of SEEDS) {
+      expect(match(library, list, 6, seed).map((s) => s.genre))
+        .toEqual(['Country', 'Christmas', 'Country', 'Country', 'Christmas', 'Country']);
+    }
+  });
+
+  it('never suggests a Retired song or one sung at the list\'s venue', () => {
+    const list = listOf(rock[0]);
+    const retired = library.map((s) => (s.id === rock[1].id ? { ...s, status: 'retired' } : s));
+    const sings = [{ id: 1, songId: rock[2].id, venueId: CROWN, date: '2026-10-01' }];
+    for (const seed of SEEDS) {
+      const out = ids(match(retired, list, 20, seed, sings));
+      expect(out.sort()).toEqual(ids(rock.slice(3)));
+    }
+  });
+
+  it('spreads across every genre for an empty list, or with Mix it up', () => {
+    for (const seed of SEEDS) {
+      expect(Object.keys(tally(match(library, listOf(), 3, seed)))).toHaveLength(3);
+      const mixed = suggestSongs(library, [], listOf(christmas[0], christmas[1]), 3, { mode: SUGGEST_SPREAD, random: seeded(seed) });
+      expect(Object.keys(tally(mixed))).toHaveLength(3);
+    }
+  });
+});
+
+describe('R45 apportion', () => {
+  const groups = (...pairs) => pairs.map(([weight, cap]) => ({ weight, cap }));
+
+  it('shares in proportion to the weights', () => {
+    expect(apportion(10, groups([1, 9], [1, 9]))).toEqual([5, 5]);
+    expect(apportion(6, groups([2, 9], [1, 9]))).toEqual([4, 2]);
+  });
+
+  it('gives what rounding leaves over to the largest shares, the earlier on a tie', () => {
+    expect(apportion(10, groups([3, 9], [1, 9]))).toEqual([8, 2]);
+    expect(apportion(10, groups([1, 9], [1, 9], [1, 9]))).toEqual([4, 3, 3]);
+    expect(apportion(5, groups([3, 9], [4, 9], [3, 9]))).toEqual([1, 3, 1]);
+  });
+
+  it('never gives a group more than its cap, passing the rest to the others', () => {
+    expect(apportion(10, groups([1, 2], [1, 9]))).toEqual([2, 8]);
+    expect(apportion(10, groups([5, 1], [1, 3], [1, 9]))).toEqual([1, 3, 6]);
+    expect(apportion(10, groups([1, 2], [1, 3]))).toEqual([2, 3]); // only 5 to give
+  });
+
+  it('gives none to a group without weight or without songs, and none at all for n of 0', () => {
+    expect(apportion(4, groups([0, 9], [1, 9]))).toEqual([0, 4]);
+    expect(apportion(4, groups([1, 0], [1, 9]))).toEqual([0, 4]);
+    expect(apportion(0, groups([1, 9]))).toEqual([0]);
+    expect(apportion(3, [])).toEqual([]);
+  });
+});
+
+describe('R45 genreYear', () => {
+  it('shows a suggestion\'s genre and year, with the gaps named', () => {
+    expect(genreYear({ genre: ' Soul ', year: 2006 })).toBe('Soul · 2006');
+    expect(genreYear({ genre: 'Christmas', year: '1957' })).toBe('Christmas · 1957');
+    expect(genreYear({ title: 'Mystery' })).toBe('No genre · No year');
+  });
+});
+
 describe('R45 describeSuggestion', () => {
-  it('says how many were added', () => {
-    expect(describeSuggestion(10, 10)).toBe('Added 10 songs.');
-    expect(describeSuggestion(1, 1)).toBe('Added 1 song.');
+  it('says nothing when every song asked for was found', () => {
+    expect(describeSuggestion(10, 10)).toBe('');
+    expect(describeSuggestion(1, 1, { match: true })).toBe('');
   });
 
   it('says so when fewer were left than asked for', () => {
-    expect(describeSuggestion(7, 10)).toBe('Added 7 songs (only 7 never sung here were left).');
-    expect(describeSuggestion(1, 5)).toBe('Added 1 song (only 1 never sung here was left).');
-    expect(describeSuggestion(3, 10, true)).toBe('Added 3 songs (only 3 never sung were left).');
+    expect(describeSuggestion(7, 10)).toBe('Only 7 never sung here were left.');
+    expect(describeSuggestion(1, 5)).toBe('Only 1 never sung here was left.');
+    expect(describeSuggestion(3, 10, { general: true })).toBe('Only 3 never sung were left.');
+    expect(describeSuggestion(3, 10, { match: true })).toBe('Only 3 never sung here were left in this list\'s genres.');
   });
 
   it('says so when none were left', () => {
     expect(describeSuggestion(0, 10)).toBe('Every song has been sung here already, or is in this setlist.');
-    expect(describeSuggestion(0, 10, true)).toBe('Every song has been sung already, or is in this setlist.');
+    expect(describeSuggestion(0, 10, { general: true })).toBe('Every song has been sung already, or is in this setlist.');
+    expect(describeSuggestion(0, 10, { match: true }))
+      .toBe('Every song in this list\'s genres has been sung here already, or is in this setlist. Mix it up looks in every genre.');
   });
 });
 
