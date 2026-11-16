@@ -491,13 +491,6 @@ label > textarea { margin-top: 4px; color: var(--text); resize: vertical; }
 }
 .setlist-song.dragging .handle, .after-row.dragging .handle { color: var(--accent); cursor: grabbing; }
 
-/* Mix by genre and decade (R44). */
-.mix .mix-empty { margin: 4px 0 0; }
-.mix .mix-lines { margin: 4px 0 0; }
-.mix .mix-lines > div + div { margin-top: 8px; }
-.mix .mix-lines dt { color: var(--muted); font-size: 0.875rem; }
-.mix .mix-lines dd { margin: 0; overflow-wrap: anywhere; }
-
 /* ---- Find and library polish (Wave 3 F) ---- */
 
 /* Sort by (R42, R12) takes the full width, so the longer orders read in full on a phone. */
@@ -1650,3 +1643,103 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
   .history .entries { margin: 0; padding: 0 0 0 12pt; background: none; }
   .history .entries li { min-height: 0; border: 0; }
 }
+
+/* ---- A list's screen: the mix unfolds in place (R44), a song opens its page
+   (R70), Suggest songs previews before adding, with Undo (R45) ----
+   js/views/setlists.js. */
+
+/* "+N more" at the end of the genre and decade lines: a text link with a
+   44 px tap target, which unfolds the full counts in place ("fewer" folds
+   them back). While a line has one, it makes room for the target above and
+   below, so the two lines' targets never overlap. */
+.list-head .list-mix.folds { padding: 14px 0; overflow: visible; }
+.mix-more {
+  position: relative; /* holds the screen-reader words */
+  display: inline-block;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  margin: -14px 0; /* the line keeps its height; the target reaches into its padding */
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  line-height: var(--tap);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.mix-more:active { opacity: 0.6; }
+
+/* A list's song: title, artist and sings are one button that opens the song (R70). */
+.setlist-song .song-open {
+  min-height: var(--tap);
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.setlist-song .song-open:active { opacity: 0.6; }
+
+/* Match this list or Mix it up: two segments, the chosen one filled. The
+   radio fills its segment, unseen, so the whole segment is the tap target. */
+.suggest-mode {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+}
+.suggest-mode label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap);
+  padding: 0 8px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+}
+.suggest-mode input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.suggest-mode label:has(input:checked) { background: var(--border); color: var(--text); font-weight: 600; }
+.suggest-mode label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.suggest-mode label:active { opacity: 0.6; }
+
+/* The preview under the card: "Suggested · N", each song with its genre and
+   year and an × to drop it, then Add these and Cancel. */
+.suggest-preview h3:focus { outline: none; }
+.suggest-preview .hint { margin: 0; font-size: 0.875rem; }
+.list.suggest-picks { border-top: 1px solid var(--line); }
+.list.suggest-picks li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom-color: var(--line); }
+.suggest-pick .text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.suggest-pick .title, .suggest-pick .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.suggest-pick .sub { font-size: 0.8125rem; }
+.suggest-pick .pick-mix { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); }
+
+/* "Added 5 songs. Undo", then "Undone." */
+.suggest-done { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.suggest-done .undo-add { padding: 0 16px; color: var(--text); font-weight: 600; }
+
+@media print {
+  .suggest-preview, .mix-sep { display: none !important; }
+  .list-head .list-mix.folds { padding: 0; }
+  .list .setlist-song button.song-open { display: flex !important; min-height: 0; color: #000; }
+}
+
+/* ---- end of a list's screen (R44, R45, R70) ---- */

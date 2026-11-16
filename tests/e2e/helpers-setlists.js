@@ -101,7 +101,13 @@ export function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// ---------- Reorder (R16) and mix (R44), Wave 3 G ----------
+// ---------- Reorder (R16) and mix (R44), Wave 3 G; the song page (R70) ----------
+
+// Taps a song's title on the open list, which opens its page (R70).
+export async function openListSong(page, title) {
+  await setlistSongRow(page, title).locator('.song-open').click();
+  await expect(page.getByRole('heading', { level: 2, name: title, exact: true })).toBeVisible();
+}
 
 // A song's drag handle in the open setlist.
 export function dragHandle(page, title) {
@@ -126,22 +132,19 @@ export async function dragSong(page, title, targetTitle, beforeDrop = null) {
   await page.mouse.up();
 }
 
-// The open setlist's Mix card (R44).
-export function mixCard(page) {
-  return page.locator('details.mix');
+// One of the mix lines at the top of the open list (R44): 'genre' or 'decade'.
+export function mixLine(page, which) {
+  return page.locator('.list-head .mix-line').nth(which === 'genre' ? 0 : 1);
 }
 
-// Opens the Mix card when it is closed.
-export async function openMix(page) {
-  const card = mixCard(page);
-  if (!(await card.evaluate((node) => node.open))) await card.locator('summary').click();
-  await expect(card).toHaveJSProperty('open', true);
+// The counts a mix line shows, folded or unfolded.
+export function mixText(page, which) {
+  return mixLine(page, which).locator('.mix-text');
 }
 
-// One line of the Mix card: 'Genres' or 'Decades'.
-export function mixLine(page, name) {
-  return mixCard(page).locator('.mix-lines > div')
-    .filter({ has: page.locator('dt', { hasText: name }) }).locator('dd');
+// A mix line's "+N more" (or, unfolded, "fewer") button.
+export function mixToggle(page, which) {
+  return mixLine(page, which).getByRole('button');
 }
 
 // ---------- Suggest (R45) and Tonight (R17), Wave 4 J ----------
@@ -151,13 +154,49 @@ export function suggestForm(page) {
   return page.getByRole('form', { name: 'Suggest songs' });
 }
 
+// The form's line saying why nothing was suggested.
+export function suggestNote(page) {
+  return suggestForm(page).locator('.suggest-note');
+}
+
+// The form's line after Add these: "Added 3 songs. Undo", then "Undone."
+export function suggestDone(page) {
+  return suggestForm(page).locator('.suggest-done');
+}
+
+// The preview of suggested songs under the form: "Suggested · N".
+export function suggestPreview(page) {
+  return page.getByRole('region', { name: /^Suggested · \d+$/ });
+}
+
+// The titles in the preview, in order.
+export function previewTitles(page) {
+  return suggestPreview(page).getByRole('list', { name: 'Suggested songs' }).locator('.title');
+}
+
+// Picks 'Match this list' or 'Mix it up'.
+export async function suggestMode(page, name) {
+  const choice = suggestForm(page).getByRole('radio', { name, exact: true });
+  await choice.check();
+  await expect(choice).toBeChecked();
+}
+
 // Types `howMany` into the form (left as it is when undefined), taps Suggest
-// songs and waits for the line saying what happened.
-export async function suggest(page, howMany, expected) {
+// songs and waits for a preview of `count` songs. Returns their titles.
+export async function suggest(page, howMany, count) {
   const form = suggestForm(page);
   if (howMany !== undefined) await form.getByLabel('How many').fill(String(howMany));
   await form.getByRole('button', { name: 'Suggest songs' }).click();
-  await expect(form.getByRole('status')).toHaveText(expected);
+  await expect(suggestPreview(page).getByRole('heading')).toHaveText(`Suggested · ${count}`);
+  await expect(previewTitles(page)).toHaveCount(count);
+  return previewTitles(page).allTextContents();
+}
+
+// Taps Add these under the preview and waits for "Added N songs. Undo".
+export async function addSuggested(page, count) {
+  await suggestPreview(page).getByRole('button', { name: 'Add these', exact: true }).click();
+  await expect(suggestPreview(page)).toBeHidden();
+  await expect(suggestDone(page)).toHaveText(`Added ${count} ${count === 1 ? 'song' : 'songs'}. Undo`);
 }
 
 // Today in the page's own time zone, 'YYYY-MM-DD', as the app dates a sing.

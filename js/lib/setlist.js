@@ -327,33 +327,153 @@ export function suggestCandidates(songs, sings, setlist) {
   });
 }
 
-// Up to `n` songs to add to a setlist (R45), in the order to add them. Chosen
-// from suggestCandidates() and spread across genres and decades: the songs are
-// grouped by genre (ignoring case; no genre is a group of its own) and, within
-// a genre, by decade (no year is a group too). The pick takes one song from
-// each genre in turn, and each genre takes its songs from each of its decades
-// in turn, so every genre comes up once before any comes up twice. The order
-// of the genres, of the decades within a genre and of the songs within a
-// decade is random; pass `random` (like Math.random) to make it repeatable.
-export function suggestSongs(songs, sings, setlist, n, random = Math.random) {
-  const count = Math.trunc(Number(n));
-  if (!(count > 0)) return [];
-  const byGenre = groupBy(suggestCandidates(songs, sings, setlist), genreKey);
-  const perGenre = [...byGenre.values()].map((genreSongs) => {
-    const byDecade = [...groupBy(genreSongs, (song) => decadeOf(song.year)).values()];
+// The two ways to suggest (R45): in the list's own mix, or across every genre.
+export const SUGGEST_MATCH = 'match';
+export const SUGGEST_SPREAD = 'spread';
+
+// Shares `n` picks among groups ({ weight, cap }) in proportion to their
+// weights, never giving a group more than its cap (the songs it has to give).
+// A group that runs out passes the rest of its share to the others, in
+// proportion again. Shares are rounded down, and the picks rounding leaves
+// over go one each to the largest shares (the earlier group on a tie).
+// Returns a count per group, in the order given; the counts add up to n, or
+// to the caps' total when that is smaller. A group with no weight gets none.
+//   apportion(10, [{ weight: 3, cap: 9 }, { weight: 1, cap: 9 }]) -> [8, 2]
+//   apportion(10, [{ weight: 1, cap: 2 }, { weight: 1, cap: 9 }]) -> [2, 8]
+export function apportion(n, groups) {
+  const list = Array.isArray(groups) ? groups : [];
+  const out = list.map(() => 0);
+  let open = list.map((_, i) => i).filter((i) => list[i].weight > 0 && list[i].cap > 0);
+  const room = open.reduce((sum, i) => sum + Math.trunc(list[i].cap), 0);
+  let left = Math.min(Math.max(0, Math.trunc(Number(n)) || 0), room);
+  const weightOf = (ids) => ids.reduce((sum, i) => sum + list[i].weight, 0);
+  // A group whose share would reach its cap takes the cap, and the rest is
+  // shared again among the others (whose shares can only grow).
+  for (;;) {
+    const total = weightOf(open);
+    const full = open.filter((i) => (left * list[i].weight) / total >= Math.trunc(list[i].cap));
+    if (!full.length) break;
+    for (const i of full) {
+      out[i] = Math.trunc(list[i].cap);
+      left -= out[i];
+    }
+    open = open.filter((i) => !full.includes(i));
+  }
+  if (left <= 0 || !open.length) return out;
+  const total = weightOf(open);
+  for (const i of open) out[i] = Math.floor((left * list[i].weight) / total + 1e-9);
+  let rest = left - open.reduce((sum, i) => sum + out[i], 0);
+  const largest = [...open].sort((a, b) => list[b].weight - list[a].weight || a - b);
+  for (const i of largest) {
+    if (rest <= 0) break;
+    if (out[i] >= Math.trunc(list[i].cap)) continue;
+    out[i] += 1;
+    rest -= 1;
+  }
+  return out;
+}
+
+// Interleaves lists so each one's items are spread evenly through the result,
+// in proportion to its length (a smooth weighted round-robin; the earlier
+// list first on a tie): [a1, a2, a3, a4] and [b1, b2] give a1 b1 a2 a3 b2 a4.
+function interleave(lists) {
+  const queues = lists.filter((list) => list.length).map((list) => ({ items: [...list], weight: list.length, credit: 0 }));
+  const total = queues.reduce((sum, q) => sum + q.weight, 0);
+  const out = [];
+  for (let k = 0; k < total; k += 1) {
+    let best = null;
+    for (const q of queues) {
+      q.credit += q.weight;
+      if (!best || q.credit > best.credit) best = q;
+    }
+    best.credit -= total;
+    out.push(best.items.shift());
+  }
+  return out;
+}
+
+const decadeKey = (song) => decadeOf(song?.year);
+
+// Spread (R45): one song from each genre in turn, and within a genre one from
+// each of its decades in turn, so every genre comes up once before any comes
+// up twice. Genres, decades and songs in random order.
+function spreadPicks(candidates, count, random) {
+  const perGenre = [...groupBy(candidates, genreKey).values()].map((genreSongs) => {
+    const byDecade = [...groupBy(genreSongs, decadeKey).values()];
     return roundRobin(shuffled(byDecade, random).map((decadeSongs) => shuffled(decadeSongs, random)));
   });
   return roundRobin(shuffled(perGenre, random)).slice(0, count);
 }
 
-// The line shown after a suggestion: `added` songs were added of `asked`.
-// `general` is true for a setlist for any venue, whose songs count as sung when
-// sung anywhere.
-export function describeSuggestion(added, asked, general = false) {
+// `count` songs of one genre for a list whose songs of that genre are
+// `inList`, from that genre's candidates `pool`: shared among the list's
+// decades in proportion (one that runs dry passing its share on), and when
+// the list's decades have too few between them, made up from the genre's
+// other decades, one from each in turn. Random within a decade.
+function genrePicks(inList, pool, count, random) {
+  if (!count) return [];
+  const listDecades = [...groupBy(inList, decadeKey)];
+  const poolDecades = groupBy(shuffled(pool, random), decadeKey);
+  const fromList = listDecades.map(([decade]) => poolDecades.get(decade) || []);
+  const counts = apportion(count, listDecades.map(([, songs], i) => ({ weight: songs.length, cap: fromList[i].length })));
+  const picked = interleave(fromList.map((songs, i) => songs.slice(0, counts[i])));
+  if (picked.length >= count) return picked;
+  const listed = new Set(listDecades.map(([decade]) => decade));
+  const others = [...poolDecades].filter(([decade]) => !listed.has(decade)).map(([, songs]) => songs);
+  return picked.concat(roundRobin(shuffled(others, random)).slice(0, count - picked.length));
+}
+
+// Match (R45): picks shared among the list's genres in proportion to how many
+// of its songs each has (a genre with no candidates left passing its share to
+// the others), and within a genre among its decades the same way (see
+// genrePicks). Only the list's own genres: with too few candidates there,
+// fewer songs come back. The genres take turns through the result in
+// proportion to their picks.
+function matchPicks(candidates, listSongs, count, random) {
+  const pools = groupBy(candidates, genreKey);
+  const genres = [...groupBy(listSongs, genreKey)].map(([key, inList]) => ({ inList, pool: pools.get(key) || [] }));
+  const counts = apportion(count, genres.map((g) => ({ weight: g.inList.length, cap: g.pool.length })));
+  return interleave(genres.map((g, i) => genrePicks(g.inList, g.pool, counts[i], random)));
+}
+
+// Up to `n` songs to add to a setlist (R45), in the order to add them, chosen
+// from suggestCandidates(). Songs are grouped by genre (ignoring case; no
+// genre is a group of its own) and by decade (no year is a group too).
+//   mode SUGGEST_MATCH (the default): in the list's own mix of genres and
+//     decades (see matchPicks). A list with no songs has no mix, so it
+//     gets SUGGEST_SPREAD.
+//   mode SUGGEST_SPREAD: across every genre and decade (see spreadPicks).
+// Pass `random` (like Math.random) to make the choice repeatable.
+export function suggestSongs(songs, sings, setlist, n, { mode = SUGGEST_MATCH, random = Math.random } = {}) {
+  const count = Math.trunc(Number(n));
+  if (!(count > 0)) return [];
+  const library = Array.isArray(songs) ? songs.filter(Boolean) : [];
+  const candidates = suggestCandidates(library, sings, setlist);
+  const listSongs = mode === SUGGEST_SPREAD ? [] : setlistSongs(setlist, library);
+  return listSongs.length ? matchPicks(candidates, listSongs, count, random) : spreadPicks(candidates, count, random);
+}
+
+// A suggested song's genre and year, as the preview shows them: 'Soul · 2006',
+// with "No genre" and "No year" for the gaps.
+export function genreYear(song) {
+  const genre = String(song?.genre ?? '').trim() || NO_GENRE;
+  const decade = decadeOf(song?.year);
+  return `${genre} · ${decade === null ? NO_YEAR : String(Number(song.year))}`;
+}
+
+// The note with a suggestion when fewer songs were `found` than `asked` for,
+// or none; '' when every one asked for was found. `general` is true for a
+// setlist for any venue, whose songs count as sung when sung anywhere;
+// `match` when the suggestion kept to the list's own genres.
+export function describeSuggestion(found, asked, { general = false, match = false } = {}) {
   const sung = general ? 'sung' : 'sung here';
-  if (!added) return `Every song has been ${sung} already, or is in this setlist.`;
-  if (added < asked) return `Added ${plural(added, 'song', 'songs')} (only ${added} never ${sung} ${added === 1 ? 'was' : 'were'} left).`;
-  return `Added ${plural(added, 'song', 'songs')}.`;
+  if (!found) {
+    return match
+      ? `Every song in this list's genres has been ${sung} already, or is in this setlist. Mix it up looks in every genre.`
+      : `Every song has been ${sung} already, or is in this setlist.`;
+  }
+  if (found >= asked) return '';
+  return `Only ${found} never ${sung} ${found === 1 ? 'was' : 'were'} left${match ? ' in this list\'s genres' : ''}.`;
 }
 
 // ---------- Tonight (R17) ----------

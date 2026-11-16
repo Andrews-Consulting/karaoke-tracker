@@ -5,14 +5,16 @@
 //     (or "Tonight's set" for the one that is). "New list" at the top opens a
 //     form for a name and a label. The dock's field filters the lists by name.
 //   A list's songs, stacked on top so the back gesture returns (R31): the
-//     label and mix lines, and "Make this tonight's set" at the venue chosen
-//     on Tonight unless it is (R75); each song with + / ✓ for tonight's set
+//     label and the mix lines, whose "+N more" unfolds every genre or decade
+//     in place (R44), and "Make this tonight's set" at the venue chosen on
+//     Tonight unless it is (R75); each song with + / ✓ for tonight's set
 //     there (the owner's case: open "Crowd pleasers" and drop two songs into
 //     tonight), its sings at the list's label venue (R43), a drag handle
-//     (R16), and a swipe left for Remove (R15). The list's actions:
-//     Find songs (R57) beside a "…" holding Rename and label (R14, R56), Merge into… (R59) and
-//     Delete; the Mix card (R44) and Suggest songs (R45) follow the songs.
-//     The dock's field filters its songs.
+//     (R16), and a swipe left for Remove (R15); a tap on the song opens its
+//     page (R70). The list's actions: Find songs (R57) beside a "…" holding
+//     Rename and label (R14, R56), Merge into… (R59) and Delete. Suggest
+//     songs (R45) follows the songs: a preview to trim, then Add these, with
+//     Undo. The dock's field filters its songs.
 // Coming back to the scope within five minutes reopens the list (R60).
 import { db, request } from '../db.js';
 import {
@@ -27,12 +29,13 @@ import {
   setlistNameError, sortSetlists, venueValue, venueIdFromValue, venueOptions, venueLabel,
   makeSetlist, updateSetlist, describeSetlistDelete, removeSongId, addSongId, setlistSongs,
   moveSongId, moveSongIdBy, mixByGenre, mixByDecade, formatMix,
-  SUGGEST_MIN, SUGGEST_MAX, SUGGEST_DEFAULT, suggestCount, suggestSongs, describeSuggestion,
+  SUGGEST_MIN, SUGGEST_MAX, SUGGEST_DEFAULT, SUGGEST_MATCH, SUGGEST_SPREAD, suggestCount, suggestSongs,
+  describeSuggestion, genreYear,
   mergePlan, describeMerge, describeMerged,
 } from '../lib/setlist.js';
 import { setMenuGroups, currentSetlistKey, currentSetlistFor } from '../lib/night.js';
 import {
-  VENUE_KEY, openCurrentSet, showSetInFind, setWorkingList,
+  VENUE_KEY, openCurrentSet, showSetInFind, setWorkingList, openSongScreen,
 } from './songs.js';
 import { hereShort } from './tonight.js';
 
@@ -58,6 +61,7 @@ function stillCurrent(token, ticket) {
 
 const CHEVRON_RIGHT = ['M9 6l6 6-6 6'];
 const CHEVRON_LEFT = ['M15 6l-6 6 6 6'];
+const CROSS = ['M6 6l12 12', 'M18 6L6 18'];
 
 // The "For venue (optional)" <select> (R56): Any venue, then every venue by name.
 function venueSelect(venues, venueId) {
@@ -67,12 +71,57 @@ function venueSelect(venues, venueId) {
   return select;
 }
 
-// A mix line in miniature (R44): the `max` biggest groups in the order given
-// (genres most first, decades oldest first), then "+N more".
-function mixSummary(items, max) {
-  if (items.length <= max) return formatMix(items);
+// The `max` biggest groups of a mix (R44), in the order given (genres most
+// first, decades oldest first).
+function mixHead(items, max) {
+  if (items.length <= max) return items;
   const kept = new Set([...items].sort((a, b) => b.count - a.count).slice(0, max));
-  return `${formatMix(items.filter((item) => kept.has(item)))} · +${items.length - max} more`;
+  return items.filter((item) => kept.has(item));
+}
+
+// A mix line in miniature (R44): the `max` biggest groups, then "+N more".
+function mixSummary(items, max) {
+  const head = formatMix(mixHead(items, max));
+  return items.length > max ? `${head} · +${items.length - max} more` : head;
+}
+
+// A mix line at the top of a list's screen (R44): the `max` biggest groups,
+// then "+N more", a button that unfolds every group in place (genres most
+// first, decades oldest first, "No genre" and "No year" last) and, tapped
+// again, folds them back. `noun` ('genre', 'decade') ends the button's name
+// for screen readers: "+2 more genres", "fewer genres". Folded or not stays
+// put while the list changes under it. set(items) draws it from a mix.
+function foldingMix(max, noun) {
+  const text = el('span', { class: 'mix-text' });
+  const sep = el('span', { class: 'mix-sep', 'aria-hidden': 'true', text: ' · ' });
+  const label = el('span');
+  const named = el('span', { class: 'visually-hidden' });
+  const more = el('button', { type: 'button', class: 'mix-more', 'aria-expanded': 'false' }, label, named);
+  const line = el('p', { class: 'list-mix mix-line' }, text, sep, more);
+  let items = [];
+  let open = false;
+  function draw() {
+    const extra = items.length - max;
+    text.textContent = formatMix(open ? items : mixHead(items, max));
+    line.hidden = !items.length;
+    line.classList.toggle('folds', extra > 0);
+    sep.hidden = extra <= 0;
+    more.hidden = extra <= 0;
+    label.textContent = open ? 'fewer' : `+${extra} more`;
+    named.textContent = ` ${!open && extra === 1 ? noun : `${noun}s`}`;
+    more.setAttribute('aria-expanded', String(open));
+  }
+  more.addEventListener('click', () => {
+    open = !open;
+    draw();
+  });
+  return {
+    line,
+    set(next) {
+      items = next;
+      draw();
+    },
+  };
 }
 
 // "For The Crown · 12 songs": the label and the count, each its own span.
@@ -238,11 +287,12 @@ function mergeSetlists(sourceId, targetId, songsById) {
 }
 
 // ---------- One list's songs: + / ✓ for tonight (R48), here stats (R43),
-// order (R16), remove (R15), find (R57), rename and label (R14, R56),
-// merge (R59), delete (R14), mix (R44) and suggest (R45) ----------
+// order (R16), remove (R15), the song page (R70), find (R57), rename and
+// label (R14, R56), merge (R59), delete (R14), mix (R44) and suggest (R45) ----------
 
-// `message` is a line to show at the top, e.g. after a merge.
-async function renderSetlist(id, message = '') {
+// `message` is a line to show at the top, e.g. after a merge; `focusId` a
+// song to bring into view and focus, e.g. coming back from its page.
+async function renderSetlist(id, message = '', focusId = null) {
   const token = ++screen;
   const ticket = screenTicket();
   const [found, venueRecords, songs, sings, setlistRecords, metaRecords] = await Promise.all([
@@ -274,8 +324,8 @@ async function renderSetlist(id, message = '') {
 
   const status = el('p', { class: 'status', role: 'status', text: message });
   const list = el('ol', { class: 'list setlist-songs', 'aria-label': 'Songs in this setlist' });
-  const genreLine = el('p', { class: 'list-mix' });
-  const decadeLine = el('p', { class: 'list-mix' });
+  const genreMix = foldingMix(3, 'genre');
+  const decadeMix = foldingMix(4, 'decade');
   const countText = el('span', { class: 'list-count' });
   const inSetLine = el('p', { class: 'list-in-set' });
   const legend = el('p', { class: 'set-legend' },
@@ -461,38 +511,185 @@ async function renderSetlist(id, message = '') {
     class: 'btn danger', type: 'button', text: 'Delete', 'aria-label': `Delete ${setlist.name}`, onclick: removeList,
   });
 
-  // ---- The mix (R44): closed by default, a reading aid so gaps and repeats stand out ----
-
-  const mixGenres = el('dd');
-  const mixDecades = el('dd');
-  const mixEmpty = el('p', { class: 'muted mix-empty', text: 'No songs yet.' });
-  const mixLines = el('dl', { class: 'mix-lines' },
-    el('div', {}, el('dt', { text: 'Genres' }), mixGenres),
-    el('div', {}, el('dt', { text: 'Decades' }), mixDecades));
-  const mix = el('details', { class: 'card mix' }, el('summary', { text: 'Mix' }), mixEmpty, mixLines);
-
-  // ---- Suggest songs (R45): adds songs never sung here to the end, as a start to edit ----
+  // ---- Suggest songs (R45): songs never sung here, in the list's own mix or
+  // across every genre, shown first as a preview to trim; "Add these" puts
+  // what is left on the end, and Undo takes them off again ----
 
   const general = setlist.venueId == null;
   const howMany = el('input', {
     type: 'number', name: 'how-many', min: String(SUGGEST_MIN), max: String(SUGGEST_MAX), step: '1',
     value: String(SUGGEST_DEFAULT), inputmode: 'numeric', required: '',
   });
+  // Match this list or Mix it up; an empty list has no mix to match, so the switch hides.
+  const matchChoice = el('input', { type: 'radio', name: 'suggest-mode', value: SUGGEST_MATCH });
+  const spreadChoice = el('input', { type: 'radio', name: 'suggest-mode', value: SUGGEST_SPREAD });
+  const modeSwitch = el('div', { class: 'suggest-mode', role: 'radiogroup', 'aria-label': 'Which songs' },
+    el('label', {}, matchChoice, el('span', { text: 'Match this list' })),
+    el('label', {}, spreadChoice, el('span', { text: 'Mix it up' })));
+  const suggestHint = el('p', { class: 'muted hint' });
+  const suggestButton = el('button', { class: 'btn primary', type: 'submit', text: 'Suggest songs' });
   const suggestError = el('p', { class: 'error', role: 'alert' });
-  const suggestStatus = el('p', { class: 'status', role: 'status' });
+  const suggestStatus = el('p', { class: 'status suggest-note', role: 'status' });
+  // "Added 5 songs. Undo": stays until the list changes some other way.
+  const doneLine = el('p', { class: 'status suggest-done', role: 'status' });
+  const undoButton = el('button', { class: 'btn undo-add', type: 'button', text: 'Undo', onclick: undoAdd });
   // novalidate: an empty or out-of-range number gets an inline error instead of a bubble.
   const suggestForm = el('form', { class: 'card stack suggest', 'aria-label': 'Suggest songs', novalidate: '' },
     el('h3', { text: 'Suggest songs' }),
-    el('p', {
-      class: 'muted hint',
-      text: `Songs never sung ${general ? 'anywhere' : 'here'}, spread across genres and decades.`,
-    }),
-    el('div', { class: 'suggest-row' },
-      el('label', { text: 'How many' }, howMany),
-      el('button', { class: 'btn primary', type: 'submit', text: 'Suggest songs' })),
+    suggestHint,
+    modeSwitch,
+    el('div', { class: 'suggest-row' }, el('label', { text: 'How many' }, howMany), suggestButton),
     suggestError,
-    suggestStatus);
-  let suggesting = false; // stops a double tap from adding two batches
+    suggestStatus,
+    doneLine);
+
+  // The preview, under the card: "Suggested · 5", each song with × to drop it, then Add these or Cancel.
+  const previewHead = el('h3', { id: 'suggest-preview-head', tabindex: '-1' });
+  const previewNote = el('p', { class: 'muted hint' });
+  const previewList = el('ul', { class: 'list suggest-picks', 'aria-label': 'Suggested songs' });
+  const addButton = el('button', { class: 'btn primary', type: 'button', text: 'Add these', onclick: addPicks });
+  const preview = el('section', { class: 'card stack suggest-preview', 'aria-labelledby': 'suggest-preview-head', hidden: '' },
+    previewHead,
+    previewNote,
+    previewList,
+    el('div', { class: 'row' },
+      addButton,
+      el('button', { class: 'btn', type: 'button', text: 'Cancel', onclick: () => closePreview(true) })));
+  let picks = []; // the songs in the preview, in the order they would be added
+  let undoIds = null; // the songs the last Add these put on the end, while Undo can take them off
+  let adding = false; // stops a double tap from adding or undoing twice
+  let hadSongs = null; // whether the list had songs at the last draw, for the switch's default
+
+  function suggestMode() {
+    return !modeSwitch.hidden && matchChoice.checked ? SUGGEST_MATCH : SUGGEST_SPREAD;
+  }
+
+  function drawHint() {
+    const where = general ? 'anywhere' : 'here';
+    suggestHint.textContent = suggestMode() === SUGGEST_MATCH
+      ? `Songs never sung ${where}, in this list's mix of genres and decades.`
+      : `Songs never sung ${where}, spread across genres and decades.`;
+  }
+  modeSwitch.addEventListener('change', drawHint);
+
+  // Match this list once the list has songs (and whenever it gets its first
+  // ones); Mix it up, with no switch, while it has none.
+  function syncSuggest(count) {
+    if ((count > 0) !== hadSongs) {
+      hadSongs = count > 0;
+      modeSwitch.hidden = !hadSongs;
+      (hadSongs ? matchChoice : spreadChoice).checked = true;
+    }
+    drawHint();
+  }
+
+  function pickRow(song) {
+    return el('li', { class: 'suggest-pick', 'data-song-id': song.id },
+      el('span', { class: 'text' },
+        el('span', { class: 'title', text: song.title }),
+        el('span', { class: 'sub', text: song.artist }),
+        el('span', { class: 'pick-mix', text: genreYear(song) })),
+      el('button', {
+        class: 'btn icon-btn drop-pick', type: 'button', 'aria-label': `Drop ${song.title}`, onclick: () => dropPick(song),
+      }, icon(CROSS, { size: 18, width: 2.6 })));
+  }
+
+  function drawPreview() {
+    previewHead.textContent = `Suggested · ${picks.length}`;
+    previewList.replaceChildren(...picks.map(pickRow));
+  }
+
+  function showPreview(chosen, note) {
+    picks = chosen;
+    drawPreview();
+    previewNote.textContent = note;
+    preview.hidden = false;
+    previewHead.focus(); // brings it into view, and a screen reader reads it
+  }
+
+  function closePreview(refocus) {
+    picks = [];
+    preview.hidden = true;
+    previewList.replaceChildren();
+    previewNote.textContent = '';
+    if (refocus) suggestButton.focus({ preventScroll: true });
+  }
+
+  // × on a suggestion: out of the preview, with focus on the next ×; the last one closes it.
+  function dropPick(song) {
+    const at = picks.findIndex((s) => s.id === song.id);
+    picks = picks.filter((s) => s.id !== song.id);
+    if (!picks.length) {
+      closePreview(true);
+      return;
+    }
+    drawPreview();
+    const drops = previewList.querySelectorAll('.drop-pick');
+    drops[Math.min(at, drops.length - 1)].focus({ preventScroll: true });
+  }
+
+  // The line under the card after Add these or Undo; `undo` shows the Undo button.
+  function showDone(text, undo) {
+    doneLine.replaceChildren(text, undo ? ' ' : '', undo ? undoButton : '');
+  }
+
+  // Any other change to the list's songs ends what Undo would take back.
+  function forgetUndo() {
+    undoIds = null;
+    doneLine.replaceChildren();
+  }
+
+  // Add these: what is left of the preview goes on the end, in the preview's
+  // order; nothing already there moves or goes.
+  async function addPicks() {
+    if (adding || !picks.length) return;
+    const there = new Set(setlist.songIds || []);
+    const added = picks.map((s) => s.id).filter((songId) => !there.has(songId));
+    closePreview(false);
+    clearStatus();
+    if (!added.length) return;
+    const previous = setlist;
+    for (const songId of added) setlist = addSongId(setlist, songId);
+    adding = true;
+    try {
+      await save();
+    } catch (err) {
+      setlist = previous;
+      drawSongs();
+      showDone(`Could not save: ${err.message}`, false);
+      return;
+    } finally {
+      adding = false;
+    }
+    undoIds = new Set(added);
+    showDone(`Added ${plural(added.length, 'song', 'songs')}.`, true);
+    undoButton.focus();
+  }
+
+  // Undo: the songs Add these put on the end come off again. Nothing else
+  // has changed since (or Undo would be gone), so the list is as it was.
+  async function undoAdd() {
+    if (adding || !undoIds) return;
+    const ids = undoIds;
+    const previous = setlist;
+    undoIds = null;
+    for (const songId of ids) setlist = removeSongId(setlist, songId);
+    if (ids.has(openRow)) openRow = null;
+    suggestButton.focus({ preventScroll: true }); // Undo is about to go
+    adding = true;
+    try {
+      await save();
+    } catch (err) {
+      setlist = previous;
+      undoIds = ids;
+      drawSongs();
+      showDone(`Could not undo: ${err.message}`, true);
+      return;
+    } finally {
+      adding = false;
+    }
+    showDone('Undone.', false);
+  }
 
   // ---- Tonight's set (R47, R48, R56) ----
 
@@ -548,11 +745,20 @@ async function renderSetlist(id, message = '') {
 
   // ---- The songs ----
 
-  // A song row: drag handle at the far left, the song with its sings here,
-  // and + / ✓. Swiped left (js/swipe.js, as on Tonight), Remove slides in
-  // over the row's end; it is in the page all the time, so a keyboard reaches
-  // it and focusing it opens the row. `filtered` while the dock's field
-  // narrows the rows, when there is nothing to drag among.
+  // The song's page (R70); its Back returns to this list, with the song in view.
+  function openSong(song) {
+    openSongScreen(song.id, {
+      label: `Back to ${setlist.name}`,
+      render: ({ message: line = '', focusId: songId = null } = {}) => renderSetlist(setlist.id, line, songId),
+    });
+  }
+
+  // A song row: drag handle at the far left, the song with its sings here
+  // (a tap opens its page, R70), and + / ✓. Swiped left (js/swipe.js, as on
+  // Tonight), Remove slides in over the row's end; it is in the page all the
+  // time, so a keyboard reaches it and focusing it opens the row. A swipe,
+  // or a tap that closes an open row, never opens the song. `filtered` while
+  // the dock's field narrows the rows, when there is nothing to drag among.
   function songRow(song, filtered) {
     const open = openRow === song.id;
     const handle = filtered ? null : el('button', {
@@ -567,7 +773,7 @@ async function renderSetlist(id, message = '') {
     const stat = here ? hereShort(here.get(song.id), true, today) : '';
     const surface = el('div', { class: 'song-main' },
       handle,
-      el('div', { class: 'text' },
+      el('button', { type: 'button', class: 'text song-open', onclick: () => openSong(song) },
         el('span', { class: 'title', text: song.title }),
         el('span', { class: 'sub', text: song.artist }),
         stat ? el('span', { class: `here${here.has(song.id) ? ' sung' : ''}`, text: stat }) : null),
@@ -610,8 +816,8 @@ async function renderSetlist(id, message = '') {
     const text = songsQuery.text.trim();
     const shown = text ? filterSongs(inList, songsQuery.text) : inList; // untrimmed: a trailing space asks for whole words
     countText.textContent = plural(inList.length, 'song', 'songs');
-    genreLine.textContent = inList.length ? mixSummary(mixByGenre(inList), 3) : '';
-    decadeLine.textContent = inList.length ? mixSummary(mixByDecade(inList), 4) : '';
+    genreMix.set(mixByGenre(inList));
+    decadeMix.set(mixByDecade(inList));
     inSetLine.textContent = isTonight() ? 'This is tonight\'s set'
       : inList.length ? `${inTonight(inList, tonight)} of ${inList.length} in tonight's set` : '';
     makeTonightButton.hidden = isTonight();
@@ -621,14 +827,7 @@ async function renderSetlist(id, message = '') {
     empty.hidden = inList.length > 0;
     findButton.hidden = inList.length === 0; // the empty state has its own
     syncMerge(inList.length);
-    drawMix(inList);
-  }
-
-  function drawMix(inList) {
-    mixGenres.textContent = formatMix(mixByGenre(inList));
-    mixDecades.textContent = formatMix(mixByDecade(inList));
-    mixEmpty.hidden = inList.length > 0;
-    mixLines.hidden = inList.length === 0;
+    syncSuggest(inList.length);
   }
 
   async function save() {
@@ -643,10 +842,9 @@ async function renderSetlist(id, message = '') {
     suggestError.textContent = '';
   }
 
-  // Adds the suggested songs to the end (R45); nothing already there moves or goes.
-  suggestForm.addEventListener('submit', async (e) => {
+  // Suggest songs (R45): a new preview in place of any open one; nothing is added yet.
+  suggestForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    if (suggesting) return;
     clearStatus();
     const n = suggestCount(howMany.value);
     if (n === null) {
@@ -655,20 +853,19 @@ async function renderSetlist(id, message = '') {
       return;
     }
     if (!songs.length) {
+      closePreview(false);
       suggestStatus.textContent = 'No songs yet. Add some under Songs first.';
       return;
     }
-    const chosen = suggestSongs(songs, sings, setlist, n);
-    if (chosen.length) {
-      suggesting = true;
-      for (const song of chosen) setlist = addSongId(setlist, song.id);
-      try {
-        await save();
-      } finally {
-        suggesting = false;
-      }
+    const mode = suggestMode();
+    const chosen = suggestSongs(songs, sings, setlist, n, { mode });
+    const note = describeSuggestion(chosen.length, n, { general, match: mode === SUGGEST_MATCH });
+    if (!chosen.length) {
+      closePreview(false);
+      suggestStatus.textContent = note;
+      return;
     }
-    suggestStatus.textContent = describeSuggestion(chosen.length, n, general);
+    showPreview(chosen, note);
   });
 
   // Saves a new order at once (R16). `refocus` (a song id) puts focus back on
@@ -677,6 +874,7 @@ async function renderSetlist(id, message = '') {
     if (sameOrder(next.songIds, setlist.songIds || [])) return;
     setlist = next;
     clearStatus();
+    forgetUndo();
     await save();
     if (refocus != null) list.querySelector(`[data-song-id="${refocus}"] .handle`)?.focus();
   }
@@ -691,6 +889,7 @@ async function renderSetlist(id, message = '') {
     setlist = removeSongId(setlist, song.id);
     if (openRow === song.id) openRow = null;
     clearStatus();
+    forgetUndo();
     await save();
   }
 
@@ -724,8 +923,8 @@ async function renderSetlist(id, message = '') {
       el('h2', { text: setlist.name }),
       el('p', { class: 'list-meta' },
         el('span', { class: 'label', text: venueLabel(setlist, venues) }), ' · ', countText),
-      genreLine,
-      decadeLine,
+      genreMix.line,
+      decadeMix.line,
       inSetLine),
     el('div', { class: 'setlist-actions' }, findButton, moreButton, mergeNote),
     moreMenu,
@@ -735,11 +934,18 @@ async function renderSetlist(id, message = '') {
     legend,
     list,
     empty,
-    mix,
-    suggestForm);
+    suggestForm,
+    preview);
   viewEl.replaceChildren(root);
   viewEl.scrollTop = 0;
   drawSongs();
+  if (focusId != null) {
+    const opener = list.querySelector(`[data-song-id="${focusId}"] .song-open`);
+    if (opener) {
+      opener.scrollIntoView({ block: 'center' });
+      opener.focus({ preventScroll: true });
+    }
+  }
   dock.filters(null);
   dock.search({
     placeholder: `Search ${setlist.name}`,
