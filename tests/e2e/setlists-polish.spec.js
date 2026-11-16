@@ -302,7 +302,7 @@ test.describe('Setlists polish', () => {
     await expect(mixText(page, 'decade')).toHaveText('1960s 1 · 1970s 2 · 1980s 1 · 2000s 2');
     const genres = mixToggle(page, 'genre');
     const decades = mixToggle(page, 'decade');
-    await expect(genres).toHaveText('+1 more genre'); // "genre" for screen readers only
+    await expect(genres).toHaveText('+more'); // the count and the noun are for screen readers only
     await expect(genres).toHaveAccessibleName('+1 more genre');
     await expect(genres).toHaveAttribute('aria-expanded', 'false');
     await expect(decades).toHaveAccessibleName('+2 more decades');

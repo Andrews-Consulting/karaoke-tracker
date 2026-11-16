@@ -35,11 +35,11 @@ export async function createSetlist(page, name, venue = 'Any venue') {
   await expect(setlistRow(page, name.trim())).toBeVisible();
 }
 
-// Opens the list (unless it is open) and its "Rename and label" form, and returns the form.
+// Opens the list (unless it is open) and its Rename form, and returns the form.
 export async function editSetlist(page, name) {
   if (!(await page.getByRole('heading', { level: 2, name, exact: true }).isVisible())) await openSetlist(page, name);
   await openListMenu(page);
-  await page.getByRole('button', { name: 'Rename and label', exact: true }).click();
+  await page.getByRole('button', { name: 'Rename', exact: true }).click();
   const form = page.getByRole('form', { name: `Edit ${name}`, exact: true });
   await expect(form).toBeVisible();
   return form;

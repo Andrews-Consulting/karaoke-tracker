@@ -1307,18 +1307,29 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
 
 /* ---- Setlist labels, Find songs and merge (R56, R57, R59) ---- */
 
-/* Under the label line: Find songs and Merge into…, with why merging is off. */
-.setlist-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+/* Under the label line: Find songs, Rename, Merge into… and Delete on one
+   line. On a phone the last of them sit past the edge and a swipe left
+   brings them in; the scrollbar is hidden, the cut-off button is the hint. */
+.setlist-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 -16px; /* the row runs to the screen's edges, so a button is seen to be cut off */
+  padding: 2px 16px; /* room for the focus ring */
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.setlist-actions::-webkit-scrollbar { display: none; }
+.setlist-actions > .btn { flex: none; white-space: nowrap; }
 /* The list screen's top line: back at the left, Make this tonight's set at the right. */
 .list-topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .list-topbar .make-tonight { margin: 0; }
-/* Rename and label, Merge into… and Delete, behind the "…" beside Find songs. */
-.list-more { width: var(--tap); height: var(--tap); padding: 0; }
-.list-more.on { border-color: var(--accent); color: var(--accent); }
-.list-more-menu { display: flex; flex-wrap: wrap; gap: 8px; }
-.list-more-menu[hidden] { display: none; }
-.setlist-actions .merge-note { flex-basis: 100%; margin: 0; font-size: 0.875rem; }
-.setlist-actions .merge-note:empty { display: none; }
+/* Why merging is off, under the row. */
+.merge-note { margin: 0; font-size: 0.875rem; }
+.merge-note:empty { display: none; }
 .merge-form .hint { margin: 0; font-size: 0.875rem; }
 .merge-field > label + select { margin-top: 4px; }
 .setlist-empty > p { margin: 0 0 8px; }
@@ -1668,6 +1679,19 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
    them back). While a line has one, it makes room for the target above and
    below, so the two lines' targets never overlap. */
 .list-head .list-mix.folds { padding: 14px 0; overflow: visible; }
+/* Folded, a mix line is one line, 44 px tall for the target: the counts cut
+   off with an ellipsis and "+more" sits at the end. Unfolded it wraps. */
+.list-head .list-mix.folds:not(.open) {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.list-head .list-mix.folds:not(.open) .mix-text { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; } /* +more follows the text, which gives way when long */
+.list-head .list-mix.folds:not(.open) .mix-sep { flex: none; white-space: pre; }
+.list-head .list-mix.folds:not(.open) .mix-more { flex: none; margin: 0; }
 .mix-more {
   position: relative; /* holds the screen-reader words */
   display: inline-block;

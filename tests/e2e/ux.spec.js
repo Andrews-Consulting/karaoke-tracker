@@ -146,9 +146,7 @@ test.describe('UX', () => {
     await expectTapTargets(page, 'Lists, new list');
     await openSetlist(page, 'Friday');
     await expectTapTargets(page, 'A list');
-    await openListMenu(page);
-    await expectTapTargets(page, 'A list, its menu open');
-    await page.getByRole('button', { name: 'Rename and label', exact: true }).click();
+    await page.getByRole('button', { name: 'Rename', exact: true }).click();
     await openSongMenu(page, 'Valerie');
     await expectTapTargets(page, 'A list, renaming, with a song\'s actions');
 
