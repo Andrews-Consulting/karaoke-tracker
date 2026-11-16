@@ -189,7 +189,7 @@ test.describe('Backup and restore', () => {
     await restoreBackup(page, backupFile({ songs: [songRecord(1, 'Waterloo', 'ABBA')] }));
     expect(await dialog).toBe('Replace the 1 song, 0 venues, 0 sing log entries and 0 setlists on this device with '
       + '1 song, 0 venues, 0 sing log entries and 0 setlists from the backup? This cannot be undone.');
-    await expect(page.getByRole('status')).toHaveText('Restore cancelled. Nothing was changed.');
+    await expect(page.getByRole('status')).toHaveText('Restore canceled. Nothing was changed.');
 
     await openSongs(page);
     await expect(page.getByText('1 of 1 songs')).toBeVisible();

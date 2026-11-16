@@ -231,12 +231,12 @@ test.describe('Accent', () => {
   const activeTabColor = (page) => page.evaluate(() =>
     getComputedStyle(document.querySelector('.scopes button[aria-current="page"]')).backgroundColor);
 
-  test('R55: the accent colour can be changed in Settings and survives a reload', async ({ page }) => {
+  test('R55: the accent color can be changed in Settings and survives a reload', async ({ page }) => {
     await openApp(page);
     expect(await activeTabColor(page)).toBe('rgb(108, 196, 255)'); // sky by default
 
     await openSettings(page);
-    await page.getByLabel('Accent colour', { exact: true }).selectOption('pink');
+    await page.getByLabel('Accent color', { exact: true }).selectOption('pink');
     await expect.poll(() => activeTabColor(page)).toBe('rgb(255, 93, 143)');
 
     await page.reload();
@@ -246,13 +246,13 @@ test.describe('Accent', () => {
     // Each accent has a partner for the light theme.
     await openSettings(page);
     await page.getByLabel('Theme', { exact: true }).selectOption('light');
-    await page.getByLabel('Accent colour', { exact: true }).selectOption('amber');
+    await page.getByLabel('Accent color', { exact: true }).selectOption('amber');
     await expect.poll(() => activeTabColor(page)).toBe('rgb(158, 79, 0)');
 
     await page.getByLabel('Theme', { exact: true }).selectOption('dark');
-    await page.getByLabel('Accent colour', { exact: true }).selectOption('green'); // the old default stays a choice
+    await page.getByLabel('Accent color', { exact: true }).selectOption('green'); // the old default stays a choice
     await expect.poll(() => activeTabColor(page)).toBe('rgb(19, 184, 106)');
-    await page.getByLabel('Accent colour', { exact: true }).selectOption('sky');
+    await page.getByLabel('Accent color', { exact: true }).selectOption('sky');
     await expect.poll(() => activeTabColor(page)).toBe('rgb(108, 196, 255)');
     expect(await page.evaluate(() => document.documentElement.dataset.accent)).toBeUndefined();
   });

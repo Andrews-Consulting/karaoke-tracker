@@ -96,7 +96,7 @@ Everything the app does today, written as what the singer wants and why, without
 
 - As a singer, I want everything reachable with one thumb, with targets I can hit in a dim, noisy room, and the back gesture returning me within the app rather than out of it, so that I can use it standing with a drink in my other hand. (R31)
 - As a singer, I want the content to start at the top of the screen with no title bar, and the bottom controls to show where I am, so that the small screen is spent on songs. (R58)
-- As a singer, I want a dark look by default with a light option and a choice to follow the phone, and a choice of accent colour, so that it is comfortable in a dark bar and still feels like mine. (R32, R51, R55)
+- As a singer, I want a dark look by default with a light option and a choice to follow the phone, and a choice of accent color, so that it is comfortable in a dark bar and still feels like mine. (R32, R51, R55)
 - As a singer, I want it to read well on a laptop too, so that tidying my songs at a desk is pleasant. (R33)
 - As a singer, I want one search field at the bottom that works on whatever I am looking at, and clearing it not to pop the keyboard up when I was not typing, so that searching is always in the same place under my thumb. (R77)
 - As a singer, I want the screen to fit above the keyboard while I type, with the first matches in view, so that I can see what I am finding without putting the keyboard away. (R78)

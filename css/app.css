@@ -71,9 +71,13 @@ html[data-kb] .songs-view > .find-context,
 html[data-kb] .songs-view > .filter-line { display: none; }
 html[data-kb] .songs-view > .source-switch { margin-bottom: 6px; } /* stays: it is how the catalog is reached */
 html[data-kb] .songs-view > .pick-row { margin: 0 0 6px; }
+/* Typing into a form on the screen rather than the dock's field: the dock
+   gives way so the form has the room above the keyboard (js/dock.js). */
+html[data-kb-form] .dock { display: none; }
 
 body {
   margin: 0;
+  touch-action: manipulation; /* scroll and pinch stay; two quick taps (+ twice, a fast Sang it) no longer zoom the page */
   display: flex;
   flex-direction: column;
   background: var(--bg);
@@ -750,7 +754,7 @@ label.check > input[type="checkbox"] {
    page all the time, parked off the right edge, so focus reaches them
    without the gesture. */
 .after-row { position: relative; overflow: hidden; }
-.after-main { touch-action: pan-y; }
+.after-main { touch-action: pan-y pinch-zoom; } /* pan-y alone would also swallow a pinch that starts on a row */
 .after-actions {
   position: absolute;
   top: 0;
@@ -1515,7 +1519,7 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
    without the gesture. */
 .setlist-song { position: relative; overflow: hidden; --reveal: 110px; }
 /* No text selection on the surface, or a second swipe would drag the selected text instead. */
-.setlist-song .song-main { touch-action: pan-y; -webkit-user-select: none; user-select: none; }
+.setlist-song .song-main { touch-action: pan-y pinch-zoom; -webkit-user-select: none; user-select: none; }
 .setlist-song .song-actions {
   position: absolute;
   top: 0;

@@ -27,13 +27,13 @@ test.describe('Backup sharing and checking', () => {
     expect((await lastBackup(page)).value).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
-  test('R62: a cancelled share is not counted as a backup', async ({ page }) => {
+  test('R62: a canceled share is not counted as a backup', async ({ page }) => {
     await fakeShareSheet(page, 'cancelled');
     await openApp(page);
     await addSong(page, { title: 'Valerie', artist: 'Amy Winehouse' });
     await openSettings(page);
     await page.getByRole('button', { name: 'Share backup' }).click();
-    await expect(status(page)).toHaveText('Share cancelled. No backup was made.');
+    await expect(status(page)).toHaveText('Share canceled. No backup was made.');
     expect(await lastBackup(page)).toBeUndefined();
   });
 

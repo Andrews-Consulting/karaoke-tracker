@@ -80,7 +80,7 @@ export async function renderSettings() {
     el('strong', { text: 'Appearance' }),
     el('label', { for: 'setting-theme', text: 'Theme' }),
     themeSelect,
-    el('label', { for: 'setting-accent', text: 'Accent colour' }),
+    el('label', { for: 'setting-accent', text: 'Accent color' }),
     accentSelect);
 
   // ---- R35: online suggestions, the app's only network call ----
@@ -224,7 +224,7 @@ export async function renderSettings() {
       backupMsg.show(`Shared ${name} with ${formatCounts(countRecords(backup.data))}. `
         + 'If you chose Save to Files, it is in the Files app.');
     } catch (err) {
-      if (err && err.name === 'AbortError') backupMsg.show('Share cancelled. No backup was made.');
+      if (err && err.name === 'AbortError') backupMsg.show('Share canceled. No backup was made.');
       else backupMsg.show(`Could not share a backup. ${errorText(err)}`, { error: true });
     }
   }
@@ -269,7 +269,7 @@ export async function renderSettings() {
       const incoming = countRecords(result.data);
       const current = countRecords(await db.exportAll());
       if (!confirmAction(restoreMessage(current, incoming))) {
-        backupMsg.show('Restore cancelled. Nothing was changed.');
+        backupMsg.show('Restore canceled. Nothing was changed.');
         return;
       }
       await db.replaceAll(result.data);

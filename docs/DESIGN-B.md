@@ -1,6 +1,6 @@
 # Design B: the search field is the app
 
-The redesign chosen on 2026-11-14 from three directions drawn from [USER-STORIES.md](USER-STORIES.md). The reference is the clickable prototype in [design/b-prototype.dc.html](design/b-prototype.dc.html) (open it on the design canvas to play it; the file is self-contained HTML and readable as a spec for spacing, type and colour) and the static screens `design/B1` to `B6`. This document says how the prototype maps onto the app, and the decisions taken where the prototype was silent or wrong. Every requirement in [REQUIREMENTS.md](REQUIREMENTS.md) still holds; only the interface changes. The data layer (`js/db.js`, `js/lib/`) does not change.
+The redesign chosen on 2026-11-14 from three directions drawn from [USER-STORIES.md](USER-STORIES.md). The reference is the clickable prototype in [design/b-prototype.dc.html](design/b-prototype.dc.html) (open it on the design canvas to play it; the file is self-contained HTML and readable as a spec for spacing, type and color) and the static screens `design/B1` to `B6`. This document says how the prototype maps onto the app, and the decisions taken where the prototype was silent or wrong. Every requirement in [REQUIREMENTS.md](REQUIREMENTS.md) still holds; only the interface changes. The data layer (`js/db.js`, `js/lib/`) does not change.
 
 ## The shell
 

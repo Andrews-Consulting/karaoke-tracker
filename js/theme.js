@@ -1,5 +1,5 @@
 // Applies the theme choice (R32) to the page: the data-theme attribute that
-// css/app.css styles, the browser-chrome colour, and the saved choice. The
+// css/app.css styles, the browser-chrome color, and the saved choice. The
 // inline script in index.html applies the saved choice before the first paint;
 // this module keeps it current afterwards and follows the phone's setting when
 // the choice is "Match the phone".
