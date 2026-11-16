@@ -34,7 +34,8 @@ export function watchForUpdates(scriptUrl = 'sw.js') {
     hadController = !!sw.controller;
   });
 
-  sw.register(scriptUrl)
+  // A module worker, so sw.js can import the version number from js/version.js.
+  sw.register(scriptUrl, { type: 'module' })
     .then((registration) => {
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') registration.update().catch(() => {});

@@ -312,8 +312,14 @@
 
 <footer>
   <a class="app-link" href="../">Open Mic Jaunt</a>
-  <p>Mic Jaunt · <a href="https://micjaunt.app">micjaunt.app</a></p>
+  <p>Mic Jaunt · <a href="https://micjaunt.app">micjaunt.app</a> <span id="guide-version"></span></p>
 </footer>
+<script type="module">
+  // The guide is deployed with the app, so the app's own version number says
+  // which version it describes; compare it with the foot of Settings.
+  import { APP_VERSION } from '../js/version.js';
+  document.getElementById('guide-version').textContent = `· written for version ${APP_VERSION}`;
+</script>
 
 </div>
 </body>

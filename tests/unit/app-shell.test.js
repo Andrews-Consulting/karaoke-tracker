@@ -7,6 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { APP_VERSION } from '../../js/version.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const read = (rel) => readFileSync(path.join(ROOT, rel), 'utf8');
@@ -63,5 +64,25 @@ describe('sw.js APP_SHELL matches the app', () => {
 
   it('lists no module twice', () => {
     expect(SHELL.length).toBe(SHELL_SET.size);
+  });
+});
+
+// One version number (R73): js/version.js is the source, package.json repeats
+// it, and sw.js names its cache after it rather than carrying a number of its
+// own, so a bump in one place reaches the installed copies.
+describe('the version number lives in one place', () => {
+  it('package.json carries the same version as js/version.js', () => {
+    expect(JSON.parse(read('package.json')).version).toBe(APP_VERSION);
+  });
+
+  it('sw.js names its cache after APP_VERSION and keeps no number of its own', () => {
+    const source = read('sw.js');
+    expect(source).toMatch(/import \{ APP_VERSION \} from '\.\/js\/version\.js'/);
+    expect(source).toMatch(/const CACHE_VERSION = `v\$\{APP_VERSION\}`/);
+    expect(source).not.toMatch(/CACHE_VERSION = 'v\d/);
+  });
+
+  it('the worker is registered as a module, which the import needs', () => {
+    expect(read('js/update.js')).toMatch(/register\(scriptUrl, \{ type: 'module' \}\)/);
   });
 });

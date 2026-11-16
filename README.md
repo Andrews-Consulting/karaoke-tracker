@@ -66,8 +66,8 @@ The guards above are how the quality of the app is kept, so a change that adds o
 
 1. A row in `docs/REQUIREMENTS.md`, new or updated, that says what the app does now, in plain words, and a matching line in `docs/USER-STORIES.md`. A replaced behaviour goes to the History table there; IDs are never reused.
 2. An e2e test in `tests/e2e/` whose title starts with the row's ID and says what it proves, named in the row's Notes. A row without a test reads Built, not Done.
-3. For a new file under `js/`, its path in `APP_SHELL` in `sw.js`; for any change to a cached file, `CACHE_VERSION` bumped.
-4. `npm test` green, both browsers.
+3. For a new file under `js/`, its path in `APP_SHELL` in `sw.js`; for any change to a cached file, `APP_VERSION` bumped in `js/version.js`, with `package.json` to match. That one number names the service worker's cache, shows in Settings and is printed in the guide. `npm run check-version dev` says whether your branch needs the bump; CI runs the same check on every pull request.
+4. `npm test` green, both browsers. CI (`.github/workflows/ci.yml`) runs it on every pull request.
 
 The guards check that the pieces are present and agree with each other. They cannot check that a test's title is true of what it asserts, or that a row describes the code: that is what review is for.
 
@@ -103,7 +103,7 @@ Every requirement so far is built, R28 (hosting) included: the app lives at <htt
 
 ## Two things to remember
 
-- **Bump `CACHE_VERSION` in `sw.js`** whenever you change a cached file, and add every new file under `js/` to `APP_SHELL`, or installed copies keep the old version or break offline. While developing, DevTools → Application → Service Workers → "Update on reload" saves the trouble.
+- **Bump `APP_VERSION` in `js/version.js`** (and `package.json`) whenever you change a cached file, and add every new file under `js/` to `APP_SHELL` in `sw.js`, or installed copies keep the old version or break offline. The unit suite checks the shell and the two version numbers; `npm run check-version <base>` checks the bump. While developing, DevTools → Application → Service Workers → "Update on reload" saves the trouble.
 - **Schema changes** go in a new `if (oldVersion < N)` block in `js/db.js` with `DB_VERSION` bumped. Do not edit an existing block.
 
 ## Deploy (R28)
@@ -124,4 +124,4 @@ Only the app files matter to the host: `index.html`, `manifest.webmanifest`, `sw
 
 **On the phone:** open the URL in Safari (iPhone) or Chrome (Android), then Share → "Add to Home Screen". The installed copy opens full screen and works offline after the first visit. Take a backup from Settings now and then; it is the only copy of your data.
 
-**Shipping an update:** commit, bump `CACHE_VERSION` in `sw.js`, push. An open copy of the app shows "A new version is ready" with a Reload button once the new files are cached (R30); a closed copy picks them up on its next open.
+**Shipping an update:** commit, bump `APP_VERSION` in `js/version.js` and `package.json`, push. An open copy of the app shows "A new version is ready" with a Reload button once the new files are cached (R30); a closed copy picks them up on its next open.

@@ -179,7 +179,8 @@ test.describe('Updates', () => {
   // script URL installs a new worker just the same (the server ignores the
   // query), and sw.js's skipWaiting() and clients.claim() then hand it this page.
   const installNewVersion = (page, scriptUrl) =>
-    page.evaluate((url) => navigator.serviceWorker.register(url).then(() => {}), scriptUrl);
+    // A module worker, as js/update.js registers it: sw.js imports js/version.js.
+    page.evaluate((url) => navigator.serviceWorker.register(url, { type: 'module' }).then(() => {}), scriptUrl);
 
   test('R30: offers to reload when a new version is installed', async ({ page }) => {
     const errors = collectPageErrors(page);

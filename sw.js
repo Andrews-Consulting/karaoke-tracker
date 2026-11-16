@@ -1,10 +1,14 @@
 // Service worker: caches the app shell so the app works offline (R27).
 //
-// IMPORTANT: bump CACHE_VERSION whenever you change any file in APP_SHELL, and
-// add every new app file to APP_SHELL. Otherwise installed copies keep serving
-// the old files, or fail offline when a module is missing from the cache.
+// IMPORTANT: bump APP_VERSION in js/version.js whenever you change any file in
+// APP_SHELL, and add every new app file to APP_SHELL. Otherwise installed
+// copies keep serving the old files, or fail offline when a module is missing
+// from the cache. The cache is named after the version, so one bump does both
+// jobs; this is a module worker (registered with type: 'module' in
+// js/update.js) so it can import the number rather than carry a copy.
+import { APP_VERSION } from './js/version.js';
 
-const CACHE_VERSION = 'v55';
+const CACHE_VERSION = `v${APP_VERSION}`;
 const CACHE_NAME = `mic-jaunt-${CACHE_VERSION}`;
 
 // Paths are relative so the app also works from a sub-folder (e.g. GitHub Pages).
@@ -15,6 +19,7 @@ const APP_SHELL = [
   'manifest.webmanifest',
   'css/app.css',
   'js/app.js',
+  'js/version.js',
   'js/db.js',
   'js/ui.js',
   'js/dock.js',
