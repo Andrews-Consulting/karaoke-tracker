@@ -1,14 +1,19 @@
 // Service worker: caches the app shell so the app works offline (R27).
 //
-// IMPORTANT: bump APP_VERSION in js/version.js whenever you change any file in
-// APP_SHELL, and add every new app file to APP_SHELL. Otherwise installed
-// copies keep serving the old files, or fail offline when a module is missing
-// from the cache. The cache is named after the version, so one bump does both
-// jobs; this is a module worker (registered with type: 'module' in
-// js/update.js) so it can import the number rather than carry a copy.
-import { APP_VERSION } from './js/version.js';
-
-const CACHE_VERSION = `v${APP_VERSION}`;
+// IMPORTANT: bump the version (`npm run bump 1.0.57`) whenever you change any
+// file in APP_SHELL, and add every new app file to APP_SHELL. Otherwise
+// installed copies keep serving the old files, or fail offline when a module
+// is missing from the cache. The bump writes the same number here, in
+// js/version.js (what Settings shows) and in package.json, and
+// tests/unit/app-shell.test.js fails if the three ever differ.
+//
+// This must stay a classic script with the number written in it. For one day
+// (2026-11-16) it was a module worker importing js/version.js, and installed
+// copies could never update again: their registration was classic, so the
+// update check parsed the new file as a classic script, hit the import and
+// gave up, silently, while the page code that would have re-registered it
+// as a module was itself served from the old cache.
+const CACHE_VERSION = 'v1.0.57'; // = APP_VERSION in js/version.js
 const CACHE_NAME = `mic-jaunt-${CACHE_VERSION}`;
 
 // Paths are relative so the app also works from a sub-folder (e.g. GitHub Pages).

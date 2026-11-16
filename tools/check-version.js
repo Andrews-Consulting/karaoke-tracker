@@ -34,7 +34,7 @@ const bumped = changed.includes(VERSION_FILE);
 
 if (cachedChanged.length && !bumped) {
   console.error(`These cached files changed against ${base} but ${VERSION_FILE} did not:\n  ${cachedChanged.join('\n  ')}`);
-  console.error(`\nBump APP_VERSION in ${VERSION_FILE} (and package.json to match), or installed copies keep the old files.`);
+  console.error('\nRun `npm run bump <version>`, which writes it there, in sw.js and in package.json; otherwise installed copies keep the old files.');
   process.exit(1);
 }
 console.log(cachedChanged.length

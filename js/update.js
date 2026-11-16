@@ -34,8 +34,10 @@ export function watchForUpdates(scriptUrl = 'sw.js') {
     hadController = !!sw.controller;
   });
 
-  // A module worker, so sw.js can import the version number from js/version.js.
-  sw.register(scriptUrl, { type: 'module' })
+  // A classic worker, and it has to stay one: a copy registered this way
+  // parses every later sw.js as a classic script, so a module worker could
+  // never be adopted by the copies already installed (see sw.js).
+  sw.register(scriptUrl)
     .then((registration) => {
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') registration.update().catch(() => {});
