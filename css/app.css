@@ -1679,21 +1679,32 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
    them back). While a line has one, it makes room for the target above and
    below, so the two lines' targets never overlap. */
 .list-head .list-mix.folds { padding: 14px 0; overflow: visible; }
-/* Folded, a mix line is one line: the counts cut off with an ellipsis and
-   "+more" sits at the end, its 44 px box centred on a 30 px line, so the two
-   lines' boxes meet only in the gap between the lines, under neither text.
-   Unfolded it wraps. */
+/* Folded, a mix line is one line at text height: the counts cut off with an
+   ellipsis and "+more" sits at the end. Its 44 px box cannot be centred on
+   an 18 px line without meeting the other line's box, so the genre line's
+   box reaches up over the label line and the decade line's reaches down over
+   the "in tonight's set" line, neither of which is tappable; the text of
+   each stays on its own line. (A 44 px, then a 30 px, line read as a blank
+   line under it, 2026-11-16.) Unfolded a line wraps. */
 .list-head .list-mix.folds:not(.open) {
   display: flex;
-  align-items: center;
-  min-height: 30px; /* near text height: a 44 px line read as a blank line under it (2026-11-16) */
+  align-items: flex-start;
   padding: 0;
+  line-height: 18px; /* fixed, so the link's reach below can be exact */
   white-space: nowrap;
-  overflow: visible; /* the counts clip inside .mix-text; the 44 px link box may stand above and below the line */
+  overflow: visible; /* the counts clip inside .mix-text; the link box stands outside the line */
 }
 .list-head .list-mix.folds:not(.open) .mix-text { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; } /* +more follows the text, which gives way when long */
 .list-head .list-mix.folds:not(.open) .mix-sep { flex: none; white-space: pre; }
-.list-head .list-mix.folds:not(.open) .mix-more { flex: none; margin: -7px 0; } /* its 44 px box sits in 30 px of line */
+.list-head .list-mix.folds:not(.open) .mix-more {
+  flex: none;
+  box-sizing: border-box;
+  height: var(--tap);
+  line-height: inherit;
+  margin: 0;
+}
+.list-head .mix-genre.folds:not(.open) .mix-more { margin-top: calc(18px - var(--tap)); padding-top: calc(var(--tap) - 18px); }
+.list-head .mix-decade.folds:not(.open) .mix-more { margin-bottom: calc(18px - var(--tap)); padding-bottom: calc(var(--tap) - 18px); }
 .mix-more {
   position: relative; /* holds the screen-reader words */
   display: inline-block;

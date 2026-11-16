@@ -97,7 +97,7 @@ function foldingMix(max, noun) {
   const label = el('span');
   const named = el('span', { class: 'visually-hidden' });
   const more = el('button', { type: 'button', class: 'mix-more', 'aria-expanded': 'false' }, label, named);
-  const line = el('p', { class: 'list-mix mix-line' }, text, sep, more);
+  const line = el('p', { class: `list-mix mix-line mix-${noun}` }, text, sep, more); // mix-genre / mix-decade: the CSS aims each "+more" box away from the other line
   let items = [];
   let open = false;
   function draw() {
