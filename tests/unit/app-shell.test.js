@@ -67,22 +67,23 @@ describe('sw.js APP_SHELL matches the app', () => {
   });
 });
 
-// One version number (R73): js/version.js is the source, package.json repeats
-// it, and sw.js names its cache after it rather than carrying a number of its
-// own, so a bump in one place reaches the installed copies.
-describe('the version number lives in one place', () => {
+// One version number (R73), written in three places that `npm run bump`
+// sets together: js/version.js (Settings, the guide), sw.js (the cache name,
+// which is what reaches installed copies) and package.json.
+describe('the version number agrees everywhere it is written', () => {
   it('package.json carries the same version as js/version.js', () => {
     expect(JSON.parse(read('package.json')).version).toBe(APP_VERSION);
   });
 
-  it('sw.js names its cache after APP_VERSION and keeps no number of its own', () => {
-    const source = read('sw.js');
-    expect(source).toMatch(/import \{ APP_VERSION \} from '\.\/js\/version\.js'/);
-    expect(source).toMatch(/const CACHE_VERSION = `v\$\{APP_VERSION\}`/);
-    expect(source).not.toMatch(/CACHE_VERSION = 'v\d/);
+  it('sw.js names its cache after the same version', () => {
+    expect(read('sw.js')).toContain(`const CACHE_VERSION = 'v${APP_VERSION}';`);
   });
 
-  it('the worker is registered as a module, which the import needs', () => {
-    expect(read('js/update.js')).toMatch(/register\(scriptUrl, \{ type: 'module' \}\)/);
+  // A module worker can never be adopted by a copy that registered a classic
+  // one (sw.js explains), so both ends must stay classic.
+  it('sw.js is a classic script and is registered as one', () => {
+    expect(read('sw.js')).not.toMatch(/^\s*import\s/m);
+    expect(read('js/update.js')).toMatch(/register\(scriptUrl\)/);
+    expect(read('js/update.js')).not.toMatch(/type: 'module'/);
   });
 });
