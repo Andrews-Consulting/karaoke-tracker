@@ -12,11 +12,11 @@ export const THEME_CHOICES = [
 
 export const DEFAULT_THEME_CHOICE = 'dark';
 
-// The browser-chrome colour (meta theme-color) for each theme; the same values
+// The browser-chrome color (meta theme-color) for each theme; the same values
 // as --bg in css/app.css.
 export const THEME_COLORS = { dark: '#0c1015', light: '#f4f7fa' };
 
-// Accent colours (R55): the first is the default. Each has a dark-theme value
+// Accent colors (R55): the first is the default. Each has a dark-theme value
 // and a deeper light-theme partner; css/app.css carries the same numbers under
 // :root[data-accent="…"]. Contrast on the dark background: sky 10:1,
 // green 7:1, amber 11:1, lime 15:1, pink 6.5:1.

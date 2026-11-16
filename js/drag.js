@@ -108,7 +108,7 @@ export function dragToReorder({ list, li, handle, onDrop, onCancel }) {
     if (!drag.frame) drag.frame = requestAnimationFrame(scrollFrame);
   });
 
-  // Dropping hands the new index to the caller; a cancelled drag puts the rows back.
+  // Dropping hands the new index to the caller; a canceled drag puts the rows back.
   function end(e, drop) {
     if (!drag || e.pointerId !== drag.pointerId) return;
     if (drag.frame) cancelAnimationFrame(drag.frame);
