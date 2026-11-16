@@ -11,8 +11,9 @@
 //     there (the owner's case: open "Crowd pleasers" and drop two songs into
 //     tonight), its sings at the list's label venue (R43), a drag handle
 //     (R16), and a swipe left for Remove (R15); a tap on the song opens its
-//     page (R70). The list's actions: Find songs (R57) beside a "…" holding
-//     Rename and label (R14, R56), Merge into… (R59) and Delete. Suggest
+//     page (R70). The list's actions, one row: Find songs (R57), Rename and
+//     label (R14, R56), Merge into… (R59: its songs, each with + to move it
+//     to the other list, or Move all) and Delete. Suggest
 //     songs (R45) follows the songs: a preview to trim, then Add these, with
 //     Undo. The dock's field filters its songs.
 // Coming back to the scope within five minutes reopens the list (R60).
@@ -31,7 +32,7 @@ import {
   moveSongId, moveSongIdBy, mixByGenre, mixByDecade, formatMix,
   SUGGEST_MIN, SUGGEST_MAX, SUGGEST_DEFAULT, SUGGEST_MATCH, SUGGEST_SPREAD, suggestCount, suggestSongs,
   describeSuggestion, genreYear,
-  mergePlan, describeMerge, describeMerged,
+  mergePlan, describeMerge, describeMerged, describeMovedSong,
 } from '../lib/setlist.js';
 import { setMenuGroups, currentSetlistKey, currentSetlistFor } from '../lib/night.js';
 import {
@@ -285,13 +286,14 @@ const sameOrder = (a, b) => a.length === b.length && a.every((id, i) => id === b
 
 // Merges one setlist into another in one transaction (R59), from what is
 // stored, so a list changed elsewhere meanwhile is merged as it is now.
+// `songIds` moves only those songs (a +), else every song (Move all).
 // Resolves with mergePlan()'s result, or null when either setlist is gone.
-function mergeSetlists(sourceId, targetId, songsById) {
+function mergeSetlists(sourceId, targetId, songsById, songIds = null) {
   return db.transaction('setlists', 'readwrite', async (stores) => {
     const source = await request(stores.setlists.get(sourceId));
     const target = await request(stores.setlists.get(targetId));
     if (!source || !target || source.id === target.id) return null;
-    const plan = mergePlan(source, target, songsById);
+    const plan = mergePlan(source, target, songsById, { songIds });
     stores.setlists.put(plan.target);
     stores.setlists.put(plan.source);
     return plan;
@@ -324,7 +326,7 @@ async function renderSetlist(id, message = '', focusId = null) {
   const venues = sortVenues(venueRecords);
   const songsById = new Map(songs.map((s) => [s.id, s]));
   let allSetlists = setlistRecords;
-  const others = setlistRecords.filter((s) => s.id !== setlist.id);
+  let others = setlistRecords.filter((s) => s.id !== setlist.id); // as loaded, then as each + saved them
   const today = todayLocalISO();
   // Sings at the list's label venue (R43); a list for any venue has none.
   const here = setlist.venueId == null ? null : singStats(sings, setlist.venueId);
@@ -437,25 +439,34 @@ async function renderSetlist(id, message = '', focusId = null) {
     renameButton.setAttribute('aria-expanded', String(open));
   }
 
-  // ---- Merge into another list (R59) ----
+  // ---- Merge into another list (R59): the other list in a menu, then this
+  // list's songs, each with + to move it to that list's end (this list stays
+  // open), or "Already there"; Move all moves the rest and opens that list ----
 
   const mergeButton = el('button', {
     class: 'btn', type: 'button', text: 'Merge into…', 'aria-expanded': 'false', onclick: () => showMergeForm(true),
   });
   const mergeNote = el('p', { class: 'muted merge-note' });
-  const mergeSelect = el('select', { name: 'merge-target', id: 'merge-target' },
-    ...setMenuGroups(others, venues, setlist.venueId).map((group) => el('optgroup', { label: group.label },
-      ...group.items.map((item) => el('option', { value: String(item.id), text: item.text })))));
+  const mergeGroups = setMenuGroups(others, venues, setlist.venueId).map((group) => el('optgroup', { label: group.label },
+    ...group.items.map((item) => el('option', { value: String(item.id), text: item.text }))));
+  // Another list in the menu redraws the songs for it.
+  const mergeSelect = el('select', {
+    name: 'merge-target', id: 'merge-target', onchange: () => { mergeError.textContent = ''; drawMergeSongs(); },
+  }, ...mergeGroups);
+  const mergeHint = el('p', { class: 'muted hint' });
+  const mergeSongs = el('ul', { class: 'list merge-songs', 'aria-label': 'Songs to move' });
+  const moveAllButton = el('button', { class: 'btn primary', type: 'submit', text: 'Move all' });
   const mergeError = el('p', { class: 'error', role: 'alert' });
   const mergeForm = el('form', { class: 'card stack merge-form', 'aria-label': 'Merge into another setlist', hidden: '' },
     // The label beside the menu rather than around it, so the menu's name is just "Merge into".
     el('div', { class: 'merge-field' }, el('label', { for: 'merge-target', text: 'Merge into' }), mergeSelect),
-    el('p', { class: 'muted hint', text: 'Every song not already there goes to its end, and this list is left empty.' }),
+    mergeHint,
+    mergeSongs,
     el('div', { class: 'row' },
-      el('button', { class: 'btn primary', type: 'submit', text: 'Merge' }),
+      moveAllButton,
       el('button', { class: 'btn', type: 'button', text: 'Cancel', onclick: () => showMergeForm(false) })),
     mergeError);
-  let merging = false; // stops a double tap from merging twice
+  let merging = false; // stops a double tap from moving or merging twice
 
   function showMergeForm(open, refocus = true) {
     if (open && editSlot.firstChild) {
@@ -465,27 +476,110 @@ async function renderSetlist(id, message = '', focusId = null) {
     mergeForm.hidden = !open;
     mergeButton.setAttribute('aria-expanded', String(open));
     mergeError.textContent = '';
+    syncMerge();
     if (open) mergeSelect.focus();
-    else if (refocus) mergeButton.focus({ preventScroll: true });
+    else if (refocus) (mergeButton.disabled ? renameButton : mergeButton).focus({ preventScroll: true });
   }
 
   // Off, with a note, while there is nothing to merge or nowhere to merge it.
-  function syncMerge(songCount) {
+  // An open form stays open: after its last song moves it says nothing is left.
+  function syncMerge(songCount = setlistSongs(setlist, songsById).length) {
     const why = !songCount ? 'Nothing to merge.' : !others.length ? 'No other setlist to merge into.' : '';
     mergeButton.disabled = !!why;
-    mergeNote.textContent = why;
-    if (why && !mergeForm.hidden) showMergeForm(false);
+    mergeNote.textContent = mergeForm.hidden ? why : '';
+    drawMergeSongs();
+  }
+
+  // The list chosen in the menu as it is now: tonight's set as its + / ✓
+  // left it, any other as loaded or as the last + saved it. Null for none.
+  function mergeTarget() {
+    const found = others.find((s) => String(s.id) === mergeSelect.value);
+    if (!found) return null;
+    return tonight && tonight.id === found.id ? tonight : found;
+  }
+
+  // A + saved both lists: later moves, Move all's counts and tonight's set build on them.
+  function keepMerged(plan) {
+    const fresh = new Map([[plan.source.id, plan.source], [plan.target.id, plan.target]]);
+    setlist = plan.source;
+    others = others.map((s) => fresh.get(s.id) || s);
+    allSetlists = allSetlists.map((s) => fresh.get(s.id) || s);
+    if (tonight && fresh.has(tonight.id)) tonight = fresh.get(tonight.id);
+  }
+
+  // A song in the form: title and artist, then + to move it, or "Already there".
+  function mergeRow(song, target) {
+    const there = (target.songIds || []).includes(song.id);
+    return el('li', { class: 'merge-song', 'data-song-id': song.id },
+      el('span', { class: 'text' },
+        el('span', { class: 'title', text: song.title }),
+        el('span', { class: 'sub', text: song.artist })),
+      there
+        ? el('span', { class: 'muted already', text: 'Already there' })
+        : el('button', {
+          type: 'button', class: 'btn set-toggle move-one', text: '+',
+          'aria-label': `Move ${song.title} to ${target.name}`, onclick: () => moveOne(song),
+        }));
+  }
+
+  // The form's songs for the list in the menu, in this list's order.
+  function drawMergeSongs() {
+    if (mergeForm.hidden) return;
+    const target = mergeTarget();
+    const inList = setlistSongs(setlist, songsById);
+    mergeSongs.replaceChildren(...(target ? inList.map((song) => mergeRow(song, target)) : []));
+    mergeSongs.hidden = !target || !inList.length;
+    moveAllButton.hidden = !inList.length;
+    mergeHint.textContent = inList.length
+      ? '+ moves a song to the end of that list. Move all moves every song not already there and leaves this list empty.'
+      : 'Nothing left to move.';
+  }
+
+  // + : one song to the end of the other list, no confirmation; this list
+  // stays open without it. Focus goes to the nearest + left, else Move all.
+  async function moveOne(song) {
+    const target = mergeTarget();
+    if (merging || !target) return;
+    const rows = [...mergeSongs.children];
+    const at = rows.findIndex((li) => li.dataset.songId === String(song.id));
+    merging = true;
+    clearStatus();
+    mergeError.textContent = '';
+    let plan;
+    try {
+      plan = await mergeSetlists(setlist.id, target.id, songsById, [song.id]);
+    } catch (err) {
+      mergeError.textContent = `Could not move: ${err.message}`;
+      return;
+    } finally {
+      merging = false;
+    }
+    if (!root.isConnected) return;
+    if (!plan) {
+      renderSetlist(setlist.id, 'Could not move: that setlist is no longer there.');
+      return;
+    }
+    keepMerged(plan);
+    if (openRow === song.id) openRow = null;
+    forgetUndo();
+    drawSongs();
+    status.textContent = describeMovedSong(song, target);
+    const left = [...mergeSongs.children];
+    const next = [...left.slice(at), ...left.slice(0, at).reverse()].map((li) => li.querySelector('.move-one')).find(Boolean);
+    (next || (moveAllButton.hidden ? mergeSelect : moveAllButton)).focus();
   }
 
   mergeForm.addEventListener('keydown', (e) => { if (e.key === 'Escape') showMergeForm(false); });
+  // Move all (R59): what Merge was before the + came, and still asks first.
   mergeForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (merging) return;
-    const target = others.find((s) => String(s.id) === mergeSelect.value);
+    const target = mergeTarget();
     if (!target) {
       mergeError.textContent = 'Pick a setlist to merge into.';
       return;
     }
+    if (!setlistSongs(setlist, songsById).length) return; // nothing left to move
     const preview = mergePlan(setlist, target, songsById);
     if (!confirmAction(describeMerge(setlist, target, preview))) return;
     merging = true;

@@ -52,7 +52,7 @@ Everything the app does today, written as what the singer wants and why, without
 - As a singer, I want songs on a list that I have already sung at its venue to be flagged with the date, so that I can see at a glance what the list still has to offer there. (R43)
 - As a singer, I want to see a list's mix by genre and decade, so that I can tell whether a night will feel varied. (R44)
 - As a singer, I want songs I have never sung at a list's venue suggested for it, in the list's own mix of genres and decades or spread across them all, and to trim the suggestion before it goes in, with an undo, so that a fresh, varied set is one request away. (R45)
-- As a singer, I want to merge one list into another, keeping only the songs the other does not already have, so that lists that have grown apart can be brought back together. (R59)
+- As a singer, I want to move songs from one list into another, one at a time while the list stays open or all at once, skipping the songs the other already has, so that I can sort a list out song by song or bring lists that have grown apart back together. (R59)
 - As a singer, I want to go from a list straight to finding songs for it, so that filling a list uses the same search and filters as everything else. (R57)
 - As a singer, I want the list I was working on to still be open if I step away for a few minutes, so that a glance at something else does not lose my place. (R60)
 
