@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   setlistNameError, sortSetlists, venueValue, venueIdFromValue, venueOptions, venueLabel,
   makeSetlist, updateSetlist, describeSetlistDelete, addSongId, removeSongId, setlistSongs,
-  sungFlags, mergePlan, describeMerge, describeMerged,
+  sungFlags, mergePlan, describeMerge, describeMerged, describeMovedSong,
 } from '../../js/lib/setlist.js';
 import { moveSongId, moveSongIdBy, mixByGenre, mixByDecade, formatMix } from '../../js/lib/setlist.js';
 import {
@@ -297,6 +297,49 @@ describe('R59 mergePlan', () => {
     expect(source).toEqual(friday);
     expect(target).toEqual(nextTime);
   });
+
+  it('with songIds, moves only those songs and leaves the rest of the source in order', () => {
+    const plan = mergePlan(friday, nextTime, null, { songIds: [10] }); // friday is [12, 10, 11]
+    expect(plan.target).toEqual({ ...nextTime, songIds: [13, 11, 10] });
+    expect(plan.source).toEqual({ ...friday, songIds: [12, 11] });
+    expect([plan.moved, plan.skipped]).toEqual([1, 0]);
+  });
+
+  it('with songIds, moves several in the source\'s order whatever order they are given in', () => {
+    const plan = mergePlan(friday, nextTime, songs, { songIds: [10, 12] });
+    expect(plan.target.songIds).toEqual([13, 11, 12, 10]);
+    expect(plan.source.songIds).toEqual([11]);
+    expect([plan.moved, plan.skipped]).toEqual([2, 0]);
+  });
+
+  it('with songIds, a song the target already has comes off the source and is counted as skipped', () => {
+    const plan = mergePlan(friday, nextTime, songs, { songIds: [11] });
+    expect(plan.target.songIds).toEqual([13, 11]);
+    expect(plan.source.songIds).toEqual([12, 10]);
+    expect([plan.moved, plan.skipped]).toEqual([0, 1]);
+  });
+
+  it('with songIds, ignores ids the source does not hold', () => {
+    const plan = mergePlan(friday, nextTime, songs, { songIds: [13, 99] });
+    expect(plan.target.songIds).toEqual([13, 11]);
+    expect(plan.source.songIds).toEqual([12, 10, 11]);
+    expect([plan.moved, plan.skipped]).toEqual([0, 0]);
+  });
+
+  it('with songIds, moving the last song leaves the source empty', () => {
+    const source = { id: 8, name: 'Saturday', venueId: null, songIds: [12] };
+    const plan = mergePlan(source, nextTime, songs, { songIds: [12] });
+    expect(plan.target.songIds).toEqual([13, 11, 12]);
+    expect(plan.source.songIds).toEqual([]);
+    expect(plan.moved).toBe(1);
+  });
+
+  it('with an empty songIds, moves nothing', () => {
+    const plan = mergePlan(friday, nextTime, songs, { songIds: [] });
+    expect(plan.target.songIds).toEqual([13, 11]);
+    expect(plan.source.songIds).toEqual([12, 10, 11]);
+    expect([plan.moved, plan.skipped]).toEqual([0, 0]);
+  });
 });
 
 describe('R59 describeMerge and describeMerged', () => {
@@ -326,6 +369,10 @@ describe('R59 describeMerge and describeMerged', () => {
   it('reports what moved on the target\'s screen', () => {
     expect(describeMerged(source, { moved: 3, skipped: 0 })).toBe('Moved 3 songs from “Friday”.');
     expect(describeMerged(source, { moved: 1, skipped: 2 })).toBe('Moved 1 song from “Friday”. 2 were already here.');
+  });
+
+  it('reports a single song moved by its +, on the source\'s screen', () => {
+    expect(describeMovedSong({ id: 10, title: ' Valerie ' }, target)).toBe('Moved “Valerie” to Next time.');
   });
 });
 

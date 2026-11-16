@@ -8,7 +8,7 @@ import {
   seed, reloadList, venueSelect, songRow, findContext, shownVenue,
 } from './helpers-find.js';
 import {
-  openSetlists, openSetlist, backToSetlists, setlistRow, setlistSongTitles, suggestForm, mixLine, pageToday, openListSong,
+  openSetlists, openSetlist, backToSetlists, setlistRow, setlistSongTitles, suggestForm, mixLine, mixText, pageToday, openListSong,
 } from './helpers-setlists.js';
 import { openVenues, venueRow, venueRows } from './helpers-venues.js';
 import { tonightListName } from '../../js/lib/night.js';
@@ -532,7 +532,7 @@ test.describe('Setlist labels, Find songs and merge', () => {
     await openListMenu(page);
     await merge.click();
     await target.selectOption({ label: 'Next time' });
-    await form.getByRole('button', { name: 'Merge', exact: true }).click();
+    await form.getByRole('button', { name: 'Move all', exact: true }).click();
     await expect.poll(() => dialogs).toEqual([
       'Move 2 songs from “Friday” to the end of “Next time”? 1 song is already there. “Friday” will be left empty.',
     ]);
@@ -541,7 +541,7 @@ test.describe('Setlist labels, Find songs and merge', () => {
 
     // Saying yes: the songs not already there go to the end, in order; Friday is left empty.
     accept = true;
-    await form.getByRole('button', { name: 'Merge', exact: true }).click();
+    await form.getByRole('button', { name: 'Move all', exact: true }).click();
     await expect(page.getByRole('heading', { level: 2, name: 'Next time', exact: true })).toBeVisible();
     await expect(page.getByRole('status').filter({ hasText: 'Moved' }))
       .toHaveText('Moved 2 songs from “Friday”. 1 was already here.');
@@ -575,6 +575,99 @@ test.describe('Setlist labels, Find songs and merge', () => {
     await openSetlist(page, 'Friday');
     await openListMenu(page);
     await expect(merge).toBeDisabled();
+    await expect(page.getByText('Nothing to merge.')).toBeVisible();
+  });
+
+  test('R59: Merge into… lists the songs, + moves one and keeps the list open, Already there marks the rest', async ({ page }) => {
+    const dialogs = [];
+    page.on('dialog', (dialog) => {
+      dialogs.push(dialog.message());
+      dialog.accept();
+    });
+    const { songIds } = await start(page, {
+      venues: ['The Crown'],
+      setlists: [
+        { name: 'Friday', venue: 'The Crown', titles: ['Valerie', 'Dancing Queen', 'Mr. Brightside'] },
+        { name: 'Next time', venue: 'The Crown', titles: ['Dancing Queen'] },
+        { name: 'Anywhere', titles: ['Valerie'] },
+        { name: 'Spare', titles: ['Africa'] },
+      ],
+    });
+    const form = page.getByRole('form', { name: 'Merge into another setlist' });
+    const target = form.getByLabel('Merge into', { exact: true });
+    const moveRows = form.getByRole('list', { name: 'Songs to move' }).locator('li[data-song-id]');
+    const moveRow = (title) => moveRows.filter({ has: page.locator('.title').getByText(title, { exact: true }) });
+    const plus = (title, to) => form.getByRole('button', { name: `Move ${title} to ${to}`, exact: true });
+    const moved = () => page.getByRole('status').filter({ hasText: 'Moved' });
+    const stored = async () => Object.fromEntries((await readStore(page, 'setlists')).map((s) => [s.name, s.songIds]));
+
+    await openSetlists(page);
+    await openSetlist(page, 'Friday');
+    await openListMenu(page);
+    await button(page, 'Merge into…').click();
+    await expect(form).toBeVisible();
+
+    // A list picked, the form shows this list's songs in order, each with +
+    // to move it there, or "Already there" when that list has it.
+    await target.selectOption({ label: 'Anywhere' });
+    await expect(moveRows.locator('.title')).toHaveText(['Valerie', 'Dancing Queen', 'Mr. Brightside']);
+    await expect(moveRow('Valerie')).toContainText('Already there');
+    await expect(moveRow('Valerie').getByRole('button')).toHaveCount(0);
+    await expect(plus('Dancing Queen', 'Anywhere')).toBeVisible();
+    // Another list redraws them for it.
+    await target.selectOption({ label: 'Next time' });
+    await expect(moveRow('Dancing Queen')).toContainText('Already there');
+    await expect(moveRow('Dancing Queen').getByRole('button')).toHaveCount(0);
+    await expect(plus('Valerie', 'Next time')).toBeVisible();
+    await expect(plus('Mr. Brightside', 'Next time')).toBeVisible();
+    await expectAllTapTargets(page, 'Merge form with its songs');
+
+    // + moves one song to the end of the other list without asking; this
+    // list stays open without it, in the form too, its header counted again.
+    await plus('Mr. Brightside', 'Next time').click();
+    await expect(moved()).toHaveText('Moved “Mr. Brightside” to Next time.');
+    expect(dialogs).toEqual([]);
+    await expect(page.getByRole('heading', { level: 2, name: 'Friday', exact: true })).toBeVisible();
+    await expect(setlistSongTitles(page)).toHaveText(['Valerie', 'Dancing Queen']);
+    await expect(moveRows.locator('.title')).toHaveText(['Valerie', 'Dancing Queen']);
+    await expect(page.locator('.list-head .list-meta')).toHaveText('For The Crown · 2 songs');
+    await expect(mixText(page, 'genre')).toContainText('Soul');
+    await expect(mixText(page, 'genre')).not.toContainText('Rock');
+    await expect(plus('Valerie', 'Next time')).toBeFocused();
+    expect((await stored()).Friday).toEqual([songIds.Valerie, songIds['Dancing Queen']]);
+    expect((await stored())['Next time']).toEqual([songIds['Dancing Queen'], songIds['Mr. Brightside']]);
+
+    // Move all moves the rest as before: it asks with the counts, and the
+    // other list opens in this one's place with the note.
+    await form.getByRole('button', { name: 'Move all', exact: true }).click();
+    await expect(page.getByRole('heading', { level: 2, name: 'Next time', exact: true })).toBeVisible();
+    expect(dialogs).toEqual([
+      'Move 1 song from “Friday” to the end of “Next time”? 1 song is already there. “Friday” will be left empty.',
+    ]);
+    await expect(moved()).toHaveText('Moved 1 song from “Friday”. 1 was already here.');
+    await expect(setlistSongTitles(page)).toHaveText(['Dancing Queen', 'Mr. Brightside', 'Valerie']);
+    expect((await stored()).Friday).toEqual([]);
+    expect((await stored())['Next time'])
+      .toEqual([songIds['Dancing Queen'], songIds['Mr. Brightside'], songIds.Valerie]);
+    await backToSetlists(page);
+
+    // Moving a list's last song is still one move: the list stays open,
+    // empty, and the form says nothing is left; Cancel closes it.
+    await openSetlist(page, 'Spare');
+    await button(page, 'Merge into…').click();
+    await target.selectOption({ label: 'Anywhere' });
+    await plus('Africa', 'Anywhere').click();
+    await expect(moved()).toHaveText('Moved “Africa” to Anywhere.');
+    await expect(page.getByRole('heading', { level: 2, name: 'Spare', exact: true })).toBeVisible();
+    await expect(setlistSongTitles(page)).toHaveCount(0);
+    await expect(form).toContainText('Nothing left to move.');
+    await expect(form.getByRole('button', { name: 'Move all', exact: true })).toBeHidden();
+    expect(dialogs).toHaveLength(1);
+    expect((await stored()).Spare).toEqual([]);
+    expect((await stored()).Anywhere).toEqual([songIds.Valerie, songIds.Africa]);
+    await form.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(form).toBeHidden();
+    await expect(button(page, 'Merge into…')).toBeDisabled();
     await expect(page.getByText('Nothing to merge.')).toBeVisible();
   });
 });

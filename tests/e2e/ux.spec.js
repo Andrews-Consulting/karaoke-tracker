@@ -149,6 +149,13 @@ test.describe('UX', () => {
     await page.getByRole('button', { name: 'Rename', exact: true }).click();
     await openSongMenu(page, 'Valerie');
     await expectTapTargets(page, 'A list, renaming, with a song\'s actions');
+    // Merge into… needs another list; its form lists the songs with + (R59).
+    await putRecords(page, 'setlists', [{ name: 'Saturday', venueId: null, songIds: [] }]);
+    await page.getByRole('button', { name: 'Back to Lists' }).click();
+    await openSetlist(page, 'Friday');
+    await page.getByRole('button', { name: 'Merge into…', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Move Valerie to Saturday', exact: true })).toBeVisible();
+    await expectTapTargets(page, 'A list, merging');
 
     await openSettings(page);
     await expectTapTargets(page, 'Settings');

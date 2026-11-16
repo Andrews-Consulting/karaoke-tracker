@@ -123,14 +123,22 @@ export function setlistSongs(setlist, songsById) {
 // Returns { target, source, moved, skipped }: the two setlists as they are to
 // be saved, how many songs move and how many were already in the target.
 // Merging a setlist into itself changes nothing.
-export function mergePlan(source, target, songsById = null) {
+//
+// With `songIds`, only those songs of the source move (the + beside a song
+// in Merge into…): each the target lacks goes to its end, in the source's
+// order, every one of them comes off the source, and the rest of the source
+// stays as it was. Ids the source does not hold are ignored.
+export function mergePlan(source, target, songsById = null, { songIds: only = null } = {}) {
   if (source.id != null && source.id === target.id) {
     const same = { ...target, songIds: uniqueIds(target.songIds) };
     return { target: same, source: same, moved: 0, skipped: 0 };
   }
   const songIds = uniqueIds(target.songIds);
   const there = new Set(songIds);
-  const incoming = songsById ? setlistSongs(source, songsById).map((s) => s.id) : uniqueIds(source.songIds);
+  const chosen = only ? new Set(only) : null;
+  const shown = songsById ? setlistSongs(source, songsById).map((s) => s.id) : uniqueIds(source.songIds);
+  const incoming = chosen ? shown.filter((id) => chosen.has(id)) : shown;
+  const left = chosen ? uniqueIds(source.songIds).filter((id) => !chosen.has(id)) : [];
   let moved = 0;
   let skipped = 0;
   for (const id of incoming) {
@@ -141,7 +149,7 @@ export function mergePlan(source, target, songsById = null) {
       moved += 1;
     }
   }
-  return { target: { ...target, songIds }, source: { ...source, songIds: [] }, moved, skipped };
+  return { target: { ...target, songIds }, source: { ...source, songIds: left }, moved, skipped };
 }
 
 // The confirmation before a merge (R59), from mergePlan()'s counts.
@@ -161,6 +169,11 @@ export function describeMerged(source, { moved, skipped }) {
   const from = `“${String(source.name).trim()}”`;
   const already = skipped ? ` ${plural(skipped, 'was', 'were')} already here.` : '';
   return `Moved ${plural(moved, 'song', 'songs')} from ${from}.${already}`;
+}
+
+// The line on the source's screen after its + moved one song (R59).
+export function describeMovedSong(song, target) {
+  return `Moved “${String(song.title).trim()}” to ${String(target.name).trim()}.`;
 }
 
 // ---------- Order (R16) ----------
