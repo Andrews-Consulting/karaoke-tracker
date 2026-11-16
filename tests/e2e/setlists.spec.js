@@ -125,6 +125,19 @@ test.describe('Setlists', () => {
     await createSetlist(page, 'Big night');
     await expect(setlistRows(page).locator('.title')).toHaveText(['Anywhere', 'Big night', 'friday']);
 
+    // The dock's field filters the lists by name, with the songs' whole-word rule (R10):
+    // "ig" matches inside a word, "night " only the whole word, "nigh " nothing.
+    const search = page.getByRole('searchbox', { name: 'Search lists' });
+    await search.fill('ig');
+    await expect(setlistRows(page).locator('.title')).toHaveText(['Big night']);
+    await search.fill('night ');
+    await expect(setlistRows(page).locator('.title')).toHaveText(['Big night']);
+    await search.fill('nigh ');
+    await expect(setlistRows(page)).toHaveCount(0);
+    await expect(page.locator('.lists-view .empty')).toHaveText('No lists match “nigh”.');
+    await search.fill('');
+    await expect(setlistRows(page)).toHaveCount(3);
+
     const form = page.getByRole('form', { name: 'New list' });
     await page.getByRole('button', { name: 'New list', exact: true }).click();
     await form.getByLabel('Setlist name').fill('  FRIDAY ');

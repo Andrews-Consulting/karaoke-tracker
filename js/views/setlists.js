@@ -24,7 +24,7 @@ import * as dock from '../dock.js';
 import { dragToReorder } from '../drag.js';
 import { swipeToReveal } from '../swipe.js';
 import { plural, sortVenues, singStats, todayLocalISO } from '../lib/stats.js';
-import { filterSongs } from '../lib/search.js';
+import { filterSongs, queryMatcher, textMatches } from '../lib/search.js';
 import {
   setlistNameError, sortSetlists, venueValue, venueIdFromValue, venueOptions, venueLabel,
   makeSetlist, updateSetlist, describeSetlistDelete, removeSongId, addSongId, setlistSongs,
@@ -211,7 +211,14 @@ export async function renderSetlists({ message = '' } = {}) {
     }
     saving = true;
     const fresh = makeSetlist(nameInput.value, venueIdFromValue(venueInput.value));
-    await db.add('setlists', fresh);
+    try {
+      await db.add('setlists', fresh);
+    } catch (err) {
+      // A failed write leaves the form open and usable, with the reason beside it.
+      saving = false;
+      addError.textContent = `Could not save the list. ${(err && err.message) || err}`;
+      return;
+    }
     renderSetlists({ message: `Made “${fresh.name}”. Open it to find songs for it.` });
   });
 
@@ -238,8 +245,9 @@ export async function renderSetlists({ message = '' } = {}) {
   const empty = el('p', { class: 'muted empty' });
 
   function drawRows() {
-    const text = listsQuery.trim().toLowerCase();
-    const shown = text ? setlists.filter((s) => String(s.name).toLowerCase().includes(text)) : setlists;
+    // The same rule as for songs (R10): a space typed at the end asks for a whole word.
+    const matcher = queryMatcher(listsQuery);
+    const shown = matcher.q ? setlists.filter((s) => textMatches(String(s.name).toLowerCase(), matcher)) : setlists;
     list.replaceChildren(...shown.map(listRow));
     list.hidden = shown.length === 0;
     empty.textContent = !setlists.length
