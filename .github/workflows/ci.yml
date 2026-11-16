@@ -1,16 +1,14 @@
-# Every pull request, and every push to main or dev, runs the whole suite:
-# the unit guards (which also keep docs/REQUIREMENTS.md and sw.js honest) and
-# the e2e suite on mobile Chromium and mobile WebKit. A pull request is also
-# checked for a version bump when it changes a cached file
-# (tools/check-version.js), since installed copies only update when
-# APP_VERSION changes. Make these required checks in the branch protection
-# for main so a PR cannot merge without them.
+# Every pull request runs the whole suite: the unit guards (which also keep
+# docs/REQUIREMENTS.md and sw.js honest) and the e2e suite on mobile Chromium
+# and mobile WebKit, and is checked for a version bump when it changes a
+# cached file (tools/check-version.js), since installed copies only update
+# when APP_VERSION changes. Pull requests only: a push to dev would run the
+# same commit again once the PR opens. Make these required checks in the
+# branch protection for main so a PR cannot merge without them.
 name: CI
 
 on:
   pull_request:
-  push:
-    branches: [main, dev]
 
 jobs:
   test:
@@ -36,7 +34,6 @@ jobs:
 
   version:
     name: Version bumped when cached files change
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

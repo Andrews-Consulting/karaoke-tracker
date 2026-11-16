@@ -67,7 +67,7 @@ The guards above are how the quality of the app is kept, so a change that adds o
 1. A row in `docs/REQUIREMENTS.md`, new or updated, that says what the app does now, in plain words, and a matching line in `docs/USER-STORIES.md`. A replaced behaviour goes to the History table there; IDs are never reused.
 2. An e2e test in `tests/e2e/` whose title starts with the row's ID and says what it proves, named in the row's Notes. A row without a test reads Built, not Done.
 3. For a new file under `js/`, its path in `APP_SHELL` in `sw.js`; for any change to a cached file, `APP_VERSION` bumped in `js/version.js`, with `package.json` to match. That one number names the service worker's cache, shows in Settings and is printed in the guide. `npm run check-version dev` says whether your branch needs the bump; CI runs the same check on every pull request.
-4. `npm test` green, both browsers. CI (`.github/workflows/ci.yml`) runs it on every pull request and on pushes to `main` and `dev`.
+4. `npm test` green, both browsers. CI (`.github/workflows/ci.yml`) runs it on every pull request.
 
 The guards check that the pieces are present and agree with each other. They cannot check that a test's title is true of what it asserts, or that a row describes the code: that is what review is for.
 
