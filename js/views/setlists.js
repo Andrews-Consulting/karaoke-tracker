@@ -18,7 +18,7 @@
 // Coming back to the scope within five minutes reopens the list (R60).
 import { db, request } from '../db.js';
 import {
-  el, viewEl, confirmAction, openScreen, closeScreen, renderingBack, screenTicket, screenStillShowing, icon, ICONS,
+  el, viewEl, confirmAction, openScreen, closeScreen, replaceScreen, renderingBack, screenTicket, screenStillShowing, icon, ICONS,
 } from '../ui.js';
 import * as dock from '../dock.js';
 import { dragToReorder } from '../drag.js';
@@ -489,8 +489,15 @@ async function renderSetlist(id, message = '', focusId = null) {
       renderSetlist(setlist.id, 'Could not merge: that setlist is no longer there.');
       return;
     }
-    // The target's screen takes this one's place, so Back still goes to the lists.
-    renderSetlist(target.id, describeMerged(setlist, plan));
+    // The target's screen takes this one's place in the history too, so Back
+    // still goes to the lists, and back from a song opened on the merged list
+    // returns to it, not to the emptied source. The note shows once.
+    let note = describeMerged(setlist, plan);
+    replaceScreen(() => {
+      const message = note;
+      note = '';
+      return renderSetlist(target.id, message);
+    });
   });
 
   // ---- Delete (R14) ----

@@ -154,6 +154,15 @@ export function openScreen(render) {
   return draw(render);
 }
 
+// Replaces the current screen with another at the same place in the history,
+// for a screen that turns into a different one (a merged list showing its
+// target): back from whatever opens on top returns to the new screen, not
+// the old one, and the back gesture from it still leaves as before.
+export function replaceScreen(render) {
+  screens[screens.length - 1] = render;
+  return draw(render);
+}
+
 // Leaves the current detail screen, rendering `render` (usually the screen
 // below with some state, e.g. the song to scroll to), or without one the
 // screen below as it was. Goes back in history when the current entry is this
