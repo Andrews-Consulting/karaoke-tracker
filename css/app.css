@@ -754,7 +754,7 @@ label.check > input[type="checkbox"] {
    page all the time, parked off the right edge, so focus reaches them
    without the gesture. */
 .after-row { position: relative; overflow: hidden; }
-.after-main { touch-action: pan-y pinch-zoom; } /* pan-y alone would also swallow a pinch that starts on a row */
+.after-main { touch-action: pan-y; } /* pan-y alone: with pinch-zoom added, iOS fought the swipe on a not-quite-level finger (2026-11-16) */
 .after-actions {
   position: absolute;
   top: 0;
@@ -1519,7 +1519,7 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
    without the gesture. */
 .setlist-song { position: relative; overflow: hidden; --reveal: 110px; }
 /* No text selection on the surface, or a second swipe would drag the selected text instead. */
-.setlist-song .song-main { touch-action: pan-y pinch-zoom; -webkit-user-select: none; user-select: none; }
+.setlist-song .song-main { touch-action: pan-y; -webkit-user-select: none; user-select: none; }
 .setlist-song .song-actions {
   position: absolute;
   top: 0;
