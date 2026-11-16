@@ -50,12 +50,11 @@ export async function deleteOpenList(page, name) {
   await page.getByRole('button', { name: `Delete ${name}`, exact: true }).click();
 }
 
-// Opens the "…" beside Find songs on the open list, which holds Rename and
-// label, Merge into… and Delete, unless it is open already.
+// Since 2026-11-16 the open list's actions (Find songs, Rename, Merge into…,
+// Delete) are one row that scrolls sideways, with no menu to open; this
+// waits for the row, and Playwright scrolls a button into view to tap it.
 export async function openListMenu(page) {
-  const more = page.getByRole('button', { name: 'List actions', exact: true });
-  if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
-  await expect(more).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByRole('group', { name: 'List actions', exact: true })).toBeVisible();
 }
 
 // ---------- History ----------

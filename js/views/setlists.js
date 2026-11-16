@@ -385,7 +385,7 @@ async function renderSetlist(id, message = '', focusId = null) {
   // ---- Rename and label (R14, R56): a form under the actions, made when opened ----
 
   const renameButton = el('button', {
-    class: 'btn', type: 'button', text: 'Rename and label', 'aria-expanded': 'false', onclick: () => showEditForm(!editSlot.firstChild),
+    class: 'btn', type: 'button', text: 'Rename', 'aria-expanded': 'false', onclick: () => showEditForm(!editSlot.firstChild),
   });
   const editSlot = el('div', { class: 'edit-slot' });
   let renaming = false;
@@ -912,20 +912,11 @@ async function renderSetlist(id, message = '', focusId = null) {
     await save();
   }
 
-  // Rename and label, Merge into… and Delete are occasional, so they wait
-  // behind a "…" beside Find songs; choosing one closes the menu.
-  const moreMenu = el('div', { class: 'list-more-menu', role: 'group', 'aria-label': 'List actions', hidden: '' },
-    renameButton, mergeButton, deleteButton);
-  const moreButton = el('button', {
-    class: 'btn icon-btn list-more', type: 'button', 'aria-label': 'List actions', 'aria-expanded': 'false',
-    onclick: () => showMore(moreMenu.hidden),
-  }, icon(ICONS.more, { width: 3.2 }));
-  function showMore(open) {
-    moreMenu.hidden = !open;
-    moreButton.setAttribute('aria-expanded', String(open));
-    moreButton.classList.toggle('on', open);
-  }
-  moreMenu.addEventListener('click', (e) => { if (e.target.closest('button')) showMore(false); });
+  // Find songs, Rename, Merge into… and Delete on one line that scrolls
+  // sideways when the screen is too narrow for all four (the "…" menu that
+  // held the last three went on 2026-11-16: it was the last one in the app).
+  const actions = el('div', { class: 'setlist-actions', role: 'group', 'aria-label': 'List actions' },
+    findButton, renameButton, mergeButton, deleteButton);
 
   const root = el('div', { class: 'stack setlists-view' },
     // The top line: back at the left, "Make this tonight's set" at the right.
@@ -945,8 +936,8 @@ async function renderSetlist(id, message = '', focusId = null) {
       genreMix.line,
       decadeMix.line,
       inSetLine),
-    el('div', { class: 'setlist-actions' }, findButton, moreButton, mergeNote),
-    moreMenu,
+    actions,
+    mergeNote,
     editSlot,
     mergeForm,
     status,

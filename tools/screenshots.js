@@ -188,7 +188,6 @@ const SCREENS = [
   ['setlist', async (page) => {
     await page.getByRole('button', { name: /^Friday at Viking/ }).click();
     await page.getByRole('button', { name: 'Back to Lists' }).waitFor();
-    await page.getByRole('button', { name: 'List actions' }).click(); // Rename and label, Merge into…, Delete
   }],
   ['settings', async (page) => {
     await tab(page, 'Settings');
