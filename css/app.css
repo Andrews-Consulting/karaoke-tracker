@@ -1679,19 +1679,21 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
    them back). While a line has one, it makes room for the target above and
    below, so the two lines' targets never overlap. */
 .list-head .list-mix.folds { padding: 14px 0; overflow: visible; }
-/* Folded, a mix line is one line, 44 px tall for the target: the counts cut
-   off with an ellipsis and "+more" sits at the end. Unfolded it wraps. */
+/* Folded, a mix line is one line: the counts cut off with an ellipsis and
+   "+more" sits at the end, its 44 px box centred on a 30 px line, so the two
+   lines' boxes meet only in the gap between the lines, under neither text.
+   Unfolded it wraps. */
 .list-head .list-mix.folds:not(.open) {
   display: flex;
   align-items: center;
-  min-height: var(--tap);
+  min-height: 30px; /* near text height: a 44 px line read as a blank line under it (2026-11-16) */
   padding: 0;
   white-space: nowrap;
-  overflow: hidden;
+  overflow: visible; /* the counts clip inside .mix-text; the 44 px link box may stand above and below the line */
 }
 .list-head .list-mix.folds:not(.open) .mix-text { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; } /* +more follows the text, which gives way when long */
 .list-head .list-mix.folds:not(.open) .mix-sep { flex: none; white-space: pre; }
-.list-head .list-mix.folds:not(.open) .mix-more { flex: none; margin: 0; }
+.list-head .list-mix.folds:not(.open) .mix-more { flex: none; margin: -7px 0; } /* its 44 px box sits in 30 px of line */
 .mix-more {
   position: relative; /* holds the screen-reader words */
   display: inline-block;
