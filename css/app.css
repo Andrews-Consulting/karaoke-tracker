@@ -1668,6 +1668,19 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
    them back). While a line has one, it makes room for the target above and
    below, so the two lines' targets never overlap. */
 .list-head .list-mix.folds { padding: 14px 0; overflow: visible; }
+/* Folded, a mix line is one line, 44 px tall for the target: the counts cut
+   off with an ellipsis and "+more" sits at the end. Unfolded it wraps. */
+.list-head .list-mix.folds:not(.open) {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.list-head .list-mix.folds:not(.open) .mix-text { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; } /* +more follows the text, which gives way when long */
+.list-head .list-mix.folds:not(.open) .mix-sep { flex: none; white-space: pre; }
+.list-head .list-mix.folds:not(.open) .mix-more { flex: none; margin: 0; }
 .mix-more {
   position: relative; /* holds the screen-reader words */
   display: inline-block;

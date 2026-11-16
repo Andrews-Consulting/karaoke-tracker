@@ -105,10 +105,14 @@ function foldingMix(max, noun) {
     text.textContent = formatMix(open ? items : mixHead(items, max));
     line.hidden = !items.length;
     line.classList.toggle('folds', extra > 0);
+    line.classList.toggle('open', open);
     sep.hidden = extra <= 0;
     more.hidden = extra <= 0;
-    label.textContent = open ? 'fewer' : `+${extra} more`;
-    named.textContent = ` ${!open && extra === 1 ? noun : `${noun}s`}`;
+    // Folded, the line is one line: the counts cut off with an ellipsis and
+    // "+more" at its end (2026-11-16; "+7 more" wrapped onto a line of its own).
+    label.textContent = open ? 'fewer' : '+more';
+    named.textContent = '';
+    more.setAttribute('aria-label', open ? `fewer ${noun}s` : `+${extra} more ${extra === 1 ? noun : `${noun}s`}`);
     more.setAttribute('aria-expanded', String(open));
   }
   more.addEventListener('click', () => {
