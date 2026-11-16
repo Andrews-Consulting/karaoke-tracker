@@ -116,8 +116,8 @@ KaraFun publishes its whole catalog (about 100,000 songs) as a free CSV: `Id;Tit
 | R27 | Works fully offline once opened | Must | Done | Service worker cache. e2e: "R27: loads offline after the service worker is installed" |
 | R28 | Served over HTTPS from a static host | Must | Built | GitHub Pages from `main`, custom domain, HTTPS enforced, since 2026-11-12. No e2e test |
 | R29 | iPhone home-screen icon and status-bar settings | Should | Done | e2e: "R29: has iPhone home-screen icon and status-bar meta tags" |
-| R30 | Notice a new version, also when the app returns to the foreground, and offer to reload | Should | Done | e2e: "R30: offers to reload when a new version is installed" |
-| R73 | Settings shows the app version | Could | Built | A "Version" line at the foot of Settings, from `APP_VERSION` in js/views/settings.js. No e2e test |
+| R30 | Notice a new version, also when the app returns to the foreground, and offer to reload | Should | Done | A new version is a new `APP_VERSION` (R73), which renames the cache; the worker is registered as a module. e2e: "R30: offers to reload when a new version is installed" |
+| R73 | Settings shows the app version | Could | Built | A "Version" line at the foot of Settings, from `APP_VERSION` in js/version.js, the one version number since 2026-11-16: the service worker names its cache after it (sw.js is a module worker so it can import it), package.json repeats it, the guide at help/ prints which version it was written for, tests/unit/app-shell.test.js checks the copies agree, and tools/check-version.js (run by CI on every pull request) fails a change to a cached file that does not bump it. No e2e test |
 
 ## Look and feel
 
