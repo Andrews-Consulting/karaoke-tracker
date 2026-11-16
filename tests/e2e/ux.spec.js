@@ -10,7 +10,7 @@ import { openVenues, openVenue, openOverall } from './helpers-venues.js';
 import { openSetlists, openSetlist } from './helpers-setlists.js';
 import { swipeOpen } from './helpers-tonight.js';
 import {
-  listsHeading, historyHeading, openLogSing, groupHistory, openSongMenu,
+  listsHeading, historyHeading, openLogSing, groupHistory, openSongMenu, openListMenu,
 } from './helpers-lists.js';
 
 const MIN = 44;
@@ -146,6 +146,8 @@ test.describe('UX', () => {
     await expectTapTargets(page, 'Lists, new list');
     await openSetlist(page, 'Friday');
     await expectTapTargets(page, 'A list');
+    await openListMenu(page);
+    await expectTapTargets(page, 'A list, its menu open');
     await page.getByRole('button', { name: 'Rename and label', exact: true }).click();
     await openSongMenu(page, 'Valerie');
     await expectTapTargets(page, 'A list, renaming, with a song\'s actions');

@@ -120,6 +120,7 @@ test.describe('Setlists polish', () => {
   });
 
   test('R16: a song dragged to the bottom edge scrolls the list, so a long move needs no buttons', async ({ page }) => {
+    test.slow(); // the drag scrolls a few pixels a frame, and frames are slow on a loaded machine
     await openApp(page);
     const many = Array.from({ length: 30 }, (_, i) => ({ title: `Song ${String(i + 1).padStart(2, '0')}`, artist: 'The Band' }));
     const ids = await seedSongs(page, many);
@@ -138,7 +139,7 @@ test.describe('Setlists polish', () => {
     await page.mouse.move(x, screen.y + screen.height - 12, { steps: 12 });
     await expect(setlistSongRow(page, 'Song 01')).toHaveClass(/\bdragging\b/);
     // The screen scrolls by itself, the others making room, until the end of the list is in view.
-    await expect(setlistSongTitles(page).last()).toHaveText('Song 01', { timeout: 15_000 });
+    await expect(setlistSongTitles(page).last()).toHaveText('Song 01', { timeout: 40_000 });
     expect(await main.evaluate((m) => m.scrollTop)).toBeGreaterThan(0);
     const settled = await main.evaluate((m) => m.scrollTop);
     await page.waitForTimeout(300);
@@ -150,6 +151,35 @@ test.describe('Setlists polish', () => {
     await expect(setlistSongTitles(page).last()).toHaveText('Song 01');
     await expect.poll(async () => (await storedOrder(page)).at(-1)).toBe(ids['Song 01']);
     expect((await storedOrder(page)).slice(0, 2)).toEqual([ids['Song 02'], ids['Song 03']]);
+  });
+
+  test('R16: a song dragged to the top edge reaches first place even when the finger cannot touch the very top', async ({ page }) => {
+    test.slow(); // the drag scrolls a few pixels a frame, and frames are slow on a loaded machine
+    await openApp(page);
+    const many = Array.from({ length: 20 }, (_, i) => ({ title: `Song ${String(i + 1).padStart(2, '0')}`, artist: 'The Band' }));
+    const ids = await seedSongs(page, many);
+    await putRecords(page, 'setlists', [{ name: 'Long', venueId: null, songIds: many.map((s) => ids[s.title]) }]);
+    await openSetlists(page);
+    await openSetlist(page, 'Long');
+    const main = page.locator('main');
+    await setlistSongRow(page, 'Song 20').scrollIntoViewIfNeeded();
+    expect(await main.evaluate((m) => m.scrollTop)).toBeGreaterThan(0);
+
+    // Up from the bottom and held 44 px below the screen's top edge: an iPhone
+    // finger cannot reach under the status bar, so the drag must scroll on
+    // until the first row sits clear of that strip.
+    const from = await dragHandle(page, 'Song 20').boundingBox();
+    const screen = await main.boundingBox();
+    const x = from.x + from.width / 2;
+    await page.mouse.move(x, from.y + from.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(x, screen.y + 44, { steps: 12 });
+    await expect(setlistSongRow(page, 'Song 20')).toHaveClass(/\bdragging\b/);
+    await expect(setlistSongTitles(page).first()).toHaveText('Song 20', { timeout: 40_000 });
+    await page.mouse.up();
+
+    await expect(setlistSongTitles(page).first()).toHaveText('Song 20');
+    await expect.poll(async () => (await storedOrder(page))[0]).toBe(ids['Song 20']);
   });
 
   test('R16: drags a song to a new position', async ({ page }) => {

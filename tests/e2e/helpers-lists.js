@@ -46,7 +46,16 @@ export function inSetLine(page) {
 
 // Taps Delete on the open list; the test answers the confirmation.
 export async function deleteOpenList(page, name) {
+  await openListMenu(page);
   await page.getByRole('button', { name: `Delete ${name}`, exact: true }).click();
+}
+
+// Opens the "…" beside Find songs on the open list, which holds Rename and
+// label, Merge into… and Delete, unless it is open already.
+export async function openListMenu(page) {
+  const more = page.getByRole('button', { name: 'List actions', exact: true });
+  if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
+  await expect(more).toHaveAttribute('aria-expanded', 'true');
 }
 
 // ---------- History ----------

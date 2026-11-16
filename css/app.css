@@ -68,8 +68,8 @@ body { height: var(--vvh, 100%); }
    height drops well below the window's) the Songs scope folds its header
    away, so the first matches sit in the little room left above the field. */
 html[data-kb] .songs-view > .find-context,
-html[data-kb] .songs-view > .source-switch,
 html[data-kb] .songs-view > .filter-line { display: none; }
+html[data-kb] .songs-view > .source-switch { margin-bottom: 6px; } /* stays: it is how the catalog is reached */
 html[data-kb] .songs-view > .pick-row { margin: 0 0 6px; }
 
 body {
@@ -1312,6 +1312,14 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
 
 /* Under the label line: Find songs and Merge into…, with why merging is off. */
 .setlist-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+/* The list screen's top line: back at the left, Make this tonight's set at the right. */
+.list-topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.list-topbar .make-tonight { margin: 0; }
+/* Rename and label, Merge into… and Delete, behind the "…" beside Find songs. */
+.list-more { width: var(--tap); height: var(--tap); padding: 0; }
+.list-more.on { border-color: var(--accent); color: var(--accent); }
+.list-more-menu { display: flex; flex-wrap: wrap; gap: 8px; }
+.list-more-menu[hidden] { display: none; }
 .setlist-actions .merge-note { flex-basis: 100%; margin: 0; font-size: 0.875rem; }
 .setlist-actions .merge-note:empty { display: none; }
 .merge-form .hint { margin: 0; font-size: 0.875rem; }
@@ -1446,8 +1454,8 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
 .list-head .list-mix { white-space: normal; }
 .list-head .list-in-set { margin-top: 4px; }
 /* R75: "Make this tonight's set", under the line that says how much of it is. */
-.list-head .make-tonight { align-self: flex-start; margin-top: 6px; font-weight: 600; }
-.list-head .make-tonight[hidden] { display: none; }
+.make-tonight { font-weight: 600; }
+.make-tonight[hidden] { display: none; }
 @media print { .list-head .make-tonight { display: none !important; } }
 .setlist-actions .btn { padding: 8px 12px; }
 .edit-slot:empty { display: none; }

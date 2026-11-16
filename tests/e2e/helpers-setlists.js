@@ -3,7 +3,7 @@
 // the newer Lists steps are in helpers-lists.js.
 import { expect } from '@playwright/test';
 import { openScope, expectTab } from './helpers.js';
-import { listsHeading, openSongMenu } from './helpers-lists.js';
+import { listsHeading, openSongMenu, openListMenu } from './helpers-lists.js';
 
 // Taps Lists and lands on the lists. Within a few minutes of leaving a list
 // the scope reopens it (R60), so this steps back out to the lists.
@@ -38,6 +38,7 @@ export async function createSetlist(page, name, venue = 'Any venue') {
 // Opens the list (unless it is open) and its "Rename and label" form, and returns the form.
 export async function editSetlist(page, name) {
   if (!(await page.getByRole('heading', { level: 2, name, exact: true }).isVisible())) await openSetlist(page, name);
+  await openListMenu(page);
   await page.getByRole('button', { name: 'Rename and label', exact: true }).click();
   const form = page.getByRole('form', { name: `Edit ${name}`, exact: true });
   await expect(form).toBeVisible();
