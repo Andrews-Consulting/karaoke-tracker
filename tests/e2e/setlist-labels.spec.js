@@ -8,7 +8,7 @@ import {
   seed, reloadList, venueSelect, songRow, findContext, shownVenue,
 } from './helpers-find.js';
 import {
-  openSetlists, openSetlist, backToSetlists, setlistRow, setlistSongTitles, suggestForm, mixLine, pageToday,
+  openSetlists, openSetlist, backToSetlists, setlistRow, setlistSongTitles, suggestForm, mixLine, pageToday, openListSong,
 } from './helpers-setlists.js';
 import { openVenues, venueRow, venueRows } from './helpers-venues.js';
 import { tonightListName } from '../../js/lib/night.js';
@@ -554,6 +554,15 @@ test.describe('Setlist labels, Find songs and merge', () => {
     });
     expect(stored.Anywhere.songIds).toEqual([songIds.Africa]);
     expect(stored.Empty.id).toBe(empty);
+
+    // The merged list took the source's place in the history: back from a
+    // song opened on it, by the phone's gesture, returns to it and not to the
+    // emptied source, and the note about the merge is not shown again.
+    await openListSong(page, 'Africa');
+    await page.goBack();
+    await expect(page.getByRole('heading', { level: 2, name: 'Next time', exact: true })).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: 'Moved' })).toHaveCount(0);
+    await expect(setlistSongTitles(page)).toHaveText(['Dancing Queen', 'Africa', 'Valerie', 'Mr. Brightside']);
     expect(anywhere).toBe(stored.Anywhere.id);
     // The remembered set and the Next time role are not affected.
     expect(await metaValue(page, `currentSetlist:${crown}`)).toBe(setlistIds.Friday);

@@ -1355,6 +1355,17 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
 /* The file button while a catalog is loading. */
 .file-btn:has(> .file-input:disabled) { opacity: 0.5; cursor: default; }
 
+/* ---- Help (R76): the button at the top of Settings, and the screen it opens ---- */
+
+.btn.help-open { width: 100%; font-weight: 600; }
+.help-view h2 { margin: 0; font-size: 1.5rem; font-weight: 600; }
+.help-view h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+.help-view .help-card :is(p, ul, ol) { margin-bottom: 0; }
+.help-view .help-card :is(ul, ol) { padding-left: 22px; }
+.help-view .help-card li + li { margin-top: 8px; }
+.help-view .help-card a.btn { font-weight: 600; }
+@media print { .btn.help-open, .help-guide { display: none !important; } }
+
 /* ==== Lists and History (Design B, wave 2b) ====
    js/views/setlists.js and js/views/venues.js, after the prototype's Lists
    and History scopes (docs/design/b-prototype.dc.html, B4-History). */

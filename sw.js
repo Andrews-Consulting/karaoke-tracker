@@ -4,10 +4,11 @@
 // add every new app file to APP_SHELL. Otherwise installed copies keep serving
 // the old files, or fail offline when a module is missing from the cache.
 
-const CACHE_VERSION = 'v46';
+const CACHE_VERSION = 'v49';
 const CACHE_NAME = `mic-jaunt-${CACHE_VERSION}`;
 
 // Paths are relative so the app also works from a sub-folder (e.g. GitHub Pages).
+// help/ (the full guide, R76) is left out on purpose: it is read online.
 const APP_SHELL = [
   './',
   'index.html',
@@ -45,6 +46,7 @@ const APP_SHELL = [
   'js/views/setlists.js',
   'js/views/venues.js',
   'js/views/settings.js',
+  'js/views/help.js',
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/apple-touch-icon.png',

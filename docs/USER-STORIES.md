@@ -5,7 +5,8 @@ Everything the app does today, written as what the singer wants and why, without
 ## A night out
 
 - As a singer, I want to say which venue I am at tonight, so that everything I see is about this place: what I have sung here and when. (R37)
-- As a singer, I want a set to always be open for tonight, chosen for me from the lists I have for this venue or started fresh and dated, so that I can start adding songs without setting anything up first. (R47)
+- As a singer, I want a set to always be open for tonight, chosen for me on my first visit from the lists I have for this venue or started for me when I have none, with a fresh list dated for tonight one tap away, so that I can start adding songs without setting anything up first. (R47)
+- As a singer, I want tonight's set to change only when I say so, so that looking at another list, or finding songs for it, never turns its first song into the one I hand the KJ. (R75)
 - As a singer, I want any of my lists to be usable at any venue, with the ones I made for this venue offered first, so that a list I built for one bar is not locked away when I am somewhere else. (R56)
 - As a singer, I want to search and filter my songs and put one on tonight's set, or take it off, with a single tap, so that building the set is as fast as thinking of the song. (R48)
 - As a singer, I want to see tonight's set in order and move songs around, so that I can plan what comes next while the night unfolds. (R49, R61)
@@ -15,7 +16,7 @@ Everything the app does today, written as what the singer wants and why, without
 - As a singer, I want to see what I have sung here tonight and on earlier nights, grouped by date, so that I know what the room has already heard from me. (R50)
 - As a singer, I want to undo a sing I logged by mistake tonight and have the song go back to the top of the set, so that a mis-tap does not cost me the song. (R50)
 - As a singer, I want to show a song's title, artist and key to the KJ in big type, so that I can hand my phone across a loud room instead of shouting. (R54)
-- As a singer, I want my search, filters and sort to still be there when I come back to the songs from another part of the app, or after the app reopens, so that I do not rebuild them every time I glance at something else. (R53)
+- As a singer, I want my search, filters and sort to still be there when I come back to the songs from another part of the app, and my filters and sort even after the app reopens, so that I do not rebuild them every time I glance at something else. (R53)
 - As a singer, I want to pick a song at random from whatever my current search and filters leave, so that I can break a decision deadlock. (R13)
 
 ## Finding the right song
@@ -47,10 +48,10 @@ Everything the app does today, written as what the singer wants and why, without
 
 - As a singer, I want to create, rename and delete setlists, each labelled for a venue or for anywhere, so that I can prepare for particular places and for any night. (R14)
 - As a singer, I want to put a song on several lists and take it off any of them, so that lists stay independent. (R15)
-- As a singer, I want to drag songs into order on a list, with a way to make long moves without dragging, so that the running order is mine. (R16)
+- As a singer, I want to drag songs into order on a list, with a long move carried by holding the song at the screen's edge until the list scrolls, so that the running order is mine. (R16)
 - As a singer, I want songs on a list that I have already sung at its venue to be flagged with the date, so that I can see at a glance what the list still has to offer there. (R43)
 - As a singer, I want to see a list's mix by genre and decade, so that I can tell whether a night will feel varied. (R44)
-- As a singer, I want a list filled with songs I have never sung at its venue, spread across genres and decades, so that a fresh, varied set is one request away. (R45)
+- As a singer, I want songs I have never sung at a list's venue suggested for it, in the list's own mix of genres and decades or spread across them all, and to trim the suggestion before it goes in, with an undo, so that a fresh, varied set is one request away. (R45)
 - As a singer, I want to merge one list into another, keeping only the songs the other does not already have, so that lists that have grown apart can be brought back together. (R59)
 - As a singer, I want to go from a list straight to finding songs for it, so that filling a list uses the same search and filters as everything else. (R57)
 - As a singer, I want the list I was working on to still be open if I step away for a few minutes, so that a glance at something else does not lose my place. (R60)
@@ -89,6 +90,7 @@ Everything the app does today, written as what the singer wants and why, without
 - As a singer, I want it served securely from a plain address, so that installing and updating need nothing but a browser. (R28)
 - As a singer, I want to be told when a new version is ready and reload when I choose, so that updates never interrupt a night. (R30)
 - As a singer, I want to see which version I have, so that I can tell whether an update arrived. (R73)
+- As a singer, I want a short explanation inside the app of what it is for and how a night out works, with a fuller guide a tap away, so that I can get going, or pick it up again after a while, without guessing. (R76)
 
 ## Look and feel
 
@@ -96,3 +98,5 @@ Everything the app does today, written as what the singer wants and why, without
 - As a singer, I want the content to start at the top of the screen with no title bar, and the bottom controls to show where I am, so that the small screen is spent on songs. (R58)
 - As a singer, I want a dark look by default with a light option and a choice to follow the phone, and a choice of accent colour, so that it is comfortable in a dark bar and still feels like mine. (R32, R51, R55)
 - As a singer, I want it to read well on a laptop too, so that tidying my songs at a desk is pleasant. (R33)
+- As a singer, I want one search field at the bottom that works on whatever I am looking at, and clearing it not to pop the keyboard up when I was not typing, so that searching is always in the same place under my thumb. (R77)
+- As a singer, I want the screen to fit above the keyboard while I type, with the first matches in view, so that I can see what I am finding without putting the keyboard away. (R78)

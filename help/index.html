@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mic Jaunt guide</title>
+  <meta name="description" content="How to use Mic Jaunt, a karaoke tracker that keeps what you sang where on your phone.">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#0c1015" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f4f7fa" media="(prefers-color-scheme: light)">
+  <link rel="icon" type="image/png" href="../icons/icon-192.png">
+  <link rel="stylesheet" href="help.css">
+</head>
+<body>
+<div class="page">
+
+<header>
+  <a class="app-link" href="../">Open Mic Jaunt</a>
+  <h1>Mic Jaunt guide</h1>
+  <p class="lede">Mic Jaunt keeps track of your karaoke: the songs you can sing, what you sang where and when, and what you want to sing tonight.</p>
+  <div class="note">
+    <p><strong>Everything stays on your phone.</strong> There is no account, no sign-in and no server. Your songs, venues, lists and history are only in the app on this phone, so save a backup now and then (see <a href="#backup">Backup</a>).</p>
+  </div>
+  <nav class="contents" aria-labelledby="contents-head">
+    <h2 id="contents-head">Contents</h2>
+    <ol>
+      <li><a href="#what">What it's for</a></li>
+      <li><a href="#start">Getting started</a></li>
+      <li><a href="#tonight">Tonight</a></li>
+      <li><a href="#songs">Songs</a></li>
+      <li><a href="#song">A song's page</a></li>
+      <li><a href="#lists">Lists</a></li>
+      <li><a href="#history">History</a></li>
+      <li><a href="#settings">Settings</a></li>
+      <li><a href="#tips">Tips and troubleshooting</a></li>
+    </ol>
+  </nav>
+</header>
+
+<main>
+
+<section id="what" aria-labelledby="what-head">
+  <h2 id="what-head">What it's for</h2>
+  <p>You sing at different venues, and you don't want to sing the same songs over and over at any one of them. Mic Jaunt remembers what you sang where and when, so you can see what a room has already heard from you and build a fresh set for each night.</p>
+
+  <h3>Songs</h3>
+  <p>Your songs are everything you can sing, or want to try. Each one can carry its genre and year, the key change you use on the karaoke machine, your own tags, a status (Go-to, Want to try or Retired), a rating from 1 to 5 for how well you sing it, and notes such as “skip the bridge”. Wherever a song shows, it says how many times you sang it at the venue you're at and when you last did.</p>
+
+  <h3>Lists</h3>
+  <p>A list is a group of songs in the order you choose: for a venue, for a theme such as “Slow ones”, or for a night. A list can be labelled for one venue or for any venue, but the label is only a label: any list can be used anywhere. A song can be on as many lists as you like.</p>
+
+  <h3>Tonight's set</h3>
+  <p>At each venue one list is tonight's set: the one you sing from. Its first song is Up next, and Sang it works on it. You choose which list it is. Your other lists are there to plan with and to pull songs from.</p>
+
+  <h3>Next time</h3>
+  <p>When a song on tonight's set has to wait (someone else sang it, or the night ran out), Park moves it to the venue's Next time list. That is an ordinary list labelled for the venue, made the first time you park a song there, and you can rename it. On your next visit, show it from the Set menu and pull its songs into tonight's set with +.</p>
+</section>
+
+<section id="start" aria-labelledby="start-head">
+  <h2 id="start-head">Getting started</h2>
+  <p>A few steps, once. After that, a night out is mostly the Tonight screen.</p>
+  <ol class="steps">
+    <li><strong>Put it on your Home Screen.</strong> On your iPhone, open <a href="https://micjaunt.app">micjaunt.app</a> in Safari, tap Share, then Add to Home Screen. Open it from there from now on: it opens full screen and works with no signal. Do this before you add songs, because the Home Screen app keeps its own data, separate from Safari's.</li>
+    <li><strong>Load the KaraFun catalog (optional).</strong> If your venues use KaraFun, Mic Jaunt can search their whole song list and mark which of your songs they have. The app never downloads it by itself, so you fetch the file once:
+      <ul>
+        <li>In Safari, open <a href="https://www.karafun.com/karaoke-song-list.html">karafun.com/karaoke-song-list.html</a> (in the app, Settings, KaraFun catalog, Get the catalog from KaraFun opens the same page).</li>
+        <li>Download the song list. It is a CSV file of about 7 MB. When Safari asks, choose Save to Files.</li>
+        <li>In Mic Jaunt, open Settings (the gear), go to KaraFun catalog, tap Load catalog file and choose the file. The card shows its progress, then when it was loaded and how many songs it holds.</li>
+        <li>KaraFun keeps adding songs: load a fresh file every six months or so. Loading again replaces the old catalog.</li>
+      </ul>
+    </li>
+    <li><strong>Add your songs.</strong> Any of these:
+      <ul>
+        <li>On Songs, tap Add a song at the end of the list. A title and an artist are enough.</li>
+        <li>With the catalog loaded, switch Songs to KaraFun, find a song and tap Add to my songs.</li>
+        <li>If your songs are in a spreadsheet, save it as CSV and use Import songs from CSV in Settings.</li>
+      </ul>
+      Songs then lists them, each with a + to put it on tonight's set.
+    </li>
+    <li><strong>Add your venue.</strong> On Tonight, tap the venue name at the top (it says Overall at first) and choose Add a venue…. Type the name, tap Add venue, go back, and pick the venue in the same menu. Once you have a venue the menu says Manage venues… instead. The first time you pick a venue, Mic Jaunt opens a set for tonight: a list labelled for the venue if you have one, else a list for any venue, else a new empty list named after the venue.</li>
+    <li><strong>Build tonight's set.</strong> Type part of a title in the field at the bottom of Tonight and tap + beside the song you want. Or tap + beside any song on Songs. For a fresh list, choose New list for tonight… in the Set menu: it is named for today, like “Fri 14 Nov”, and becomes tonight's set.</li>
+    <li><strong>Sing.</strong> When you come off stage, tap Sang it. The sing is logged at the venue with today's date, the song leaves the set, and the next song shows full screen for the KJ.</li>
+    <li><strong>Back up.</strong> Before you put the phone away: Settings, Backup, Share backup, then Save to Files.</li>
+  </ol>
+</section>
+
+<section id="tonight" aria-labelledby="tonight-head">
+  <h2 id="tonight-head">Tonight</h2>
+  <figure>
+    <img src="img/tonight.png" width="390" height="664" loading="lazy" alt="The Tonight screen at the venue Viking: the date, the Set menu showing Friday at Viking, the Sung strip with one song and Undo last, the Up next card for Brown Eyed Girl with Sang it and KJ, and After that listing Drive, Valerie and Evil Ways, above the field and the bar.">
+    <figcaption>Tonight at a venue</figcaption>
+  </figure>
+  <p>Tonight is where the app opens. It is about one venue and one night.</p>
+
+  <h3>The venue and the Set menu</h3>
+  <p>The venue's name at the top is a menu: every venue you've added, Overall, and Manage venues…. Mic Jaunt remembers your choice. Every song shows how many times you sang it here and when you last did (“2× · 17 Oct”), or New here.</p>
+  <p>Overall means no venue. You can build and order a list there, but Sang it, Park and the Sung strip are off, and Up next offers only KJ.</p>
+  <p>Under the venue is today's date. At the right, the Set menu shows tonight's set to begin with. It lists every list, grouped as those for this venue, those for any venue and those for other venues, and ends with New list for tonight…, which starts an empty list named for today and makes it tonight's set.</p>
+
+  <h3>Up next</h3>
+  <p>The first song of tonight's set sits in the Up next card, with its key if you set one, the artist, and how often you sang it here.</p>
+  <ul>
+    <li><strong>KJ</strong> shows the song full screen to hand across: the title and artist as large as fit, and the key as a big number with its meaning in words, such as “−2, two semitones down”. Turn the phone sideways and only the title, artist and key show. Done, or the back gesture, returns.</li>
+    <li><strong>Sang it</strong> logs the sing at this venue with today's date, takes the song off the set and shows the next song full screen for the KJ, all in one tap, so you keep your place in the rotation. The top of that screen says what was logged, with Undo. After the last song, Tonight says that was the last one.</li>
+  </ul>
+  <figure>
+    <img src="img/kj.png" width="390" height="664" loading="lazy" alt="The KJ screen after Sang it: a note that Brown Eyed Girl was logged at Viking, with Undo, then Up next for the KJ: Drive by Incubus in very large type, key −1, one semitone down, and Done.">
+    <figcaption>After Sang it: the next song for the KJ</figcaption>
+  </figure>
+
+  <h3>What you sang tonight</h3>
+  <p>Once you've sung, the Sung strip under the header lists today's songs here. Undo last deletes the last sing and puts the song back at the top of the set. Tap the strip to see every sing at this venue, by date, newest first, with Undo beside today's.</p>
+
+  <h3>After that</h3>
+  <p>The rest of the set follows, numbered 02, 03 and on.</p>
+  <ul>
+    <li>Tap a title to open the song's page. Its Back returns here.</li>
+    <li>Drag the handle (the six dots at the left) to move a song. Held near the top or bottom edge of the screen, the list scrolls. Up next stays where it is.</li>
+    <li>Swipe a row left to show <strong>Park</strong> and <strong>Remove</strong>. Park moves the song to this venue's Next time list. Remove takes it off tonight's set without asking; + puts it back. One row opens at a time, and a tap on it closes it.</li>
+  </ul>
+  <figure>
+    <img src="img/tonight-swipe.png" width="390" height="664" loading="lazy" alt="Tonight with the row for Drive swiped left, showing Park and Remove at its right.">
+    <figcaption>A row swiped left</figcaption>
+  </figure>
+
+  <h3>Showing another list</h3>
+  <p>Choosing another list in the Set menu shows it without changing tonight's set. A line at the top says which list is showing and which is tonight's set, with <strong>Use for tonight</strong> to make the one showing tonight's set.</p>
+  <p>Another list has no Up next. Every song is a numbered row with the handle, and a + that pulls the song into tonight's set (it turns to ✓; tap again to take it out). Swipe a row left for Remove, which takes it off the list showing. This is how to use Next time: show it, and + the songs you want tonight.</p>
+  <p>The list you show stays while the app is open, on every screen, and Songs adds to it too. It goes back to tonight's set when you reopen the app or change venue.</p>
+
+  <h3>The field at the bottom</h3>
+  <p>Type part of a title or artist. Up to eight of your songs that match show above the field, titles that start with what you typed first, each with + to add it to the list showing (✓ takes it off). The keyboard stays up, so you can add several.</p>
+  <p>When fewer than three of your songs match and the KaraFun catalog is loaded, “Search the KaraFun catalog for …” opens Songs on the catalog with your words. When none match, “Add … as a new song” opens the add form with the title filled in. Clear the field to see the set again.</p>
+</section>
+
+<section id="songs" aria-labelledby="songs-head">
+  <h2 id="songs-head">Songs</h2>
+  <figure>
+    <img src="img/songs.png" width="390" height="664" loading="lazy" alt="The Songs screen: the venue and list at the top, 12 of 12 songs with Pick one, No filters with the sort token Title, then each song with its artist, genre and year, its sings at Viking, and + or ✓; the field reads Search 12 songs, with the filter button beside it.">
+    <figcaption>Songs at a venue</figcaption>
+  </figure>
+  <p>Songs is your whole library. The line at the top says which venue and list + adds to, such as “Viking · Friday at Viking · 4 songs”.</p>
+
+  <h3>Search</h3>
+  <p>Type in the field at the bottom to search titles and artists as you type. A space after a word makes it a whole word: “I ” (with the space) finds “I Sang Dixie”, not every title with an i in it. The same works in every search field in the app.</p>
+
+  <h3>The list</h3>
+  <p>Each row shows the title, the artist, genre and year, how often and when you last sang it at the venue (or New here), and a KaraFun mark if KaraFun has it. Tap a row for the song's page. + adds the song to tonight's set, or to the list you're working on; ✓ takes it off. A long library shows 200 songs at a time, with a button at the end to show more.</p>
+  <p>The count line says how many songs the search and filters leave, such as “38 of 412 songs”. <strong>Pick one</strong> opens one of them at random, for when you can't decide.</p>
+
+  <h3>Filters and sort</h3>
+  <figure>
+    <img src="img/songs-filters.png" width="390" height="664" loading="lazy" alt="The Filters sheet over Songs: Sung set to Never at this venue, then Tag, Status, Rating, Genre, Decade and Sort by, Clear filters, and a button reading Show 7 songs.">
+    <figcaption>The Filters sheet</figcaption>
+  </figure>
+  <p>The button beside the field opens the Filters sheet; its badge counts the filters that are on. The list changes behind the sheet as you choose, and the button at the bottom of the sheet says how many songs it shows.</p>
+  <ul>
+    <li><strong>Sung:</strong> Any, Never at this venue, or Not since a date you pick (songs never sung here, or last sung before that date).</li>
+    <li><strong>Tag, Status</strong> (including Not set), <strong>Rating</strong> (at least), <strong>Genre</strong> and <strong>Decade</strong>.</li>
+    <li><strong>KaraFun:</strong> songs KaraFun has, or doesn't. It shows once you have a catalog.</li>
+    <li><strong>Sort by:</strong> Title, Artist, Rating (best first), Last sung here (most recent first, or longest ago first, which puts never-sung songs first), Date added, Genre or Decade. The sort also shows as a button above the list, which opens the sheet.</li>
+  </ul>
+  <p>Each filter that's on shows as a token above the list; its × turns it off. Clear all (or Clear filters in the sheet) turns them all off and puts the sort back to Title. Your filters and sort stay when you go to another screen and after the app closes; the search stays while the app is open.</p>
+
+  <h3>The KaraFun catalog</h3>
+  <p>Once a catalog is loaded, a <strong>My songs | KaraFun</strong> switch sits at the top. KaraFun searches the catalog instead of your songs; nothing lists until you type two letters or choose a filter. Its filters are Genre, Decade, Duet, Explicit and Language, and it can sort by when songs were added to KaraFun.</p>
+  <p>Each catalog song shows the artist, year and styles, Duet and Explicit marks, and Add to my songs, or In my songs if you have it. Add to my songs copies the title, artist, year and genre. + adds it to your songs and to the set in one tap. A search of your own songs that finds nothing offers to search the catalog.</p>
+
+  <h3>Adding a song</h3>
+  <p>Add a song waits at the end of the list, and a search that finds nothing offers to add what you typed. The form asks for a title and an artist; genre, year and status are optional, and a new song has no status until you choose one.</p>
+  <p>If you already have that title and artist, the form says so, with Open it to go to that song; its button becomes Add anyway.</p>
+  <p>While you're online, titles and artists are suggested from MusicBrainz, a free music database, once you've typed three letters. Tap one to fill in the title, the artist, the year of its first release and the artist's main genre; the artist's other genres show as buttons to pick from. Anything you typed yourself is kept. Settings can turn the suggestions off.</p>
+</section>
+
+<section id="song" aria-labelledby="song-head">
+  <h2 id="song-head">A song's page</h2>
+  <figure>
+    <img src="img/song.png" width="390" height="664" loading="lazy" alt="The page for Come and Get Your Love by Redbone: Songs and KJ at the top, then Status with Go-to on, Rating at 4, Key with minus and plus beside Add to set, the notes, the tags, and the sings here and at all venues.">
+    <figcaption>A song's page</figcaption>
+  </figure>
+  <p>Tap a song anywhere to open its page. The title, artist and key are large, so the page itself can be shown to the KJ; <strong>KJ</strong> at the top shows the song full screen.</p>
+  <p>These save as soon as you tap:</p>
+  <ul>
+    <li><strong>Status:</strong> Go-to, Want to try or Retired. Tap the chosen one again to clear it.</li>
+    <li><strong>Rating:</strong> 1 to 5. Tap the chosen one again to clear it.</li>
+    <li><strong>Key:</strong> − and + move the key change a semitone at a time, as you set it on the machine.</li>
+    <li><strong>Add to set</strong> puts the song on tonight's set; it then reads On set with its place, such as “On set · 03”. Tap it again to take the song off.</li>
+  </ul>
+  <p>Below are your notes and tags (the pencil and + open the edit form), how often and when you sang it here and at all venues, its genre and year, and whether KaraFun has it.</p>
+  <p><strong>Listen</strong> searches YouTube for the song in a new tab, to practise. <strong>Edit</strong> changes anything: title, artist, genre, year, key, rating, status, tags and notes. <strong>Delete</strong> removes the song after asking, with its sings and its place on every list. Back returns to where you opened it: Songs, Tonight or a list.</p>
+</section>
+
+<section id="lists" aria-labelledby="lists-head">
+  <h2 id="lists-head">Lists</h2>
+  <figure>
+    <img src="img/lists.png" width="390" height="664" loading="lazy" alt="The Lists screen: New list at the top, then two cards: Friday at Viking, for Viking, 4 songs, with its genre and decade lines and Tonight's set; and Slow ones, any venue, 2 songs.">
+    <figcaption>Your lists</figcaption>
+  </figure>
+  <p>Each list is a card with its name, its label (For Viking, or Any venue), how many songs it has, a line of its genres and a line of its decades, and how many of its songs are in tonight's set (or Tonight's set, if it is). The field at the bottom finds a list by name.</p>
+  <p><strong>New list</strong> asks for a name and, if you like, a venue to label it with. No two lists can have the same name.</p>
+  <p>Lists remembers where you were: come back within five minutes and the list you had open opens again.</p>
+
+  <h3>A list's screen</h3>
+  <figure>
+    <img src="img/list.png" width="390" height="664" loading="lazy" alt="The screen for the list Friday at Viking: Lists at the top, the label For Viking and 4 songs, a genre line ending in +1 more, a decade line, This is tonight's set, Find songs, and the … menu open with Rename and label, Merge into… and Delete, then the songs with their handles.">
+    <figcaption>A list, with its … menu open</figcaption>
+  </figure>
+  <p>Tap a card to open the list. At the top are ‹ Lists and, unless it already is, <strong>Make this tonight's set</strong>, which makes it tonight's set at the venue chosen on Tonight.</p>
+  <p>Under the name come the label and song count, then the mix: a line of genres and a line of decades, showing the biggest groups. <strong>+N more</strong> opens the full counts in place (every genre, most first, and every decade, oldest first); <strong>fewer</strong> folds them away. A line then says how many of its songs are in tonight's set, or This is tonight's set.</p>
+  <ul>
+    <li><strong>Find songs</strong> opens Songs with this list as the one + adds to, without making it tonight's set. You can build next week's list while you wait to sing.</li>
+    <li><strong>…</strong> beside it holds <strong>Rename and label</strong> (the name and the venue label), <strong>Merge into…</strong> and <strong>Delete</strong>. Merge into… moves every song the other list doesn't have to its end and leaves this list empty; it asks first, with the counts. Delete asks first; your songs stay in your library.</li>
+  </ul>
+  <p>Each song shows its artist and, on a list for a venue, how often and when you sang it there (or New here). + puts it on tonight's set, and ✓ means it's there (except on tonight's set itself). Tap a song for its page, whose Back returns to the list. Swipe a song left for Remove, which takes it off this list without asking.</p>
+  <p>Drag the handle at the left to reorder. Held near the top or bottom edge of the screen, a drag scrolls the list, so a long move is one drag. The field at the bottom finds songs in the list; the handles hide while it does.</p>
+
+  <h3>Suggest songs</h3>
+  <p>Under the songs, Suggest songs picks songs you have never sung at the list's venue (or anywhere, for an any-venue list), leaving out Retired songs and songs already on the list. Choose how many, from 1 to 50.</p>
+  <ul>
+    <li><strong>Match this list</strong>, the choice once a list has songs, picks in proportion to the list's own genres, and within each genre to its decades. It never goes outside the list's genres, so it may find fewer than you asked for, and says so.</li>
+    <li><strong>Mix it up</strong> spreads the picks across all your genres and decades.</li>
+  </ul>
+  <p>You see a preview first, each song with its genre and year and × to drop it. <strong>Add these</strong> puts the rest at the end of the list, and Undo beside “Added N songs” takes them off again until the list changes some other way. Cancel adds nothing.</p>
+</section>
+
+<section id="history" aria-labelledby="history-head">
+  <h2 id="history-head">History</h2>
+  <figure>
+    <img src="img/history.png" width="390" height="664" loading="lazy" alt="The History screen: Log a sing and Venues at the top, chips for The Crown, Viking (chosen) and All venues, By song chosen, and Brown Eyed Girl opened to its two sings, each with Delete.">
+    <figcaption>History at one venue, by song</figcaption>
+  </figure>
+  <p>History shows what you sang. The chips at the top choose a venue, starting at Tonight's, or All venues.</p>
+  <ul>
+    <li><strong>By song</strong> lists each song with how many times and when you last sang it, such as “2× · 16 Nov”, most recent first. Tap a song to see each sing.</li>
+    <li><strong>By night</strong> lists the same sings by date, newest first.</li>
+    <li>Every sing has <strong>Delete</strong>, which asks first: use it to undo a mis-tap from an earlier night.</li>
+    <li>The field at the bottom searches the history by title or artist.</li>
+  </ul>
+  <p><strong>Log a sing</strong> records a sing you forgot, or one from another night: choose the venue, type to find the song, and set the date, which starts at today.</p>
+  <p><strong>Venues</strong> adds, renames and deletes venues (Tonight's Manage venues… opens the same list). A venue you've sung at can't be deleted. Lists labelled for a deleted venue become Any venue.</p>
+</section>
+
+<section id="settings" aria-labelledby="settings-head">
+  <h2 id="settings-head">Settings</h2>
+  <figure>
+    <img src="img/settings.png" width="390" height="664" loading="lazy" alt="The top of Settings: Help, then Appearance with Theme set to Dark and Accent colour set to Sky, then Online suggestions with its checkbox.">
+    <figcaption>The top of Settings</figcaption>
+  </figure>
+  <p>The gear at the right of the bar opens Settings.</p>
+
+  <h3>Help</h3>
+  <figure>
+    <img src="img/help.png" width="390" height="664" loading="lazy" alt="The Help screen: Settings at the top to go back, the heading Help, and the card What it's for, naming Songs, Lists, Tonight's set and Next time.">
+    <figcaption>Help, inside the app</figcaption>
+  </figure>
+  <p>The button at the top of Settings opens a short version of this guide inside the app: what it's for, the screens, a night step by step, the first steps and a few tips. Its Full guide link opens this page.</p>
+
+  <h3>Appearance</h3>
+  <p>Theme: Dark (the default, for a dim bar), Light, or Match the phone. Accent colour: Sky, Green, Amber, Lime or Pink.</p>
+
+  <h3>Online suggestions</h3>
+  <p>The MusicBrainz suggestions in Add a song. Only the title and artist you type there are sent, and only while this is on. Everything else stays on the phone.</p>
+
+  <h3>Storage</h3>
+  <p>Says whether the browser has agreed to keep the app's data for good, with Ask for persistent storage. An app on the Home Screen keeps its data anyway.</p>
+
+  <h3>Import and export songs</h3>
+  <p><strong>Import songs from CSV</strong> reads a spreadsheet saved as CSV, with a header row naming the columns:</p>
+  <ul>
+    <li><span class="columns">Title</span> and <span class="columns">Artist</span> are needed.</li>
+    <li><span class="columns">Genre</span>, <span class="columns">Year</span>, <span class="columns">Key</span> and <span class="columns">Tags</span> are read if present; separate tags with ; or ,.</li>
+    <li><span class="columns">Venue</span> logs a sing at that venue for each row, adding the venue if it's new. <span class="columns">Date</span> dates it (2024-05-01, 2024-05, 2024 or 5/1/2024); a blank date means the day of the import.</li>
+  </ul>
+  <p>Other columns are ignored. Songs you already have, and rows without a title or artist, are skipped, and the result says how many.</p>
+  <p><strong>Download songs as CSV</strong> saves every song with its title, artist, genre, year, key, tags, status, rating and notes, for a spreadsheet. It imports back without duplicates, though status, rating and notes are not read back in. Venues, sings and lists are only in the backup.</p>
+
+  <h3 id="backup">Backup</h3>
+  <p>A backup is one file holding your songs, venues, sing history and lists. It is the only copy of your data that isn't on the phone, so save one after a night out.</p>
+  <ul>
+    <li><strong>Share backup</strong> (on a phone) opens the share sheet: choose Save to Files, AirDrop or Mail. It counts as a backup only once the share goes through. On an iPhone this is the reliable way: Download backup from the Home Screen app may do nothing.</li>
+    <li><strong>Download backup</strong> saves the file to your downloads, on a computer or wherever sharing isn't offered.</li>
+    <li><strong>Check a backup file</strong> reads a backup and says what it holds and how that compares with the phone, without changing anything.</li>
+    <li><strong>Restore from backup</strong> replaces everything on the phone with the backup's contents, after asking.</li>
+  </ul>
+  <p>If you've never backed up, or your last backup is more than 30 days old, a reminder shows above the bar with Back up now and Later, which hides it for a week.</p>
+  <p><strong>Safari and the Home Screen keep separate data.</strong> On an iPhone, songs you added in Safari don't appear in the app on the Home Screen. In Safari, a banner offers Move my data, which takes you to Backup: Share backup, then Save to Files. Then open the Home Screen app: with no songs yet, its Songs screen offers Restore a backup, which takes you to Restore from backup.</p>
+
+  <h3>KaraFun catalog</h3>
+  <p><strong>Get the catalog from KaraFun</strong> opens KaraFun's song list page, where you download the file (see <a href="#start">Getting started</a>). <strong>Load catalog file</strong> reads it; the line above the button says when the catalog was loaded and how many songs it holds. A file that isn't KaraFun's song list is refused before anything changes. Loading a newer file replaces the catalog, and every load marks which of your songs KaraFun has.</p>
+  <p><strong>Remove catalog</strong> deletes it from the phone; your songs keep their KaraFun marks. The catalog isn't part of the backup: on a new phone, load the file again.</p>
+
+  <h3>Version</h3>
+  <p>The bottom of Settings shows which version of the app you have.</p>
+</section>
+
+<section id="tips" aria-labelledby="tips-head">
+  <h2 id="tips-head">Tips and troubleshooting</h2>
+  <ul>
+    <li><strong>The keyboard covers the list.</strong> On Tonight, the matches show just above the field, in the room the keyboard leaves. On Songs, the top of the screen folds away while you type, so the first matches show; the keyboard's Search key puts it away, and the list is already up to date.</li>
+    <li><strong>The × in the field</strong> clears it. If the keyboard was up it stays up for the next search; if it was down, it stays down.</li>
+    <li><strong>The back gesture</strong>, or the Back at the top of a screen, returns to the screen before. It never leaves the app from a song, a list or Settings.</li>
+    <li><strong>The backup reminder</strong> shows once you have songs and no backup, or the last one is over 30 days old. Back up now opens Backup; Later hides it for a week.</li>
+    <li><strong>A new version is ready.</strong> When an update arrives, a banner offers Reload and Later. Nothing changes in the middle of a night: Reload when it suits you, or the app picks it up next time it opens.</li>
+    <li><strong>No signal.</strong> Once on the Home Screen, the app works fully offline. Only the MusicBrainz suggestions, Listen, the KaraFun page and this guide need a connection.</li>
+    <li><strong>Your data is yours.</strong> Everything stays on the phone: no account, no sign-in, nobody else sees it. The flip side is that only a backup can bring it back if the phone is lost or replaced.</li>
+    <li><strong>Printing.</strong> On a computer, the browser's print menu prints your songs, a list or a venue's history cleanly.</li>
+  </ul>
+</section>
+
+</main>
+
+<footer>
+  <a class="app-link" href="../">Open Mic Jaunt</a>
+  <p>Mic Jaunt · <a href="https://micjaunt.app">micjaunt.app</a></p>
+</footer>
+
+</div>
+</body>
+</html>

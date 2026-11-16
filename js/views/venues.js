@@ -467,7 +467,12 @@ export async function renderVenues({ back = null } = {}) {
       nameInput.focus();
       return;
     }
-    await db.add('venues', { name: nameInput.value.trim() });
+    try {
+      await db.add('venues', { name: nameInput.value.trim() });
+    } catch (err) {
+      addError.textContent = `Could not save the venue. ${(err && err.message) || err}`;
+      return;
+    }
     renderVenues({ back: backTo });
   });
 
@@ -510,7 +515,12 @@ export async function renderVenues({ back = null } = {}) {
           input.focus();
           return;
         }
-        await db.put('venues', { id: venue.id, name: input.value.trim() });
+        try {
+          await db.put('venues', { id: venue.id, name: input.value.trim() });
+        } catch (err) {
+          error.textContent = `Could not rename the venue. ${(err && err.message) || err}`;
+          return;
+        }
         renderVenues({ back: backTo });
       });
       li.replaceChildren(renameForm);
