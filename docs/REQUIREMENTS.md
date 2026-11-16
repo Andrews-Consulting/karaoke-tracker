@@ -4,7 +4,7 @@ A personal, local-only PWA for tracking a karaoke repertoire of 500+ songs. Live
 
 **Goal:** build lists for specific venues and track what I have (and have not) sung at each one, so I don't repeat songs and each night's selection is diverse in genre and time period.
 
-This sheet describes the app as it is. It started as the requirements list of 2026-11-11 and was rewritten on 2026-11-14 so every built behaviour has a row, including the ones that grew out of use, and checked row by row against the code and the tests on 2026-11-16. IDs are stable and match the e2e test names in `tests/e2e/`; replaced items are in History at the end. Update it as work lands.
+This sheet describes the app as it is. It started as the requirements list of 2026-11-11 and was rewritten on 2026-11-14 so every built behaviour has a row, including the ones that grew out of use, and checked row by row against the code and the tests on 2026-11-16. IDs are stable and match the e2e test names in `tests/e2e/`; replaced items are in History at the end. Update it as work lands: since 2026-11-16 `tests/unit/requirements.test.js` fails the unit suite when a named test does not exist, an R-test is not named by a row, or a Done row names no test.
 
 Priority: **Must** = needed for a usable version, **Should** = next, **Could** = nice to have. Status: **Done** = built with the named e2e test; **Built** = built, no e2e test yet; **Planned** = agreed, not built.
 
@@ -54,10 +54,10 @@ Finding the next song to sing and working a list through the night; adding songs
 | R3 | Free-text notes per song | Must | Done | E.g. "skip the bridge", "starts cold". e2e: "R3: saves free-text notes on a song" |
 | R36 | A genre and a year per song, for sorting and finding by decade | Must | Done | Year is a single number; for a decade-only song enter any year in it. e2e: "R36: edits genre and year" |
 | R5 | My own tags on a song | Should | Done | E.g. duet, crowd-pleaser, slow. e2e: "R2: edits tags (R5), key (R6), status (R7) and rating (R4), and they survive a reload" |
-| R6 | My key change for each song, as set on the karaoke machine | Should | Done | E.g. -2 or +1. Same e2e test as R5 |
-| R7 | Mark a song Go-to, Want to try or Retired | Should | Done | Read "Active" for a day on 2026-11-15, then back to Go-to: "Not set" (R64) is the everyday state and Go-to is for the sure things. Same e2e test as R5 |
+| R6 | My key change for each song, as set on the karaoke machine | Should | Done | E.g. -2 or +1. e2e: "R2: edits tags (R5), key (R6), status (R7) and rating (R4), and they survive a reload" |
+| R7 | Mark a song Go-to, Want to try or Retired | Should | Done | Read "Active" for a day on 2026-11-15, then back to Go-to: "Not set" (R64) is the everyday state and Go-to is for the sure things. e2e: "R2: edits tags (R5), key (R6), status (R7) and rating (R4), and they survive a reload" |
 | R64 | A new song's status is "Not set" until I choose one, and "Not set" can be filtered | Must | Done | e2e: "R64: a new song has no status until one is chosen, and \"Not set\" can be filtered" |
-| R4 | Rate a song 1 to 5 for how well I sing it | Could | Done | Same e2e test as R5 |
+| R4 | Rate a song 1 to 5 for how well I sing it | Could | Done | e2e: "R2: edits tags (R5), key (R6), status (R7) and rating (R4), and they survive a reload" |
 | R38 | Look a song up on the web, to listen to it outside the venue | Should | Done | Opens a YouTube search for "title artist" in a new tab; nothing fetched or saved. e2e: "R38: a song has a video search link for its title and artist" |
 
 ## Setlists: building and tidying lists
