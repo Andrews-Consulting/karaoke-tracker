@@ -75,13 +75,18 @@ test.describe('Holding a place', () => {
     await expect(list.locator('.pos')).toHaveText(['02', '03', '04']);
 
     // The backup reminder (songs, no backup) arrives a beat after the screen
-    // and shrinks <main>; measure the rows only once it is there, or on a slow
-    // machine it lands mid-drag and the drop misses (CI, 2026-11-16).
-    await expect(page.getByRole('region', { name: 'Backup reminder' })).toBeVisible();
+    // and shrinks <main>: wait for it and put it away, or on CI's fonts the
+    // last row sits under the dock, where toBeVisible still passes but the
+    // pointer lands on the dock and no drag starts (2026-11-16).
+    const reminder = page.getByRole('region', { name: 'Backup reminder' });
+    await expect(reminder).toBeVisible();
+    await reminder.getByRole('button', { name: 'Later' }).click();
+    await expect(reminder).toHaveCount(0);
 
     // Drag Africa by its handle onto Dancing Queen's row: it takes second place.
     const handle = list.getByRole('button', { name: 'Move Africa', exact: true });
-    await expect(handle).toBeVisible();
+    await handle.scrollIntoViewIfNeeded();
+    await expect(handle).toBeInViewport();
     const from = await handle.boundingBox();
     const to = await list.locator('li[data-song-id]').first().boundingBox();
     const x = from.x + from.width / 2;
