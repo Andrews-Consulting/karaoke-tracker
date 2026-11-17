@@ -400,7 +400,9 @@ label > textarea { margin-top: 4px; color: var(--text); resize: vertical; }
   background: var(--surface);
   border-top: 2px solid var(--accent);
 }
-.update-banner p { flex: 1 1 8em; margin: 0; font-size: 0.9375rem; }
+/* The words take the full width and the buttons sit in a row under them: beside
+   two or three buttons the text was squeezed into a column a few words wide. */
+.update-banner p { flex: 1 1 100%; margin: 0; font-size: 0.9375rem; }
 .update-banner .btn { padding-left: 12px; padding-right: 12px; }
 
 /* Printing from the browser's share or print menu (R24): the song list, a
@@ -1381,6 +1383,8 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
 .btn.help-open { width: 100%; font-weight: 600; }
 .help-view h2 { margin: 0; font-size: 1.5rem; font-weight: 600; }
 .help-view h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+/* iPhone and Android in the Install card, a little apart from what is above. */
+.help-view h4 { margin: 16px 0 0; font-size: 0.9375rem; font-weight: 600; }
 .help-view .help-card :is(p, ul, ol) { margin-bottom: 0; }
 .help-view .help-card :is(ul, ol) { padding-left: 22px; }
 .help-view .help-card li + li { margin-top: 8px; }

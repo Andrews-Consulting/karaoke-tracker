@@ -71,7 +71,8 @@ Everything the app does today, written as what the singer wants and why, without
 - As a singer, I want to check what a backup file holds and how it compares with my phone, without restoring it, so that I can trust a backup before I need it. (R62)
 - As a singer, I want to restore from a backup after confirming, so that a new phone, or a mistake, is recoverable. (R21)
 - As a singer, I want a reminder when my last backup is more than a month old, with a way to put it off, so that backups happen without my remembering. (R25)
-- As a singer, I want to be told that songs entered in the browser do not follow the app to the Home Screen, and offered a way to move them, so that I do not lose work when I install the app. (R65)
+- As a singer, I want to be told that songs entered in Safari do not follow the app to the Home Screen and that Safari deletes them after a week away, more bluntly if I keep putting it off, and offered the install steps and a way to move them, so that I do not lose work before I install the app. (R65)
+- As a singer using another browser, I want a gentler suggestion to install the app while the browser has not promised to keep my data, so that the phone cannot clear it when room runs short. (R65)
 - As a singer, I want to import my songs from a spreadsheet, including which venue I sang each at and when, with duplicates and bad rows skipped and reported, so that a repertoire kept elsewhere comes across in one go. (R22, R46)
 - As a singer, I want to export my songs as a spreadsheet, so that my list is mine to use in other tools. (R23)
 - As a singer, I want to print my songs, a list or a venue's history cleanly, so that I can carry paper when I want to. (R24)
@@ -79,6 +80,7 @@ Everything the app does today, written as what the singer wants and why, without
 ## The KaraFun catalog
 
 - As a singer, I want to load the catalog file that KaraFun publishes, see when I loaded it and how large it is, and replace or remove it later, so that I know what the bar's machine can play without the app ever contacting KaraFun. (R66)
+- As a singer on an iPhone, I want to be stopped from loading the catalog in Safari and told to load it in the Home Screen app, so that I do not spend the load on a copy the installed app never sees. (R66)
 - As a singer, I want to search the KaraFun catalog by title, artist, genre, decade, duet, explicit and language, so that I can discover songs I could sing that I have not thought of. (R67)
 - As a singer, I want to add a song from the catalog to my songs, or straight onto tonight's set, with its details filled in, so that discovering and planning are one motion. (R67)
 - As a singer, I want my songs marked when KaraFun has them, kept up to date whenever I load the catalog, and filterable, so that I can tell which of my songs a KaraFun venue can actually play. (R68)
@@ -91,6 +93,7 @@ Everything the app does today, written as what the singer wants and why, without
 - As a singer, I want to be told when a new version is ready and reload when I choose, so that updates never interrupt a night. (R30)
 - As a singer, I want to see which version I have, so that I can tell whether an update arrived. (R73)
 - As a singer, I want a short explanation inside the app of what it is for and how a night out works, with a fuller guide a tap away, so that I can get going, or pick it up again after a while, without guessing. (R76)
+- As a singer, I want the steps for putting the app on my Home Screen, for an iPhone and for Android, in the app's Help and a tap away from the banner that asks me to, so that I install it before my songs are at risk. (R76, R65)
 
 ## Look and feel
 

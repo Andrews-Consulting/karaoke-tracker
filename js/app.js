@@ -5,10 +5,11 @@ import { renderSongs, goToBackup } from './views/songs.js';
 import { renderSetlists } from './views/setlists.js';
 import { renderHistory } from './views/venues.js';
 import { renderSettings } from './views/settings.js';
+import { renderHelp } from './views/help.js';
 import { rootScreen, openScreen, setViewSwitcher, onDraw, viewInHistory } from './ui.js';
 import * as dock from './dock.js';
 import { initTheme } from './theme.js';
-import { checkBackupReminder, checkSafariMove } from './reminder.js';
+import { checkBackupReminder, checkSafariMove, checkBrowserInstall } from './reminder.js';
 
 initTheme(); // R32: dark by default, light or the phone's setting when chosen
 
@@ -36,6 +37,13 @@ function openSettings() {
     dock.showingSettings(true);
     return renderSettings();
   });
+}
+
+// Help at one of its cards, stacked on Settings the way the Help button
+// there opens it (R76): Back returns to Settings and the gear stays selected.
+function openHelpAt(cardId) {
+  openSettings();
+  openScreen(() => renderHelp({ scrollTo: cardId }));
 }
 
 dock.onScope((name) => {
@@ -66,7 +74,13 @@ import('./update.js')
 const reloaded = viewInHistory();
 dock.scope(scopes[reloaded] ? reloaded : 'tonight');
 
-// R25: a reminder above the dock when the last backup is over 30 days old.
-checkBackupReminder((name) => dock.scope(name));
-// R65: in Safari on an iPhone, a nudge to move the data to the installed app.
-checkSafariMove(goToBackup);
+// R65: in Safari on an iPhone, a nudge to move the data to the installed app;
+// in another browser with storage not persistent, a softer one to install it.
+// Their How opens the install steps in Help.
+const showInstallHelp = () => openHelpAt('help-install');
+checkBrowserInstall(showInstallHelp);
+// R25: a reminder above the dock when the last backup is over 30 days old,
+// unless the Safari banner is up, which already says to back up.
+checkSafariMove(goToBackup, showInstallHelp).then((showing) => {
+  if (!showing) checkBackupReminder((name) => dock.scope(name));
+});

@@ -42,6 +42,7 @@ test.describe('KaraFun catalog', () => {
     await expect(link).toHaveAttribute('rel', 'noopener');
     await expect(statusLine(page)).toHaveText('No catalog loaded');
     await expect(removeButton(page)).toBeHidden();
+    await expect(card(page).locator('.karafun-safari')).toHaveCount(0); // only Safari on an iPhone is told to wait
 
     await loadCatalog(page, catalogCsv(CREEP, WHISKEY, ';"No id";Nobody;;;;;;', SHALLOW),
       'Loaded 3 songs from KaraFun; 1 row skipped.');
@@ -199,6 +200,33 @@ test.describe('KaraFun catalog', () => {
     await openSettings(page);
     await expect(statusLine(page)).toHaveText('No catalog loaded');
     await expect(removeButton(page)).toBeHidden();
+  });
+
+  test('R66: in Safari on an iPhone the catalog cannot be loaded, and the card says to use the Home Screen app', async ({ page }) => {
+    await page.addInitScript(() => { Object.defineProperty(navigator, 'standalone', { value: false, configurable: true }); });
+    await openApp(page);
+    // A catalog loaded before this version, which can still be removed.
+    await putRecords(page, 'catalog', [
+      { id: 12543, title: 'Creep', artist: 'Radiohead', year: 1992, duet: false, explicit: true, added: '2008-03-07', styles: ['Rock'], languages: ['English'], key: 'creep\u0000radiohead' },
+    ]);
+    await putRecords(page, 'meta', [
+      { key: 'karafunLoadedAt', value: '2026-05-01T10:00:00.000Z' },
+      { key: 'karafunCount', value: 1 },
+    ]);
+    await openSettings(page);
+
+    await expect(card(page).locator('.karafun-safari')).toHaveText('Load the catalog in the Home Screen app. '
+      + 'A catalog loaded here in Safari does not follow it there, and Safari may delete it after seven days.');
+    await expect(card(page).locator('input[type="file"]')).toBeDisabled();
+    await expect(card(page).locator('label.file-btn')).toHaveCSS('opacity', '0.5');
+    await expect(card(page).getByRole('link', { name: 'Get the catalog from KaraFun' })).toBeVisible();
+    await expect(statusLine(page)).toHaveText(/ · 1 song$/);
+
+    const asked = answerNextDialog(page, true);
+    await removeButton(page).click();
+    await asked;
+    await expect(statusLine(page)).toHaveText('No catalog loaded');
+    expect(await readStore(page, 'catalog')).toEqual([]);
   });
 
   test('R68: loading the catalog flags the songs KaraFun has and clears flags that no longer match', async ({ page }) => {

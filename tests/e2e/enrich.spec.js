@@ -1,8 +1,8 @@
 // R63: MusicBrainz fills year and genre too and matches word prefixes;
-// R64: a new song's status starts blank; R65: moving data from Safari to the
-// installed app is pointed out at both ends.
+// R64: a new song's status starts blank. (R65, moving from Safari to the
+// installed app, is in reminder.spec.js with the other banners.)
 import { test, expect } from '@playwright/test';
-import { openApp, addSong, openSong, expectTab, readStore, openScope } from './helpers.js';
+import { openApp, addSong, openSong, readStore } from './helpers.js';
 import {
   mockMusicBrainz, mbRecording, openAddForm, suggestionList, openFilters, closeFilters, choose, statusToggle, backToSongs,
 } from './helpers-find.js';
@@ -110,47 +110,5 @@ test.describe('Blank status (R64)', () => {
     const stored = await readStore(page, 'songs');
     expect(stored.find((s) => s.title === 'Valerie').status).toBe('');
     expect(stored.find((s) => s.title === 'Rehab').status).toBe('want-to-try');
-  });
-});
-
-test.describe('Moving from Safari (R65)', () => {
-  const banner = (page) => page.getByRole('region', { name: 'Move to the Home Screen' });
-
-  test('R65: in Safari on an iPhone with songs, a banner points at Share backup; Later hides it for a week', async ({ page }) => {
-    await page.addInitScript(() => { Object.defineProperty(navigator, 'standalone', { value: false, configurable: true }); });
-    await openApp(page);
-    await expect(banner(page)).toHaveCount(0); // nothing to move yet
-
-    await addSong(page, { title: 'Valerie', artist: 'Amy Winehouse' });
-    await page.reload();
-    await expectTab(page, 'Songs');
-    await expect(banner(page)).toContainText('Songs entered here do not move over by themselves');
-
-    await banner(page).getByRole('button', { name: 'Move my data' }).click();
-    await expectTab(page, 'Settings');
-    await expect(page.getByRole('button', { name: 'Share backup' }).or(page.getByRole('button', { name: 'Download backup' })).first()).toBeVisible();
-    await expect(banner(page)).toHaveCount(0);
-
-    await page.reload();
-    await expectTab(page, 'Songs');
-    await banner(page).getByRole('button', { name: 'Later' }).click();
-    await expect(banner(page)).toHaveCount(0);
-    await page.reload();
-    await expectTab(page, 'Songs');
-    await expect(banner(page)).toHaveCount(0);
-  });
-
-  test('R65: the installed app shows no banner, and an empty library offers to restore a backup', async ({ page }) => {
-    await openApp(page);
-    await expect(banner(page)).toHaveCount(0);
-    const card = page.locator('.starting-fresh');
-    await expect(card).toContainText('Starting fresh?');
-    await card.getByRole('button', { name: 'Restore a backup' }).click();
-    await expectTab(page, 'Settings');
-    await expect(page.getByText('Restore from backup', { exact: true })).toBeVisible();
-
-    await openScope(page, 'Songs');
-    await addSong(page, { title: 'Valerie', artist: 'Amy Winehouse' });
-    await expect(card).toHaveCount(0);
   });
 });

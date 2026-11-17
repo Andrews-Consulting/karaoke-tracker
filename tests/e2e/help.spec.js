@@ -6,7 +6,7 @@ import { openApp, openSettings, expectTab } from './helpers.js';
 const settingsShowing = (page) => expect(page.getByText('Appearance', { exact: true })).toBeVisible();
 
 test.describe('Help', () => {
-  test('R76: Help opens from the top of Settings, names the screens, links to the full guide, and Back returns to Settings', async ({ page }) => {
+  test('R76: Help opens from the top of Settings, names the screens, gives the install steps for iPhone and Android, links to the full guide, and Back returns to Settings', async ({ page }) => {
     await openApp(page);
     await openSettings(page);
 
@@ -20,9 +20,23 @@ test.describe('Help', () => {
     await expect(page.getByRole('heading', { level: 2, name: 'Help' })).toBeVisible();
     await expect(page.locator('#view-title')).toHaveText('Help');
     await expectTab(page, 'Settings'); // Help is part of Settings: the gear stays selected
-    for (const name of ['What it\'s for', 'The screens', 'Tonight, step by step', 'First time here', 'Tips']) {
-      await expect(page.getByRole('heading', { level: 3, name, exact: true })).toBeVisible();
-    }
+    await expect(page.locator('.help-view h3')).toHaveText([
+      'What it\'s for', 'Put it on your Home Screen', 'The screens', 'Tonight, step by step', 'First time here', 'Tips',
+    ]);
+    await expect(page.getByRole('heading', { level: 2, name: 'Help' })).toBeInViewport(); // opened at the top
+
+    // Installing: why, then three steps for each phone (R65).
+    const install = page.getByRole('region', { name: 'Put it on your Home Screen' });
+    await expect(install).toContainText('Safari on an iPhone deletes a website\'s data after seven days without a visit');
+    await expect(install.locator('h4')).toHaveText(['iPhone', 'Android']);
+    await expect(install.locator('ol').first().locator('li')).toHaveText([
+      'Open micjaunt.app in Safari.', /^Tap Share/, /Add to Home Screen.*then tap Add\.$/,
+    ]);
+    await expect(install.locator('ol').nth(1).locator('li')).toHaveText([
+      'Open micjaunt.app in Chrome.', 'Tap the three-dot menu.', /^Tap “Add to home screen” \(or “Install app”\), then Install\.$/,
+    ]);
+    await expect(install).toContainText('Restore from backup in the installed app');
+    await expect(install).toContainText('share their data, so nothing needs moving');
     const screens = page.getByRole('region', { name: 'The screens' });
     await expect(screens.locator('li > strong')).toHaveText(['Tonight', 'Songs', 'Lists', 'History', 'Settings (the gear)']);
     await expect(page.getByRole('region', { name: 'Tonight, step by step' }).locator('ol > li')).toHaveCount(5);
