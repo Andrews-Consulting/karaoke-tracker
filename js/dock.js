@@ -221,18 +221,24 @@ function isFormField(node) {
   return node.tagName === 'INPUT' && !/^(button|checkbox|radio|range|file|submit|reset|color)$/.test(node.type);
 }
 
+//
+// The dock comes back when the keyboard goes (fit() sees the viewport grow),
+// or when the focus moves into the dock itself; never on the field losing
+// focus. On an iPhone a tap on the form's Save blurs the field first and
+// delivers the click after: bringing the dock back in between put it under
+// the finger, and the click went to the dock instead of Save (2026-11-17).
 function placeFormField(kb) {
+  const root = document.documentElement;
   const active = document.activeElement;
-  const inForm = kb && isFormField(active);
-  document.documentElement.toggleAttribute('data-kb-form', inForm);
-  if (inForm) active.scrollIntoView({ block: 'center' });
+  if (!kb || dockEl.contains(active)) {
+    root.removeAttribute('data-kb-form');
+  } else if (isFormField(active)) {
+    root.setAttribute('data-kb-form', '');
+    active.scrollIntoView({ block: 'center' });
+  }
 }
 
 document.addEventListener('focusin', () => placeFormField(document.documentElement.hasAttribute('data-kb')));
-document.addEventListener('focusout', () => {
-  // After the tick, so a move straight to another field keeps the dock away.
-  setTimeout(() => placeFormField(document.documentElement.hasAttribute('data-kb')), 0);
-});
 
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', fit);

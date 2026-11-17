@@ -59,15 +59,18 @@ test.describe('Setlists polish', () => {
     expect(box.y + box.height).toBeLessThanOrEqual(420);
     await expect(form.getByRole('button', { name: 'Save' })).toBeVisible();
 
-    // Moving to the next field keeps the dock away; leaving the form brings it back.
+    // Moving to the next field keeps the dock away, and so does the field
+    // losing focus: on an iPhone a tap on Save blurs the field before the
+    // click lands, and the dock coming back then put itself under the finger.
     await form.getByLabel('For venue (optional)').focus();
     await expect(page.locator('html[data-kb-form]')).toHaveCount(1);
+    await page.evaluate(() => document.activeElement.blur());
     await form.getByRole('button', { name: 'Cancel' }).focus();
-    await expect(page.locator('html[data-kb-form]')).toHaveCount(0);
-    await expect(page.locator('#dock')).toBeVisible();
+    await page.waitForTimeout(50);
+    await expect(page.locator('html[data-kb-form]')).toHaveCount(1);
+    await expect(page.locator('#dock')).toBeHidden();
 
     // The keyboard goes: everything is as it was.
-    await name.focus();
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.locator('html[data-kb]')).toHaveCount(0);
     await expect(page.locator('html[data-kb-form]')).toHaveCount(0);
