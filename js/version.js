@@ -8,4 +8,4 @@
 // tests/unit/app-shell.test.js fails when the copies differ, and
 // tools/check-version.js (run by CI on every pull request) fails a change to
 // a cached file that leaves this file alone.
-export const APP_VERSION = '1.0.65';
+export const APP_VERSION = '1.0.66';

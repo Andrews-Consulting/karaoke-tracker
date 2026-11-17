@@ -13,7 +13,7 @@
 // update check parsed the new file as a classic script, hit the import and
 // gave up, silently, while the page code that would have re-registered it
 // as a module was itself served from the old cache.
-const CACHE_VERSION = 'v1.0.65'; // = APP_VERSION in js/version.js
+const CACHE_VERSION = 'v1.0.66'; // = APP_VERSION in js/version.js
 const CACHE_NAME = `mic-jaunt-${CACHE_VERSION}`;
 
 // Paths are relative so the app also works from a sub-folder (e.g. GitHub Pages).
@@ -49,6 +49,7 @@ const APP_SHELL = [
   'js/lib/find.js',
   'js/lib/catalog.js',
   'js/lib/karafun.js',
+  'js/lib/contact.js',
   'js/views/tonight.js',
   'js/views/kj.js',
   'js/views/songs.js',

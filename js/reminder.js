@@ -63,8 +63,9 @@ export function runningInSafariOnIphone() {
 }
 
 // Opened from the Home Screen: navigator.standalone on an iPhone, the
-// display mode from the manifest (R26) everywhere else.
-function runningInstalled() {
+// display mode from the manifest (R26) everywhere else. Settings' contact
+// link (R79) puts it in the email's device line.
+export function runningInstalled() {
   if (navigator.standalone === true) return true;
   try {
     return window.matchMedia('(display-mode: standalone)').matches;

@@ -76,4 +76,34 @@ test.describe('Help', () => {
     await expectTab(page, 'Songs');
     await expect(help).toHaveCount(0);
   });
+
+  test('R79: the Contact card at the foot of Settings links to chris@micjaunt.app with the version and device in the email', async ({ page, browserName }) => {
+    await openApp(page);
+    await openSettings(page);
+
+    const card = page.locator('#contact-card');
+    await card.scrollIntoViewIfNeeded();
+    await expect(card).toContainText('To report defects or request enhancements, please email:');
+    // The last card, above only the version line.
+    const cards = page.locator('#view .card');
+    expect(await cards.last().getAttribute('id')).toBe('contact-card');
+    const [cardBox, versionBox] = [await card.boundingBox(), await page.getByText(/^Version \d/).boundingBox()];
+    expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(versionBox.y);
+
+    // The link is a tap target (R31) that opens Mail on the address, subject and body filled in.
+    const link = card.getByRole('link', { name: 'chris@micjaunt.app' });
+    expect((await link.boundingBox()).height).toBeGreaterThanOrEqual(44);
+    const url = new URL(await link.getAttribute('href'));
+    expect(url.protocol).toBe('mailto:');
+    expect(url.pathname).toBe('chris@micjaunt.app');
+    const version = await page.evaluate(() => import('./js/version.js').then((m) => m.APP_VERSION));
+    expect(url.searchParams.get('subject')).toBe(`Mic Jaunt ${version}`);
+    const body = url.searchParams.get('body');
+    expect(body.startsWith('What happened:\n')).toBe(true);
+    expect(body).toContain(`\nMic Jaunt ${version}\n`);
+    // The device line: the phone the test runs as, in a browser tab, and its screen.
+    const device = body.split('\n').at(-1);
+    expect(device).toMatch(browserName === 'webkit' ? /^iPhone, iOS \d+\.\d+, Safari, browser, \d+×\d+$/ : /^Android \d+, Pixel 7, Chrome, browser, \d+×\d+$/);
+    await expect(card).toContainText(`your device (${device})`);
+  });
 });

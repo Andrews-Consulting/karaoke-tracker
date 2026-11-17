@@ -10,7 +10,7 @@ import {
 import { songKey } from '../lib/song.js';
 import { THEME_CHOICES, ACCENT_CHOICES } from '../lib/theme.js';
 import { savedThemeChoice, applyThemeChoice, savedAccentChoice, applyAccentChoice } from '../theme.js';
-import { recordBackup, runningInSafariOnIphone } from '../reminder.js';
+import { recordBackup, runningInSafariOnIphone, runningInstalled } from '../reminder.js';
 import { suggestionsEnabled, setSuggestionsEnabled } from '../musicbrainz.js';
 import {
   buildBackup, backupFileName, validateBackup, countRecords, formatCounts, restoreMessage, backupCheckMessage,
@@ -21,6 +21,7 @@ import {
 } from '../lib/karafun.js';
 
 import { APP_VERSION } from '../version.js';
+import { CONTACT_EMAIL, contactMailto, deviceLine } from '../lib/contact.js';
 
 const errorText = (err) => (err && err.message) || String(err);
 
@@ -382,6 +383,19 @@ export async function renderSettings() {
     class: 'btn help-open', type: 'button', text: 'Help', onclick: () => openScreen(renderHelp),
   });
 
+  // ---- R79: getting in touch, with the version and device filled in ----
+  const device = deviceLine({
+    userAgent: navigator.userAgent,
+    installed: runningInstalled(),
+    width: window.screen.width,
+    height: window.screen.height,
+  });
+  const contact = el('div', { class: 'card stack', id: 'contact-card' },
+    el('strong', { text: 'Contact' }),
+    el('p', { class: 'muted', text: 'To report defects or request enhancements, please email:' }),
+    el('a', { class: 'btn', href: contactMailto({ version: APP_VERSION, device }), text: CONTACT_EMAIL }),
+    el('p', { class: 'muted', text: `The email starts with the app version and your device (${device}), which you can change or delete.` }));
+
   viewEl.replaceChildren(
     el('div', { class: 'stack' },
       helpButton,
@@ -436,6 +450,7 @@ export async function renderSettings() {
         filePicker('Restore from backup', '.json,application/json', restoreBackup),
         backupMsg.node),
       karafunCard,
+      contact,
       el('p', { class: 'count', text: `Version ${APP_VERSION}` })));
   refresh();
   refreshCatalog();
