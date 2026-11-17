@@ -9,7 +9,7 @@ import {
 import { openSettings, downloadBackup } from './helpers-data.js';
 
 const banner = (page) => page.getByRole('region', { name: 'Backup reminder' });
-const moveBanner = (page) => page.getByRole('region', { name: 'Move to the Home Screen' });
+const moveBanner = (page) => page.getByRole('region', { name: 'Add to the Home Screen' });
 const installBanner = (page) => page.getByRole('region', { name: 'Install the app' });
 
 async function reload(page) {
@@ -56,9 +56,9 @@ async function expectInstallHelp(page) {
 }
 
 const SAFARI_FIRST = 'You are using Mic Jaunt in Safari. Safari deletes a website\'s data after seven days without a visit. '
-  + 'Add it to the Home Screen; your songs don\'t move over by themselves.';
+  + 'Use Safari\'s “Add to Home Screen”; your songs don\'t move over by themselves.';
 const SAFARI_AGAIN = 'Still in Safari. Safari can delete everything here after seven days away, and a backup is the only other copy. '
-  + 'Move to the Home Screen now, or back up today.';
+  + 'Use “Add to Home Screen” now, or back up today.';
 const BROWSER = 'Mic Jaunt is running in the browser. '
   + 'Install it for offline use and so the phone cannot clear its data when room runs short.';
 

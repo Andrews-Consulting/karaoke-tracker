@@ -33,7 +33,7 @@ test.describe('Help', () => {
       'Open micjaunt.app in Safari.', /^Tap Share/, /Add to Home Screen.*then tap Add\.$/,
     ]);
     await expect(install.locator('ol').nth(1).locator('li')).toHaveText([
-      'Open micjaunt.app in Chrome.', 'Tap the three-dot menu.', /^Tap Add to home screen \(or Install app\), then Install\.$/,
+      'Open micjaunt.app in Chrome.', 'Tap the three-dot menu.', /^Tap “Add to home screen” \(or “Install app”\), then Install\.$/,
     ]);
     await expect(install).toContainText('Restore from backup in the installed app');
     await expect(install).toContainText('share their data, so nothing needs moving');

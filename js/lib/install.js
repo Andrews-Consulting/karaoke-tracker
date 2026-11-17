@@ -31,10 +31,10 @@ export function snoozed(until, now = new Date()) {
 export function moveBannerText(showings) {
   if (showings > 1) {
     return 'Still in Safari. Safari can delete everything here after seven days away, and a backup is the only other copy. '
-      + 'Move to the Home Screen now, or back up today.';
+      + 'Use “Add to Home Screen” now, or back up today.';
   }
   return 'You are using Mic Jaunt in Safari. Safari deletes a website\'s data after seven days without a visit. '
-    + 'Add it to the Home Screen; your songs don\'t move over by themselves.';
+    + 'Use Safari\'s “Add to Home Screen”; your songs don\'t move over by themselves.';
 }
 
 // The softer banner, in any other browser tab while storage is not persistent.

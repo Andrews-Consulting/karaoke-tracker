@@ -111,7 +111,7 @@ export async function checkSafariMove(goToBackup, showInstallHelp) {
   if (snoozed(readItem(MOVE_SNOOZE_KEY))) return;
   if (!(await hasSongs('Move banner'))) return;
 
-  showBanner('move', 'Move to the Home Screen', moveBannerText(countShowing(MOVE_COUNT_KEY)), [
+  showBanner('move', 'Add to the Home Screen', moveBannerText(countShowing(MOVE_COUNT_KEY)), [
     ['Move my data', goToBackup, true],
     ['How', showInstallHelp],
     ['Later', () => writeItem(MOVE_SNOOZE_KEY, installSnoozeUntil())],

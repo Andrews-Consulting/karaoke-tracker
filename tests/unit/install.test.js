@@ -33,14 +33,14 @@ describe('install banners: Later (R65)', () => {
 describe('install banners: words (R65)', () => {
   it('the Safari banner says what Safari does the first time', () => {
     const first = 'You are using Mic Jaunt in Safari. Safari deletes a website\'s data after seven days without a visit. '
-      + 'Add it to the Home Screen; your songs don\'t move over by themselves.';
+      + 'Use Safari\'s “Add to Home Screen”; your songs don\'t move over by themselves.';
     expect(moveBannerText(1)).toBe(first);
     expect(moveBannerText(0)).toBe(first); // no count stored yet reads as the first
   });
 
   it('is sterner from the second showing on', () => {
     const stern = 'Still in Safari. Safari can delete everything here after seven days away, and a backup is the only other copy. '
-      + 'Move to the Home Screen now, or back up today.';
+      + 'Use “Add to Home Screen” now, or back up today.';
     expect(moveBannerText(2)).toBe(stern);
     expect(moveBannerText(9)).toBe(stern);
   });

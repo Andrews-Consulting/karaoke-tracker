@@ -34,7 +34,7 @@ const INSTALL_WHY = [
 const INSTALL_IPHONE = [
   'Open micjaunt.app in Safari.',
   'Tap Share: the square with the arrow, or ⋯ and then Share.',
-  'Scroll down, tap Add to Home Screen, leave Open as Web App on, then tap Add.',
+  'Scroll down, tap “Add to Home Screen”, leave “Open as Web App” on, then tap Add.',
 ];
 
 const INSTALL_IPHONE_NOTE = 'Do this before you add songs: the Home Screen app keeps its own data, separate from Safari\'s. '
@@ -43,7 +43,7 @@ const INSTALL_IPHONE_NOTE = 'Do this before you add songs: the Home Screen app k
 const INSTALL_ANDROID = [
   'Open micjaunt.app in Chrome.',
   'Tap the three-dot menu.',
-  'Tap Add to home screen (or Install app), then Install.',
+  'Tap “Add to home screen” (or “Install app”), then Install.',
 ];
 
 const INSTALL_ANDROID_NOTE = 'On Android the installed app and Chrome share their data, so nothing needs moving.';
