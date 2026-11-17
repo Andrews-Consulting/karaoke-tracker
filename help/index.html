@@ -60,12 +60,19 @@
   <h2 id="start-head">Getting started</h2>
   <p>A few steps, once. After that, a night out is mostly the Tonight screen.</p>
   <ol class="steps">
-    <li><strong>Put it on your Home Screen.</strong> On your iPhone, open <a href="https://micjaunt.app">micjaunt.app</a> in Safari, tap Share, then Add to Home Screen. Open it from there from now on: it opens full screen and works with no signal. Do this before you add songs, because the Home Screen app keeps its own data, separate from Safari's.</li>
+    <li><strong>Put it on your Home Screen.</strong> Installed, Mic Jaunt opens full screen, works with no signal, and keeps its data for good. In a browser tab it is a website: Safari on an iPhone deletes a website's data after seven days without a visit, and Chrome can clear it when the phone runs short of room.
+      <ul>
+        <li><strong>iPhone:</strong> open <a href="https://micjaunt.app">micjaunt.app</a> in Safari and tap Share, the square with the arrow (in Safari's compact layout, tap ⋯ first, then Share). Scroll down, tap Add to Home Screen, leave Open as Web App on, and tap Add.</li>
+        <li>Do this before you add songs: the Home Screen app keeps its own data, separate from Safari's. Songs you already added in Safari move with a backup: in Safari, Settings, Backup, Share backup, then Save to Files; then in the Home Screen app, Restore from backup.</li>
+        <li><strong>Android:</strong> open micjaunt.app in Chrome, tap the three-dot menu, then Add to home screen (Install app in some versions), then Install. The installed app and Chrome share their data, so nothing needs moving.</li>
+      </ul>
+      Open it from the Home Screen from now on. Help in the app has the same steps.
+    </li>
     <li><strong>Load the KaraFun catalog (optional).</strong> If your venues use KaraFun, Mic Jaunt can search their whole song list and mark which of your songs they have. The app never downloads it by itself, so you fetch the file once:
       <ul>
         <li>In Safari, open <a href="https://www.karafun.com/karaoke-song-list.html">karafun.com/karaoke-song-list.html</a> (in the app, Settings, KaraFun catalog, Get the catalog from KaraFun opens the same page).</li>
         <li>Download the song list. It is a CSV file of about 7 MB. When Safari asks, choose Save to Files.</li>
-        <li>In Mic Jaunt, open Settings (the gear), go to KaraFun catalog, tap Load catalog file and choose the file. The card shows its progress, then when it was loaded and how many songs it holds.</li>
+        <li>In Mic Jaunt on the Home Screen, open Settings (the gear), go to KaraFun catalog, tap Load catalog file and choose the file. The card shows its progress, then when it was loaded and how many songs it holds. In Safari the button is greyed out: a catalog loaded there would stay in Safari.</li>
         <li>Delete the downloaded file from Files. The catalog is now inside the app, and the file only takes up room.</li>
         <li>KaraFun keeps adding songs: load a fresh file every six months or so. Loading again replaces the old catalog.</li>
       </ul>
@@ -254,7 +261,7 @@
     <img src="img/help.png" width="390" height="664" loading="lazy" alt="The Help screen: Settings at the top to go back, the heading Help, and the card What it's for, naming Songs, Lists, Tonight's set and Next time.">
     <figcaption>Help, inside the app</figcaption>
   </figure>
-  <p>The button at the top of Settings opens a short version of this guide inside the app: what it's for, the screens, a night step by step, the first steps and a few tips. Its Full guide link opens this page.</p>
+  <p>The button at the top of Settings opens a short version of this guide inside the app: what it's for, how to put it on the Home Screen, the screens, a night step by step, the first steps and a few tips. Its Full guide link opens this page.</p>
 
   <h3>Appearance</h3>
   <p>Theme: Dark (the default, for a dim bar), Light, or Match the phone. Accent color: Sky, Green, Amber, Lime or Pink.</p>
@@ -263,7 +270,7 @@
   <p>The MusicBrainz suggestions in Add a song. Only the title and artist you type there are sent, and only while this is on. Everything else stays on the phone.</p>
 
   <h3>Storage</h3>
-  <p>Says whether the browser has agreed to keep the app's data for good, with Ask for persistent storage. An app on the Home Screen keeps its data anyway.</p>
+  <p>Says whether the browser has agreed to keep the app's data for good, with Ask for persistent storage. An app on the Home Screen keeps its data anyway: the phone never clears an installed app's data on its own. In a browser other than Safari on an iPhone, while storage is not persistent, a banner suggests installing the app, at most once every three days; How opens the steps in Help, and Later hides it.</p>
 
   <h3>Import and export songs</h3>
   <p><strong>Import songs from CSV</strong> reads a spreadsheet saved as CSV, with a header row naming the columns:</p>
@@ -284,11 +291,12 @@
     <li><strong>Restore from backup</strong> replaces everything on the phone with the backup's contents, after asking.</li>
   </ul>
   <p>If you've never backed up, or your last backup is more than 30 days old, a reminder shows above the bar with Back up now and Later, which hides it for a week.</p>
-  <p><strong>Safari and the Home Screen keep separate data.</strong> On an iPhone, songs you added in Safari don't appear in the app on the Home Screen. In Safari, a banner offers Move my data, which takes you to Backup: Share backup, then Save to Files. Then open the Home Screen app: with no songs yet, its Songs screen offers Restore a backup, which takes you to Restore from backup.</p>
+  <p><strong>Safari and the Home Screen keep separate data.</strong> On an iPhone, songs you added in Safari don't appear in the app on the Home Screen, and Safari deletes them after seven days without a visit. In Safari, with songs, a banner says so. Move my data takes you to Backup: Share backup, then Save to Files. How opens the steps for adding the app to the Home Screen, in Help. Later hides the banner for three days; from its second showing it is blunter. Then open the Home Screen app: with no songs yet, its Songs screen offers Restore a backup, which takes you to Restore from backup.</p>
 
   <h3>KaraFun catalog</h3>
   <p><strong>Get the catalog from KaraFun</strong> opens KaraFun's song list page, where you download the file (see <a href="#start">Getting started</a>). <strong>Load catalog file</strong> reads it; the line above the button says when the catalog was loaded and how many songs it holds. A file that isn't KaraFun's song list is refused before anything changes. Loading a newer file replaces the catalog, and every load marks which of your songs KaraFun has.</p>
   <p><strong>Remove catalog</strong> deletes it from the phone; your songs keep their KaraFun marks. The catalog isn't part of the backup: on a new phone, load the file again.</p>
+  <p>On an iPhone, load it in the Home Screen app. In Safari, Load catalog file is greyed out and the card says why: a catalog loaded there does not follow the app to the Home Screen, and Safari may delete it after seven days. Remove catalog still works there.</p>
 
   <h3>Version</h3>
   <p>The bottom of Settings shows which version of the app you have.</p>

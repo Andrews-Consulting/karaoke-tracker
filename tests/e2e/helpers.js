@@ -11,13 +11,27 @@ export const mockedMusicBrainz = new WeakSet();
 // scope. No test may reach the real MusicBrainz (R35): every lookup is
 // refused here, unless the test registered its own answer with
 // mockMusicBrainz(), which then gets it.
-export async function openApp(page) {
+//
+// Storage reads as persistent unless `persisted: false`: a browser tab with
+// songs and storage not persistent shows the install banner (R65), which
+// only its own tests want. A test context is never an installed app.
+export async function openApp(page, { persisted = true } = {}) {
   await page.route('https://musicbrainz.org/**', (route) =>
     (mockedMusicBrainz.has(page) ? route.fallback() : route.abort('internetdisconnected')));
+  await fakePersisted(page, persisted);
   await page.goto('./');
   await expectTab(page, 'Tonight');
   await openScope(page, 'Songs');
   await expect(page.getByText(/of \d+ songs/)).toBeVisible();
+}
+
+// From the next page load on, navigator.storage.persisted() resolves with
+// `value`. A later call wins: init scripts run in the order they were added.
+export function fakePersisted(page, value) {
+  return page.addInitScript((answer) => {
+    if (!navigator.storage) return;
+    Object.defineProperty(navigator.storage, 'persisted', { configurable: true, value: async () => answer });
+  }, value);
 }
 
 // The dock's scope bar: Tonight, Songs, Lists, History and the Settings gear.

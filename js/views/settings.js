@@ -10,7 +10,7 @@ import {
 import { songKey } from '../lib/song.js';
 import { THEME_CHOICES, ACCENT_CHOICES } from '../lib/theme.js';
 import { savedThemeChoice, applyThemeChoice, savedAccentChoice, applyAccentChoice } from '../theme.js';
-import { recordBackup } from '../reminder.js';
+import { recordBackup, runningInSafariOnIphone } from '../reminder.js';
 import { suggestionsEnabled, setSuggestionsEnabled } from '../musicbrainz.js';
 import {
   buildBackup, backupFileName, validateBackup, countRecords, formatCounts, restoreMessage, backupCheckMessage,
@@ -287,9 +287,14 @@ export async function renderSettings() {
   const removeCatalogBtn = el('button', {
     class: 'btn danger', type: 'button', text: 'Remove catalog', hidden: '', onclick: removeKarafun,
   });
+  // In Safari on an iPhone a catalog would stay in Safari's data, apart from
+  // the Home Screen app's, and could be deleted after seven days away (R65),
+  // so it is loaded in the installed app only. Remove still works here.
+  const loadBlocked = runningInSafariOnIphone();
+  catalogInput.disabled = loadBlocked;
 
   function setCatalogBusy(busy) {
-    catalogInput.disabled = busy;
+    catalogInput.disabled = busy || loadBlocked;
     removeCatalogBtn.disabled = busy;
   }
 
@@ -324,7 +329,7 @@ export async function renderSettings() {
   }
 
   function startCatalogLoad(file) {
-    if (karafunLoad) return;
+    if (karafunLoad || loadBlocked) return;
     catalogMsg.show(`Reading ${file.name}…`);
     const load = { name: file.name, show: () => {} };
     load.promise = loadCatalog(file, (done, total) => load.show(loadProgressText(done, total)))
@@ -359,6 +364,13 @@ export async function renderSettings() {
     }),
     catalogLine,
     el('div', { class: 'karafun-actions' }, catalogPicker, removeCatalogBtn),
+    loadBlocked
+      ? el('p', {
+        class: 'muted karafun-safari',
+        text: 'Load the catalog in the Home Screen app. A catalog loaded here in Safari does not follow it there, '
+          + 'and Safari may delete it after seven days.',
+      })
+      : null,
     catalogMsg.node);
   if (karafunLoad) {
     catalogMsg.show(`Still loading ${karafunLoad.name}…`);

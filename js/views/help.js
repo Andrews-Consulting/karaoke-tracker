@@ -1,7 +1,8 @@
 // The Help screen (R76): a short guide in the app, opened by the Help button
 // at the top of Settings. It is stacked on Settings with openScreen, so its
 // Back and the back gesture return there (R31), and the gear stays marked
-// while it shows. The full guide is help/index.html on the site; it is not in
+// while it shows. The install banners' How (R65) opens it the same way, at
+// the Install card. The full guide is help/index.html on the site; it is not in
 // the service worker's cache, so it opens in the browser and needs a
 // connection.
 import { el, viewEl, closeScreen, icon } from '../ui.js';
@@ -18,6 +19,34 @@ const CONCEPTS = [
   ['Tonight\'s set', 'the one list you sing from tonight at this venue.'],
   ['Next time', 'where parked songs wait for your next visit to this venue.'],
 ];
+
+// Getting it onto the Home Screen (R65). The banners' How opens Help here.
+// The labels are the phones' own, as Apple's and Google's help pages gave
+// them in November 2026: Safari's default layout in iOS 26 hides Share
+// behind ⋯, and Chrome's menu item is "Add to home screen" ("Install app" in
+// some versions).
+const INSTALL_WHY = [
+  'Installed, Mic Jaunt opens full screen, works with no signal, and keeps its data for good.',
+  'In a browser tab it is a website: Safari on an iPhone deletes a website\'s data after seven days without a visit, '
+    + 'and Chrome can clear it when the phone runs short of room.',
+];
+
+const INSTALL_IPHONE = [
+  'Open micjaunt.app in Safari.',
+  'Tap Share: the square with the arrow, or ⋯ and then Share.',
+  'Scroll down, tap Add to Home Screen, leave Open as Web App on, then tap Add.',
+];
+
+const INSTALL_IPHONE_NOTE = 'Do this before you add songs: the Home Screen app keeps its own data, separate from Safari\'s. '
+  + 'Songs already in Safari move with a backup: Settings, Backup, Share backup, then Restore from backup in the installed app.';
+
+const INSTALL_ANDROID = [
+  'Open micjaunt.app in Chrome.',
+  'Tap the three-dot menu.',
+  'Tap Add to home screen (or Install app), then Install.',
+];
+
+const INSTALL_ANDROID_NOTE = 'On Android the installed app and Chrome share their data, so nothing needs moving.';
 
 const SCREENS = [
   ['Tonight', 'the venue, tonight\'s set with Up next on top, and what you\'ve sung here today. '
@@ -53,7 +82,7 @@ const FIRST_STEPS = [
 const TIPS = [
   'A space after a word searches for that whole word: “I ” finds “I Sang Dixie”, not every title with an i.',
   'Pick one on Songs opens a random song from whatever your search and filters leave.',
-  'On an iPhone, add the app to the Home Screen and use Share backup, then Save to Files.',
+  'On an iPhone, back up with Share backup, then Save to Files.',
 ];
 
 function line(entry) {
@@ -68,7 +97,9 @@ function section(id, heading, ...content) {
     el('h3', { id, text: heading }), ...content);
 }
 
-export function renderHelp() {
+// `scrollTo` is a card's heading id ('help-install'): that card is scrolled
+// to the top once drawn, for a banner's How. Without it Help opens at the top.
+export function renderHelp({ scrollTo = null } = {}) {
   titleEl.textContent = 'Help';
   dock.showingSettings(true); // Help is part of Settings: the gear stays the selected one
   viewEl.replaceChildren(el('div', { class: 'stack help-view' },
@@ -81,6 +112,14 @@ export function renderHelp() {
           + 'so you don\'t repeat yourself and can build a set for each night.',
       }),
       el('ul', {}, ...CONCEPTS.map(line))),
+    section('help-install', 'Put it on your Home Screen',
+      ...INSTALL_WHY.map((text) => el('p', { text })),
+      el('h4', { text: 'iPhone' }),
+      el('ol', {}, ...INSTALL_IPHONE.map(line)),
+      el('p', { text: INSTALL_IPHONE_NOTE }),
+      el('h4', { text: 'Android' }),
+      el('ol', {}, ...INSTALL_ANDROID.map(line)),
+      el('p', { text: INSTALL_ANDROID_NOTE })),
     section('help-screens', 'The screens',
       el('p', { class: 'muted', text: 'On the bar at the bottom.' }),
       el('ul', {}, ...SCREENS.map(line))),
@@ -92,4 +131,5 @@ export function renderHelp() {
         'Full guide', el('span', { 'aria-hidden': 'true', text: ' ↗' })),
       el('p', { class: 'muted', text: 'Opens in the browser and needs to be online.' }))));
   viewEl.scrollTop = 0;
+  if (scrollTo) document.getElementById(scrollTo)?.closest('section')?.scrollIntoView({ block: 'start' });
 }

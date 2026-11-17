@@ -1381,6 +1381,8 @@ body[data-screen="kj"] main { padding: 0; max-width: none; }
 .btn.help-open { width: 100%; font-weight: 600; }
 .help-view h2 { margin: 0; font-size: 1.5rem; font-weight: 600; }
 .help-view h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+/* iPhone and Android in the Install card, a little apart from what is above. */
+.help-view h4 { margin: 16px 0 0; font-size: 0.9375rem; font-weight: 600; }
 .help-view .help-card :is(p, ul, ol) { margin-bottom: 0; }
 .help-view .help-card :is(ul, ol) { padding-left: 22px; }
 .help-view .help-card li + li { margin-top: 8px; }
