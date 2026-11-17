@@ -74,6 +74,11 @@ test.describe('Holding a place', () => {
     await expect(titles).toHaveText(['Dancing Queen', 'Mr. Brightside', 'Africa']);
     await expect(list.locator('.pos')).toHaveText(['02', '03', '04']);
 
+    // The backup reminder (songs, no backup) arrives a beat after the screen
+    // and shrinks <main>; measure the rows only once it is there, or on a slow
+    // machine it lands mid-drag and the drop misses (CI, 2026-11-16).
+    await expect(page.getByRole('region', { name: 'Backup reminder' })).toBeVisible();
+
     // Drag Africa by its handle onto Dancing Queen's row: it takes second place.
     const handle = list.getByRole('button', { name: 'Move Africa', exact: true });
     await expect(handle).toBeVisible();
@@ -82,6 +87,7 @@ test.describe('Holding a place', () => {
     const x = from.x + from.width / 2;
     await page.mouse.move(x, from.y + from.height / 2);
     await page.mouse.down();
+    await expect(list.locator('li[data-song-id]').last()).toHaveClass(/\bdragging\b/);
     await page.mouse.move(x, to.y + to.height * 0.25, { steps: 10 });
     await page.mouse.up();
 
