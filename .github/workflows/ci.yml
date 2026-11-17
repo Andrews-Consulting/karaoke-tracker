@@ -22,7 +22,10 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # Normally under a minute. The apt half can stall on a slow Ubuntu mirror
+      # (42 of 185 packages in 14 minutes on 2026-11-17): fail fast, re-run.
       - run: npx playwright install --with-deps chromium webkit
+        timeout-minutes: 15
       - run: npm run test:unit
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
