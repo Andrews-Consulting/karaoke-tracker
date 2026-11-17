@@ -18,12 +18,13 @@ async function reload(page) {
   await expect(page.getByText(/of \d+ songs/)).toBeVisible();
 }
 
-// Reloads with songs and no backup. The backup reminder showing means the
-// startup checks are done: an install banner that is snoozed, or in an
+// Reloads with songs and no backup. A banner showing means the startup checks
+// are done: the backup reminder, or the Safari banner, which keeps the
+// reminder quiet while it is up. An install banner that is snoozed, or in an
 // installed app, bows out before the checks first wait on anything.
 async function reloadWithSongs(page) {
   await reload(page);
-  await expect(banner(page)).toBeVisible();
+  await expect(banner(page).or(moveBanner(page))).toBeVisible();
 }
 
 // navigator.standalone as each browser has it: false in Safari on an iPhone,
