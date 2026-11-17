@@ -105,17 +105,20 @@ function showBanner(className, label, text, buttons) {
 }
 
 // In Safari on an iPhone with songs. `goToBackup()` opens Settings at Backup;
-// `showInstallHelp()` opens Help at its Install card.
+// `showInstallHelp()` opens Help at its Install card. Resolves true when the
+// banner is showing: the backup reminder then stays quiet, since this one
+// already says to back up and two banners took a third of the screen.
 export async function checkSafariMove(goToBackup, showInstallHelp) {
-  if (!runningInSafariOnIphone()) return;
-  if (snoozed(readItem(MOVE_SNOOZE_KEY))) return;
-  if (!(await hasSongs('Move banner'))) return;
+  if (!runningInSafariOnIphone()) return false;
+  if (snoozed(readItem(MOVE_SNOOZE_KEY))) return false;
+  if (!(await hasSongs('Move banner'))) return false;
 
   showBanner('move', 'Add to the Home Screen', moveBannerText(countShowing(MOVE_COUNT_KEY)), [
     ['Move my data', goToBackup, true],
     ['How', showInstallHelp],
     ['Later', () => writeItem(MOVE_SNOOZE_KEY, installSnoozeUntil())],
   ]);
+  return true;
 }
 
 // In any other browser tab with songs, while storage is not persistent.

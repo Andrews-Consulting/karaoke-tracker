@@ -116,6 +116,7 @@ test.describe('Getting onto the Home Screen (R65)', () => {
     await expect(moveBanner(page).locator('p')).toHaveText(SAFARI_FIRST);
     await expect(moveBanner(page).getByRole('button')).toHaveText(['Move my data', 'How', 'Later']);
     await expect(installBanner(page)).toHaveCount(0);
+    await expect(banner(page)).toHaveCount(0); // the backup reminder waits: this one already says to back up
 
     await moveBanner(page).getByRole('button', { name: 'Move my data' }).click();
     await expectTab(page, 'Settings');

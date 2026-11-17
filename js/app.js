@@ -74,11 +74,13 @@ import('./update.js')
 const reloaded = viewInHistory();
 dock.scope(scopes[reloaded] ? reloaded : 'tonight');
 
-// R25: a reminder above the dock when the last backup is over 30 days old.
-checkBackupReminder((name) => dock.scope(name));
 // R65: in Safari on an iPhone, a nudge to move the data to the installed app;
 // in another browser with storage not persistent, a softer one to install it.
 // Their How opens the install steps in Help.
 const showInstallHelp = () => openHelpAt('help-install');
-checkSafariMove(goToBackup, showInstallHelp);
 checkBrowserInstall(showInstallHelp);
+// R25: a reminder above the dock when the last backup is over 30 days old,
+// unless the Safari banner is up, which already says to back up.
+checkSafariMove(goToBackup, showInstallHelp).then((showing) => {
+  if (!showing) checkBackupReminder((name) => dock.scope(name));
+});
