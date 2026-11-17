@@ -13,7 +13,7 @@
 // update check parsed the new file as a classic script, hit the import and
 // gave up, silently, while the page code that would have re-registered it
 // as a module was itself served from the old cache.
-const CACHE_VERSION = 'v1.0.61'; // = APP_VERSION in js/version.js
+const CACHE_VERSION = 'v1.0.62'; // = APP_VERSION in js/version.js
 const CACHE_NAME = `mic-jaunt-${CACHE_VERSION}`;
 
 // Paths are relative so the app also works from a sub-folder (e.g. GitHub Pages).

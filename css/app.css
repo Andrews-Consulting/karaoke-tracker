@@ -400,7 +400,9 @@ label > textarea { margin-top: 4px; color: var(--text); resize: vertical; }
   background: var(--surface);
   border-top: 2px solid var(--accent);
 }
-.update-banner p { flex: 1 1 8em; margin: 0; font-size: 0.9375rem; }
+/* The words take the full width and the buttons sit in a row under them: beside
+   two or three buttons the text was squeezed into a column a few words wide. */
+.update-banner p { flex: 1 1 100%; margin: 0; font-size: 0.9375rem; }
 .update-banner .btn { padding-left: 12px; padding-right: 12px; }
 
 /* Printing from the browser's share or print menu (R24): the song list, a

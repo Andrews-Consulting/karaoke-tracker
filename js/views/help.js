@@ -33,7 +33,7 @@ const INSTALL_WHY = [
 
 const INSTALL_IPHONE = [
   'Open micjaunt.app in Safari.',
-  'Tap Share: the square with the arrow, or ⋯ and then Share.',
+  'Tap Share, the square with an arrow, in the bar at the bottom of the screen (in Safari\'s newer layout it is behind ⋯).',
   'Scroll down, tap “Add to Home Screen”, leave “Open as Web App” on, then tap Add.',
 ];
 
