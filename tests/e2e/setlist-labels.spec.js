@@ -652,10 +652,13 @@ test.describe('Setlist labels, Find songs and merge', () => {
     await backToSetlists(page);
 
     // Moving a list's last song is still one move: the list stays open,
-    // empty, and the form says nothing is left; Cancel closes it.
+    // empty, and the form says nothing is left. The closing button reads
+    // Cancel until a song has moved and Done after, since there is nothing
+    // left to cancel.
     await openSetlist(page, 'Spare');
     await button(page, 'Merge into…').click();
     await target.selectOption({ label: 'Anywhere' });
+    await expect(form.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
     await plus('Africa', 'Anywhere').click();
     await expect(moved()).toHaveText('Moved “Africa” to Anywhere.');
     await expect(page.getByRole('heading', { level: 2, name: 'Spare', exact: true })).toBeVisible();
@@ -665,7 +668,8 @@ test.describe('Setlist labels, Find songs and merge', () => {
     expect(dialogs).toHaveLength(1);
     expect((await stored()).Spare).toEqual([]);
     expect((await stored()).Anywhere).toEqual([songIds.Valerie, songIds.Africa]);
-    await form.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(form.getByRole('button', { name: 'Cancel', exact: true })).toHaveCount(0);
+    await form.getByRole('button', { name: 'Done', exact: true }).click();
     await expect(form).toBeHidden();
     await expect(button(page, 'Merge into…')).toBeDisabled();
     await expect(page.getByText('Nothing to merge.')).toBeVisible();

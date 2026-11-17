@@ -457,6 +457,9 @@ async function renderSetlist(id, message = '', focusId = null) {
   const mergeSongs = el('ul', { class: 'list merge-songs', 'aria-label': 'Songs to move' });
   const moveAllButton = el('button', { class: 'btn primary', type: 'submit', text: 'Move all' });
   const mergeError = el('p', { class: 'error', role: 'alert' });
+  // "Cancel" until a + has moved a song, "Done" after: there is nothing to
+  // cancel once moves have happened (owner, 2026-11-16).
+  const closeMergeButton = el('button', { class: 'btn', type: 'button', text: 'Cancel', onclick: () => showMergeForm(false) });
   const mergeForm = el('form', { class: 'card stack merge-form', 'aria-label': 'Merge into another setlist', hidden: '' },
     // The label beside the menu rather than around it, so the menu's name is just "Merge into".
     el('div', { class: 'merge-field' }, el('label', { for: 'merge-target', text: 'Merge into' }), mergeSelect),
@@ -464,7 +467,7 @@ async function renderSetlist(id, message = '', focusId = null) {
     mergeSongs,
     el('div', { class: 'row' },
       moveAllButton,
-      el('button', { class: 'btn', type: 'button', text: 'Cancel', onclick: () => showMergeForm(false) })),
+      closeMergeButton),
     mergeError);
   let merging = false; // stops a double tap from moving or merging twice
 
@@ -476,6 +479,7 @@ async function renderSetlist(id, message = '', focusId = null) {
     mergeForm.hidden = !open;
     mergeButton.setAttribute('aria-expanded', String(open));
     mergeError.textContent = '';
+    if (open) closeMergeButton.textContent = 'Cancel';
     syncMerge();
     if (open) mergeSelect.focus();
     else if (refocus) (mergeButton.disabled ? renameButton : mergeButton).focus({ preventScroll: true });
@@ -564,6 +568,7 @@ async function renderSetlist(id, message = '', focusId = null) {
     forgetUndo();
     drawSongs();
     status.textContent = describeMovedSong(song, target);
+    closeMergeButton.textContent = 'Done';
     const left = [...mergeSongs.children];
     const next = [...left.slice(at), ...left.slice(0, at).reverse()].map((li) => li.querySelector('.move-one')).find(Boolean);
     (next || (moveAllButton.hidden ? mergeSelect : moveAllButton)).focus();
