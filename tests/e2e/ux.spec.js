@@ -15,26 +15,32 @@ import {
 
 const MIN = 44;
 
-// Every visible control on the screen with its size. Hidden controls (closed
-// <details>, [hidden], the visually hidden file inputs) have no box and are left out.
+// Every visible control on the screen that is too small: under `min` px
+// either way, or a field whose text is under 16 px, which makes Safari on an
+// iPhone zoom the page in when it is focused and leave it zoomed (a venue's
+// name field, 2026-11-17). Hidden controls (closed <details>, [hidden], the
+// visually hidden file inputs) have no box and are left out.
 async function controlBoxes(page) {
   return page.evaluate((min) => {
     const nodes = document.querySelectorAll('button, input, select, textarea, summary, a[href], label.file-btn');
+    const typed = new Set(['input', 'select', 'textarea']);
     return [...nodes]
       .filter((node) => !node.classList.contains('file-input') && node.type !== 'hidden')
       .map((node) => {
         const r = node.getBoundingClientRect();
+        const tag = node.tagName.toLowerCase();
         const name = (node.getAttribute('aria-label') || node.textContent || node.name || '').trim().slice(0, 40);
-        return { tag: node.tagName.toLowerCase(), name, width: Math.round(r.width), height: Math.round(r.height) };
+        const fontSize = typed.has(tag) ? Number.parseFloat(getComputedStyle(node).fontSize) : 16;
+        return { tag, name, width: Math.round(r.width), height: Math.round(r.height), fontSize };
       })
       .filter((box) => box.width > 0 && box.height > 0)
-      .filter((box) => box.width < min || box.height < min);
+      .filter((box) => box.width < min || box.height < min || box.fontSize < 16);
   }, MIN);
 }
 
 async function expectTapTargets(page, screen) {
   const small = await controlBoxes(page);
-  expect(small, `${screen}: controls under ${MIN} px`).toEqual([]);
+  expect(small, `${screen}: controls under ${MIN} px, or fields with text under 16 px`).toEqual([]);
 }
 
 // A library with a venue, a sing and a setlist, so every screen has content.

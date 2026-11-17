@@ -261,6 +261,7 @@ input, select, textarea {
   width: 100%;
   min-height: var(--tap);
   padding: 8px 12px;
+  font-size: 1rem; /* never smaller: Safari on an iPhone zooms the page into a field under 16px and leaves it zoomed */
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
