@@ -13,7 +13,7 @@
 // update check parsed the new file as a classic script, hit the import and
 // gave up, silently, while the page code that would have re-registered it
 // as a module was itself served from the old cache.
-const CACHE_VERSION = 'v1.0.67'; // = APP_VERSION in js/version.js
+const CACHE_VERSION = 'v1.0.68'; // = APP_VERSION in js/version.js
 const CACHE_NAME = `mic-jaunt-${CACHE_VERSION}`;
 
 // Paths are relative so the app also works from a sub-folder (e.g. GitHub Pages).
@@ -77,7 +77,7 @@ self.addEventListener('activate', (event) => {
     caches.keys()
       .then((names) => Promise.all(
         names
-          .filter((name) => (name.startsWith('mic-jaunt-') || name.startsWith('karaoke-tracker-')) && name !== CACHE_NAME)
+          .filter((name) => name.startsWith('mic-jaunt-') && name !== CACHE_NAME)
           .map((name) => caches.delete(name))
       ))
       .then(() => self.clients.claim())

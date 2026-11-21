@@ -11,8 +11,6 @@ import { DB_VERSION, STORES } from '../db.js';
 import { makeSong } from './song.js';
 
 export const BACKUP_APP = 'mic-jaunt';
-// Files written before the app was renamed (November 2026) still restore.
-export const LEGACY_BACKUP_APPS = ['karaoke-tracker'];
 export const BACKUP_FORMAT = 1;
 
 const LABELS = { songs: 'songs', venues: 'venues', sings: 'sing log', setlists: 'setlists', meta: 'app settings' };
@@ -48,7 +46,7 @@ function validKey(store, record) {
 // Songs are rebuilt through makeSong() (keeping their ids) so missing fields get
 // the same defaults as everywhere else; other records are kept as they are.
 export function validateBackup(parsed, now = new Date()) {
-  if (!isObject(parsed) || (parsed.app !== BACKUP_APP && !LEGACY_BACKUP_APPS.includes(parsed.app))) {
+  if (!isObject(parsed) || parsed.app !== BACKUP_APP) {
     return { ok: false, problems: ['This file is not a Mic Jaunt backup.'] };
   }
 
