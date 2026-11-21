@@ -62,13 +62,7 @@ describe('validateBackup (R21)', () => {
     expect(validateBackup({ ...validFile(), app: undefined })).toEqual(notOurs);
     expect(validateBackup(null)).toEqual(notOurs);
     expect(validateBackup([validFile()])).toEqual(notOurs);
-    expect(validateBackup('karaoke-tracker')).toEqual(notOurs);
-  });
-
-  it('still accepts a backup written before the rename', () => {
-    const legacy = validateBackup({ ...validFile(), app: 'karaoke-tracker' });
-    expect(legacy.ok).toBe(true);
-    expect(legacy.data.songs).toHaveLength(validFile().data.songs.length);
+    expect(validateBackup('mic-jaunt')).toEqual(notOurs);
   });
 
   it('rejects an unknown or missing format number', () => {

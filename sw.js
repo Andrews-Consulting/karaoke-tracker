@@ -77,7 +77,7 @@ self.addEventListener('activate', (event) => {
     caches.keys()
       .then((names) => Promise.all(
         names
-          .filter((name) => (name.startsWith('mic-jaunt-') || name.startsWith('karaoke-tracker-')) && name !== CACHE_NAME)
+          .filter((name) => name.startsWith('mic-jaunt-') && name !== CACHE_NAME)
           .map((name) => caches.delete(name))
       ))
       .then(() => self.clients.claim())

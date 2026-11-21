@@ -2,7 +2,7 @@
 
 A personal, local-only PWA for tracking a karaoke repertoire: songs, venues, what was sung where, and setlists that avoid repeats and mix genres and decades. Lives at <https://micjaunt.app>.
 
-The internal id is `mic-jaunt` too: the IndexedDB name, the cache prefix, the backup format's `app` field and the download file names. Backup files from before the rename (`app: "karaoke-tracker"`) still restore.
+The internal id is `mic-jaunt` too: the IndexedDB name, the cache prefix, the backup format's `app` field and the download file names.
 
 No build step, no dependencies, no server. Plain HTML, CSS and JavaScript modules.
 
