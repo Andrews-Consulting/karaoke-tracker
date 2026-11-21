@@ -5,6 +5,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Mic Jaunt</title>
 
+  <!-- Search engines and link previews (R80). The app itself draws into <main>
+       with JavaScript, so these and the guide at help/ are what a crawler reads. -->
+  <meta name="description" content="Mic Jaunt is a free karaoke tracker for your phone: keep the songs you can sing, what you sang at each venue and when, and build tonight's setlist with no repeats. Everything stays on your phone.">
+  <link rel="canonical" href="https://micjaunt.app/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Mic Jaunt">
+  <meta property="og:title" content="Mic Jaunt">
+  <meta property="og:description" content="A karaoke tracker for your phone: your songs, what you sang where, and tonight's setlist. Free, no account, everything stays on your phone.">
+  <meta property="og:url" content="https://micjaunt.app/">
+  <meta property="og:image" content="https://micjaunt.app/icons/icon-512.png">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta name="twitter:card" content="summary">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Mic Jaunt",
+    "url": "https://micjaunt.app/",
+    "description": "A karaoke tracker for your phone: keep the songs you can sing, what you sang at each venue and when, and build tonight's setlist with no repeats. Everything stays on your phone.",
+    "applicationCategory": "MusicApplication",
+    "operatingSystem": "iOS, Android, any modern browser",
+    "browserRequirements": "Requires JavaScript",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "image": "https://micjaunt.app/icons/icon-512.png"
+  }
+  </script>
+
   <meta name="theme-color" content="#0c1015">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="icons/icon-192.png">
@@ -38,7 +66,11 @@
        stays for screen readers and prints at the top of a printout. -->
   <h1 id="view-title" class="visually-hidden">Tonight</h1>
 
-  <main id="view" tabindex="-1"></main>
+  <main id="view" tabindex="-1">
+    <noscript>
+      <p>Mic Jaunt is a karaoke tracker for your phone: the songs you can sing, what you sang at each venue and when, and tonight's setlist. It needs JavaScript to run. <a href="help/">Read the guide</a>.</p>
+    </noscript>
+  </main>
 
   <!-- The dock (Design B, js/dock.js), from the bottom up: the scope bar, the
        search field with its filter button, and a slot for a docked card. -->

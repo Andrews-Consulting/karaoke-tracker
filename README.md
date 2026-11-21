@@ -34,6 +34,7 @@ Then open <http://localhost:8000>. The VS Code "Live Server" extension works too
 | `js/karafun.js` | Stores, replaces and removes the KaraFun catalog and flags the songs it has (R66, R68); parsing and matching are in `js/lib/karafun.js` |
 | `sw.js` | Service worker: offline cache |
 | `manifest.webmanifest` | Install settings (name, icons, colors) |
+| `robots.txt`, `sitemap.xml` | For search engines (R80): the sitemap names the app and the guide, robots.txt points to it and keeps crawlers out of the repo's working folders. The description, canonical and link-preview tags are in the two pages' heads |
 | `icons/` | App icons; regenerate with `python3 tools/make_icons.py` |
 | `tools/serve.js` | Zero-dependency static server used by Playwright and `npm run serve` |
 | `tools/screenshots.js` | Phone screenshots of every screen for design review (`npm run screenshots`) |

@@ -92,6 +92,7 @@ Everything the app does today, written as what the singer wants and why, without
 - As a singer, I want it served securely from a plain address, so that installing and updating need nothing but a browser. (R28)
 - As a singer, I want to be told when a new version is ready and reload when I choose, so that updates never interrupt a night. (R30)
 - As a singer, I want to see which version I have, so that I can tell whether an update arrived. (R73)
+- As a singer who heard of the app, I want to find it and its guide with a web search, and see a sensible title and description when a link is shared, so that I can get to it without being sent the address. (R80)
 - As a singer, I want a short explanation inside the app of what it is for and how a night out works, with a fuller guide a tap away, so that I can get going, or pick it up again after a while, without guessing. (R76)
 - As a singer, I want the steps for putting the app on my Home Screen, for an iPhone and for Android, in the app's Help and a tap away from the banner that asks me to, so that I install it before my songs are at risk. (R76, R65)
 
