@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The two pages worth indexing (R80): the app and the singer's guide.
+     Submitted to Google Search Console and named in robots.txt. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://micjaunt.app/</loc>
+  </url>
+  <url>
+    <loc>https://micjaunt.app/help/</loc>
+  </url>
+</urlset>

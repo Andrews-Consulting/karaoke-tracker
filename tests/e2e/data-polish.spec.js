@@ -239,6 +239,40 @@ test.describe('Updates', () => {
   });
 });
 
+test.describe('search engines', () => {
+  test('R80: robots.txt names the sitemap, the sitemap names the app and the guide, and both pages carry a description and canonical URL', async ({ page, request }) => {
+    const robots = await request.get('./robots.txt');
+    expect(robots.status()).toBe(200);
+    const rules = await robots.text();
+    expect(rules).toMatch(/^User-agent: \*$/m);
+    expect(rules).toMatch(/^Allow: \/$/m);
+    expect(rules).toMatch(/^Sitemap: https:\/\/micjaunt\.app\/sitemap\.xml$/m);
+
+    const sitemap = await request.get('./sitemap.xml');
+    expect(sitemap.status()).toBe(200);
+    expect(sitemap.headers()['content-type']).toMatch(/xml/);
+    const xml = await sitemap.text();
+    expect(xml).toContain('<loc>https://micjaunt.app/</loc>');
+    expect(xml).toContain('<loc>https://micjaunt.app/help/</loc>');
+
+    await openApp(page);
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /karaoke/i);
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://micjaunt.app/');
+    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', 'Mic Jaunt');
+    // The preview image is an absolute production URL; check the file it names is served here.
+    const image = new URL(await page.locator('meta[property="og:image"]').getAttribute('content'));
+    expect(image.origin).toBe('https://micjaunt.app');
+    expect((await request.get(new URL(image.pathname, page.url()).toString())).status()).toBe(200);
+    const structured = JSON.parse(await page.locator('script[type="application/ld+json"]').textContent());
+    expect(structured['@type']).toBe('WebApplication');
+    expect(structured.url).toBe('https://micjaunt.app/');
+
+    await page.goto('./help/');
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /karaoke/i);
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://micjaunt.app/help/');
+  });
+});
+
 test.describe('iPhone home screen', () => {
   test('R29: has iPhone home-screen icon and status-bar meta tags', async ({ page, request }) => {
     await openApp(page);
